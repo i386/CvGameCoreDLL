@@ -132,7 +132,7 @@ $(OUTDLL): $(OBJECTS) $(RES)
 	$(LINK) $(LINK_FLAGS) /OUT:"$(OUTDLL)" /IMPLIB:"$(IMPLIB)" /PDB:"$(PDB)" $(OBJECTS) $(RES) $(LIBS)
 
 $(RES): CvGameCoreDLL.rc resource.h
-	$(RC) /fo"$(RES)" CvGameCoreDLL.rc
+	$(RC) /i "$(VCROOT)\include" /i "$(SDKROOT)\include" /fo"$(RES)" CvGameCoreDLL.rc
 
 .cpp{$(INTDIR)}.obj:
 	$(CPP) $(CPP_FLAGS) /Fo"$@" /Fd"$(INTDIR)\vc70.pdb" /c "$<"
