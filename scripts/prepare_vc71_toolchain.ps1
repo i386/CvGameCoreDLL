@@ -287,6 +287,14 @@ if ($toolchainZipUrl) {
         Copy-Tree -Source $common7Source -Destination (Join-Path $OutputDir "Common7")
     }
 
+    $vcBinDestination = Join-Path $OutputDir "VC7\bin"
+    foreach ($dependencyName in @("msvcr71.dll", "msvcp71.dll", "msobj71.dll", "mspdb71.dll")) {
+        Get-ChildItem -Path $vsExtract -Filter $dependencyName -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                Copy-Item -Path $_.FullName -Destination $vcBinDestination -Force
+            }
+    }
+
     $sdkImage = Join-Path $env:RUNNER_TEMP "PlatformSDK.img"
     Invoke-Download -Uri $platformSdkUrl -OutFile $sdkImage
 
