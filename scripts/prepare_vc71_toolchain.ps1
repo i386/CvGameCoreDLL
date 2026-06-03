@@ -127,23 +127,34 @@ if ($toolchainZipUrl) {
         $toolkitInstall = Join-Path $env:RUNNER_TEMP "vctoolkit-install"
         New-Item -ItemType Directory -Force -Path $toolkitInstall | Out-Null
 
-        Write-Host "7-Zip did not expose cl.exe; running Toolkit installer silently"
-        $installerArgs = @(
-            "/s",
-            "/v`"/qn INSTALLDIR=`"$toolkitInstall`"`""
+        Write-Host "7-Zip did not expose cl.exe; trying InstallShield/MSI extraction modes"
+        $installAttempts = @(
+            "/s /v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install.log`"`"",
+            "/a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin.log`"`"",
+            "/s /a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin2.log`"`"",
+            "/v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install2.log`"`""
         )
-        $process = Start-Process -FilePath $toolkitExe -ArgumentList $installerArgs -Wait -PassThru
-        if ($process.ExitCode -ne 0) {
-            throw "Visual C++ Toolkit installer failed with exit code $($process.ExitCode)"
-        }
 
-        $cl = Find-FirstFile -Root $toolkitInstall -Name "cl.exe"
-        if ($cl) {
-            $toolkitExtract = $toolkitInstall
+        foreach ($installerArgs in $installAttempts) {
+            Write-Host "Running $toolkitExe $installerArgs"
+            $env:__COMPAT_LAYER = "WINXPSP3"
+            $process = Start-Process -FilePath $toolkitExe -ArgumentList $installerArgs -Wait -PassThru
+            Write-Host "Installer exit code: $($process.ExitCode)"
+
+            $cl = Find-FirstFile -Root $toolkitInstall -Name "cl.exe"
+            if ($cl) {
+                $toolkitExtract = $toolkitInstall
+                break
+            }
         }
     }
 
     if (-not $cl) {
+        Get-ChildItem -Path $env:RUNNER_TEMP -Filter "vctoolkit-*.log" -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                Write-Host "---- $($_.FullName) ----"
+                Get-Content -Path $_.FullName -Tail 80 -ErrorAction SilentlyContinue
+            }
         throw "Could not find cl.exe after unpacking Visual C++ Toolkit 2003"
     }
 
