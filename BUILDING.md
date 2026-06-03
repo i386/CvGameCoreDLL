@@ -1,12 +1,23 @@
 # Building on GitHub Actions
 
-The GitHub Actions workflow uses a hosted `windows-2022` runner and a private
-VC7.1 toolchain archive. GitHub's hosted runners do not include Visual Studio
-.NET 2003 or the VC7.1 compiler.
+The GitHub Actions workflow uses a hosted `windows-2022` runner. GitHub's
+hosted runners do not include Visual Studio .NET 2003 or the VC7.1 compiler, so
+the workflow prepares that toolchain before building.
 
-Configure the repository secret `VC71_TOOLCHAIN_URL` with an HTTPS URL to a ZIP
-archive containing the command-line toolchain. The build script accepts these
-layouts:
+By default, `scripts/prepare_vc71_toolchain.ps1` downloads:
+
+- Visual C++ Toolkit 2003 from the Internet Archive item
+  `microsoft-visual-c-toolkit-2003`
+- Windows Server 2003 SP1 Platform SDK ISO from Microsoft Download Center
+
+You can override those URLs with repository variables:
+
+- `VCTOOLKIT2003_URL`
+- `PLATFORM_SDK_URL`
+
+Alternatively, configure the repository secret `VC71_TOOLCHAIN_URL` with an
+HTTPS URL to a ZIP archive containing the command-line toolchain. The build
+script accepts these layouts:
 
 ```text
 vc71/
@@ -37,4 +48,3 @@ The output artifact is:
 ```text
 artifacts/CvGameCoreDLL.dll
 ```
-
