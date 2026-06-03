@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Check out sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download VC7.1 toolchain
         env:
@@ -34,7 +34,7 @@ jobs:
         run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
 
       - name: Upload CvGameCoreDLL
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: CvGameCoreDLL-win32
           path: artifacts/CvGameCoreDLL.dll
