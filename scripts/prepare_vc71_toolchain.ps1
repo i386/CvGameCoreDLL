@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $OutputDir,
 
-    [string] $DownloadCacheDir = $env:VC71_DOWNLOAD_CACHE
+    [string] $DownloadCacheDir = $env:VC71_DOWNLOAD_CACHE,
+
+    [switch] $DownloadOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,7 +82,9 @@ function Expand-AnyArchive {
 
 function Expand-NestedArchives {
     param(
-        [Parameter(Mandatory = $true)] [string] $Root
+        [Parameter(Mandatory = $true)] [string] $Root,
+        [string[]] $Extensions = @("cab", "msi", "zip", "exe"),
+        [int] $MaxPasses = 4
     )
 
     $sevenZip = "${env:ProgramFiles}\7-Zip\7z.exe"
@@ -91,9 +95,10 @@ function Expand-NestedArchives {
         throw "7-Zip is required to unpack nested archives"
     }
 
-    for ($pass = 1; $pass -le 4; $pass++) {
+    $extensionPattern = "^\.(" + (($Extensions | ForEach-Object { [regex]::Escape($_) }) -join "|") + ")$"
+    for ($pass = 1; $pass -le $MaxPasses; $pass++) {
         $archives = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Extension -match '^\.(cab|msi|zip|exe)$' -and $_.FullName -notmatch '\\expanded-' }
+            Where-Object { $_.Extension -match $extensionPattern -and $_.FullName -notmatch '\\expanded-' }
 
         foreach ($archive in $archives) {
             $destination = Join-Path $archive.DirectoryName ("expanded-" + $archive.BaseName)
@@ -170,6 +175,18 @@ function Invoke-ProcessWithTimeout {
     }
 
     return $process.ExitCode
+}
+
+if ($DownloadOnly) {
+    if ($toolchainZipUrl) {
+        Invoke-Download -Uri $toolchainZipUrl -OutFile (Join-Path $env:RUNNER_TEMP "vc71-toolchain.zip")
+    } else {
+        Invoke-Download -Uri $vs2003IsoUrl -OutFile (Join-Path $env:RUNNER_TEMP "VS2003.iso")
+        Invoke-Download -Uri $platformSdkUrl -OutFile (Join-Path $env:RUNNER_TEMP "PlatformSDK.img")
+    }
+
+    Write-Host "VC7.1 source archives are downloaded and ready for cache save"
+    exit 0
 }
 
 if (Test-Path $OutputDir) {
@@ -253,7 +270,7 @@ if ($toolchainZipUrl) {
 
     $sdkExtract = Join-Path $env:RUNNER_TEMP "platform-sdk-extract"
     Expand-AnyArchive -Archive $sdkImage -Destination $sdkExtract
-    Expand-NestedArchives -Root $sdkExtract
+    Expand-NestedArchives -Root $sdkExtract -Extensions @("cab", "msi", "zip") -MaxPasses 2
 
     $windowsHeader = Find-FirstFile -Root $sdkExtract -Name "windows.h"
     if (-not $windowsHeader) {
