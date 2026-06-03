@@ -12,9 +12,9 @@ CPP = cl.exe
 LINK = link.exe
 RC = "$(SDKROOT)\bin\rc.exe"
 
-CPP_FLAGS = /nologo /TP /O2 /Og /Oi /Oy /G7 /MD /EHsc /GR /W3 /GS- /FD $(CPP_DEFS) /I "Boost-1.32.0\include" /I "Python24\include"
+CPP_FLAGS = /nologo /TP /O2 /Og /Oi /Oy /G7 /MD /EHsc /GR /W3 /FD $(CPP_DEFS) /I "Boost-1.32.0\include" /I "Python24\include"
 LINK_FLAGS = /nologo /DLL /SUBSYSTEM:WINDOWS /MACHINE:X86 /LARGEADDRESSAWARE /OPT:REF /OPT:ICF
-LIBS = "Boost-1.32.0\libs\boost_python-vc71-mt-1_32.lib" "Python24\libs\python24.lib" winmm.lib
+LIBS = "Boost-1.32.0\libs\boost_python-vc71-mt-1_32.lib" "Python24\libs\python24.lib" user32.lib winmm.lib
 
 OUTDLL = $(OUTDIR)\CvGameCoreDLL.dll
 IMPLIB = $(INTDIR)\CvGameCoreDLL.lib
