@@ -177,6 +177,22 @@ function Invoke-ProcessWithTimeout {
     return $process.ExitCode
 }
 
+function Invoke-MsiAdministrativeInstall {
+    param(
+        [Parameter(Mandatory = $true)] [string] $MsiPath,
+        [Parameter(Mandatory = $true)] [string] $TargetDir,
+        [Parameter(Mandatory = $true)] [string] $LogPath
+    )
+
+    New-Item -ItemType Directory -Force -Path $TargetDir | Out-Null
+    $arguments = "/a `"$MsiPath`" /qn TARGETDIR=`"$TargetDir`" /L*v `"$LogPath`""
+    Write-Host "Running msiexec.exe $arguments"
+    $exitCode = Invoke-ProcessWithTimeout -FilePath "msiexec.exe" -Arguments $arguments -TimeoutSeconds 300
+    Write-Host "MSI administrative install exit code: $exitCode"
+
+    return $exitCode
+}
+
 if ($DownloadOnly) {
     if ($toolchainZipUrl) {
         Invoke-Download -Uri $toolchainZipUrl -OutFile (Join-Path $env:RUNNER_TEMP "vc71-toolchain.zip")
@@ -270,15 +286,41 @@ if ($toolchainZipUrl) {
 
     $sdkExtract = Join-Path $env:RUNNER_TEMP "platform-sdk-extract"
     Expand-AnyArchive -Archive $sdkImage -Destination $sdkExtract
-    Expand-NestedArchives -Root $sdkExtract -Extensions @("cab", "msi", "zip") -MaxPasses 2
 
-    $windowsHeader = Find-FirstFile -Root $sdkExtract -Name "windows.h"
-    if (-not $windowsHeader) {
+    $sdkRoot = $null
+    $psdkMsi = Get-ChildItem -Path $sdkExtract -Filter "PSDK-x86.msi" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($psdkMsi) {
+        $sdkAdmin = Join-Path $env:RUNNER_TEMP "platform-sdk-admin"
+        $sdkAdminLog = Join-Path $env:RUNNER_TEMP "platform-sdk-admin.log"
+        $msiExitCode = Invoke-MsiAdministrativeInstall -MsiPath $psdkMsi.FullName -TargetDir $sdkAdmin -LogPath $sdkAdminLog
+        if ($msiExitCode -eq 0) {
+            $windowsHeader = Find-FirstFile -Root $sdkAdmin -Name "windows.h"
+            if ($windowsHeader) {
+                $includeDir = Split-Path -Parent $windowsHeader.FullName
+                $sdkRoot = Split-Path -Parent $includeDir
+            }
+        } elseif (Test-Path $sdkAdminLog) {
+            Write-Host "Platform SDK administrative install log tail:"
+            Get-Content -Path $sdkAdminLog -Tail 80 -ErrorAction SilentlyContinue
+        }
+    }
+
+    if (-not $sdkRoot) {
+        Expand-NestedArchives -Root $sdkExtract -Extensions @("cab", "msi", "zip") -MaxPasses 2
+    }
+
+    if (-not $sdkRoot) {
+        $windowsHeader = Find-FirstFile -Root $sdkExtract -Name "windows.h"
+        if ($windowsHeader) {
+            $includeDir = Split-Path -Parent $windowsHeader.FullName
+            $sdkRoot = Split-Path -Parent $includeDir
+        }
+    }
+
+    if (-not $sdkRoot) {
         throw "Could not find windows.h after unpacking Platform SDK image"
     }
 
-    $includeDir = Split-Path -Parent $windowsHeader.FullName
-    $sdkRoot = Split-Path -Parent $includeDir
     Copy-Tree -Source $sdkRoot -Destination (Join-Path $OutputDir "PlatformSDK")
 }
 
