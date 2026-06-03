@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-vs2003:
-    name: VS2003 Win32 DLL
-    runs-on: [self-hosted, Windows, vs2003]
+  build-vc71:
+    name: VC7.1 Win32 DLL
+    runs-on: windows-2022
 
     defaults:
       run:
@@ -18,8 +18,20 @@ jobs:
       - name: Check out sources
         uses: actions/checkout@v4
 
+      - name: Download VC7.1 toolchain
+        env:
+          VC71_TOOLCHAIN_URL: ${{ secrets.VC71_TOOLCHAIN_URL }}
+        run: |
+          if "%VC71_TOOLCHAIN_URL%"=="" (
+            echo Missing repository secret VC71_TOOLCHAIN_URL.
+            echo It must point to a private ZIP containing the VC7.1 command-line toolchain and Platform SDK.
+            exit /b 1
+          )
+          powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri $env:VC71_TOOLCHAIN_URL -OutFile $env:RUNNER_TEMP\vc71.zip"
+          powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path $env:RUNNER_TEMP\vc71.zip -DestinationPath $env:RUNNER_TEMP\vc71 -Force"
+
       - name: Build Final Release
-        run: scripts\build_vs2003.bat "Final Release|Win32"
+        run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
 
       - name: Upload CvGameCoreDLL
         uses: actions/upload-artifact@v4

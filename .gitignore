@@ -9,6 +9,7 @@ Debug/
 Release/
 Final Debug/
 Final Release/
+build/
 *.obj
 *.pch
 *.pdb
