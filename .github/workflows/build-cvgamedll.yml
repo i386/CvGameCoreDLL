@@ -9,9 +9,6 @@ jobs:
   build-vc71:
     name: VC7.1 Win32 DLL
     runs-on: windows-2022
-    env:
-      VC71_TOOLCHAIN_DIR: ${{ runner.temp }}\vc71
-      VC71_DOWNLOAD_CACHE: ${{ runner.temp }}\vc71-downloads
 
     defaults:
       run:
@@ -25,7 +22,7 @@ jobs:
         id: restore-vc71-downloads
         uses: actions/cache/restore@v5
         with:
-          path: ${{ env.VC71_DOWNLOAD_CACHE }}
+          path: ${{ runner.temp }}\vc71-downloads
           key: vc71-downloads-${{ runner.os }}-vs2003-sdk-v1
           restore-keys: |
             vc71-downloads-${{ runner.os }}-
@@ -34,7 +31,7 @@ jobs:
         id: cache-vc71-toolchain
         uses: actions/cache@v5
         with:
-          path: ${{ env.VC71_TOOLCHAIN_DIR }}
+          path: ${{ runner.temp }}\vc71
           key: vc71-toolchain-${{ runner.os }}-${{ hashFiles('scripts/prepare_vc71_toolchain.ps1') }}-v1
           restore-keys: |
             vc71-toolchain-${{ runner.os }}-
@@ -47,17 +44,17 @@ jobs:
           VCTOOLKIT2003_URL: ${{ vars.VCTOOLKIT2003_URL }}
           PLATFORM_SDK_URL: ${{ vars.PLATFORM_SDK_URL }}
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolchain.ps1 -OutputDir "%VC71_TOOLCHAIN_DIR%" -DownloadCacheDir "%VC71_DOWNLOAD_CACHE%"
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolchain.ps1 -OutputDir "%RUNNER_TEMP%\vc71" -DownloadCacheDir "%RUNNER_TEMP%\vc71-downloads"
 
       - name: Save VC7.1 source archive cache
         if: always() && steps.restore-vc71-downloads.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
-          path: ${{ env.VC71_DOWNLOAD_CACHE }}
+          path: ${{ runner.temp }}\vc71-downloads
           key: vc71-downloads-${{ runner.os }}-vs2003-sdk-v1
 
       - name: Build Final Release
-        run: scripts\build_vc71_nmake.bat "%VC71_TOOLCHAIN_DIR%"
+        run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
 
       - name: Upload CvGameCoreDLL
         uses: actions/upload-artifact@v7
