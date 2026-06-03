@@ -49,6 +49,39 @@ function Expand-AnyArchive {
     }
 }
 
+function Expand-NestedArchives {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Root
+    )
+
+    $sevenZip = "${env:ProgramFiles}\7-Zip\7z.exe"
+    if (-not (Test-Path $sevenZip)) {
+        $sevenZip = "${env:ProgramFiles(x86)}\7-Zip\7z.exe"
+    }
+    if (-not (Test-Path $sevenZip)) {
+        throw "7-Zip is required to unpack nested archives"
+    }
+
+    for ($pass = 1; $pass -le 4; $pass++) {
+        $archives = Get-ChildItem -Path $Root -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -match '^\.(cab|msi|zip|exe)$' -and $_.FullName -notmatch '\\expanded-' }
+
+        foreach ($archive in $archives) {
+            $destination = Join-Path $archive.DirectoryName ("expanded-" + $archive.BaseName)
+            if (Test-Path $destination) {
+                continue
+            }
+
+            New-Item -ItemType Directory -Force -Path $destination | Out-Null
+            Write-Host "Expanding nested archive $($archive.FullName)"
+            & $sevenZip x $archive.FullName "-o$destination" -y
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Skipping nested archive that 7-Zip could not unpack: $($archive.FullName)"
+            }
+        }
+    }
+}
+
 function Copy-Tree {
     param(
         [Parameter(Mandatory = $true)] [string] $Source,
@@ -82,6 +115,12 @@ if ($toolchainZipUrl) {
     $toolkitExtract = Join-Path $env:RUNNER_TEMP "vctoolkit-extract"
     Invoke-Download -Uri $toolkitUrl -OutFile $toolkitExe
     Expand-AnyArchive -Archive $toolkitExe -Destination $toolkitExtract
+    Expand-NestedArchives -Root $toolkitExtract
+
+    Write-Host "Visual C++ Toolkit extracted files:"
+    Get-ChildItem -Path $toolkitExtract -Recurse -File -ErrorAction SilentlyContinue |
+        Select-Object -First 80 |
+        ForEach-Object { Write-Host $_.FullName }
 
     $cl = Find-FirstFile -Root $toolkitExtract -Name "cl.exe"
     if (-not $cl) {
