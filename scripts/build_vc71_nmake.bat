@@ -31,8 +31,8 @@ if "%VCROOT%"=="" (
   exit /b 1
 )
 
-if exist "%VCROOT%\Common7\Tools\vsvars32.bat" call "%VCROOT%\Common7\Tools\vsvars32.bat"
-if exist "%VCROOT%\bin\vcvars32.bat" call "%VCROOT%\bin\vcvars32.bat"
+set "COMMON7ROOT="
+if exist "%TOOLCHAIN_ROOT%\Common7" set "COMMON7ROOT=%TOOLCHAIN_ROOT%\Common7"
 
 set "SDKINCLUDE="
 for %%D in ("%TOOLCHAIN_ROOT%\PlatformSDK" "%TOOLCHAIN_ROOT%\SDK" "%TOOLCHAIN_ROOT%\Microsoft Platform SDK" "%TOOLCHAIN_ROOT%") do (
@@ -56,7 +56,7 @@ for %%D in ("%SDKROOT%") do set "SDKROOT=%%~fD"
 set "NMAKEPATH="
 for /f "delims=" %%F in ('dir /b /s "%ProgramFiles%\Microsoft Visual Studio\2022\nmake.exe" "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\nmake.exe" 2^>nul') do set "NMAKEPATH=%%~dpF"
 
-set "PATH=%VCROOT%\bin;%SDKROOT%\bin;%NMAKEPATH%;%PATH%"
+set "PATH=%VCROOT%\bin;%COMMON7ROOT%\IDE;%COMMON7ROOT%\Tools;%SDKROOT%\bin;%NMAKEPATH%;%PATH%"
 set "INCLUDE=%CD%\Boost-1.32.0\include;%CD%\Python24\include;%VCROOT%\include;%SDKINCLUDE%;%INCLUDE%"
 set "LIB=%CD%\Boost-1.32.0\libs;%CD%\Python24\libs;%VCROOT%\lib;%SDKROOT%\lib;%LIB%"
 

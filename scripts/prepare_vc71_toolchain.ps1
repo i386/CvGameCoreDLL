@@ -281,6 +281,12 @@ if ($toolchainZipUrl) {
 
     Copy-Tree -Source $vcSourceRoot -Destination (Join-Path $OutputDir "VC7")
 
+    $vsSourceRoot = Split-Path -Parent $vcSourceRoot
+    $common7Source = Join-Path $vsSourceRoot "Common7"
+    if (Test-Path $common7Source) {
+        Copy-Tree -Source $common7Source -Destination (Join-Path $OutputDir "Common7")
+    }
+
     $sdkImage = Join-Path $env:RUNNER_TEMP "PlatformSDK.img"
     Invoke-Download -Uri $platformSdkUrl -OutFile $sdkImage
 
