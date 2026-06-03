@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string] $OutputDir
+    [string] $OutputDir,
+
+    [string] $DownloadCacheDir = $env:VC71_DOWNLOAD_CACHE
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,8 +22,33 @@ function Invoke-Download {
         [Parameter(Mandatory = $true)] [string] $OutFile
     )
 
+    if ($DownloadCacheDir) {
+        New-Item -ItemType Directory -Force -Path $DownloadCacheDir | Out-Null
+        $extension = [System.IO.Path]::GetExtension(([Uri] $Uri).AbsolutePath)
+        if (-not $extension) {
+            $extension = ".download"
+        }
+
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Uri)
+        $hash = [BitConverter]::ToString($sha256.ComputeHash($bytes)).Replace("-", "").ToLowerInvariant()
+        $cacheFile = Join-Path $DownloadCacheDir ($hash + $extension)
+
+        if (Test-Path $cacheFile) {
+            Write-Host "Using cached download for $Uri"
+            Copy-Item -Path $cacheFile -Destination $OutFile -Force
+            return
+        }
+    } else {
+        $cacheFile = $null
+    }
+
     Write-Host "Downloading $Uri"
     Invoke-WebRequest -Uri $Uri -OutFile $OutFile
+
+    if ($cacheFile) {
+        Copy-Item -Path $OutFile -Destination $cacheFile -Force
+    }
 }
 
 function Expand-AnyArchive {
@@ -226,6 +253,7 @@ if ($toolchainZipUrl) {
 
     $sdkExtract = Join-Path $env:RUNNER_TEMP "platform-sdk-extract"
     Expand-AnyArchive -Archive $sdkImage -Destination $sdkExtract
+    Expand-NestedArchives -Root $sdkExtract
 
     $windowsHeader = Find-FirstFile -Root $sdkExtract -Name "windows.h"
     if (-not $windowsHeader) {

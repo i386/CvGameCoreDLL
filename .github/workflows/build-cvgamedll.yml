@@ -9,6 +9,9 @@ jobs:
   build-vc71:
     name: VC7.1 Win32 DLL
     runs-on: windows-2022
+    env:
+      VC71_TOOLCHAIN_DIR: ${{ runner.temp }}\vc71
+      VC71_DOWNLOAD_CACHE: ${{ runner.temp }}\vc71-downloads
 
     defaults:
       run:
@@ -18,17 +21,43 @@ jobs:
       - name: Check out sources
         uses: actions/checkout@v6
 
+      - name: Restore VC7.1 source archive cache
+        id: restore-vc71-downloads
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.VC71_DOWNLOAD_CACHE }}
+          key: vc71-downloads-${{ runner.os }}-vs2003-sdk-v1
+          restore-keys: |
+            vc71-downloads-${{ runner.os }}-
+
+      - name: Cache prepared VC7.1 toolchain
+        id: cache-vc71-toolchain
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.VC71_TOOLCHAIN_DIR }}
+          key: vc71-toolchain-${{ runner.os }}-${{ hashFiles('scripts/prepare_vc71_toolchain.ps1') }}-v1
+          restore-keys: |
+            vc71-toolchain-${{ runner.os }}-
+
       - name: Prepare VC7.1 toolchain
+        if: steps.cache-vc71-toolchain.outputs.cache-hit != 'true'
         env:
           VC71_TOOLCHAIN_URL: ${{ secrets.VC71_TOOLCHAIN_URL }}
           VS2003_ISO_URL: ${{ vars.VS2003_ISO_URL }}
           VCTOOLKIT2003_URL: ${{ vars.VCTOOLKIT2003_URL }}
           PLATFORM_SDK_URL: ${{ vars.PLATFORM_SDK_URL }}
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolchain.ps1 -OutputDir "%RUNNER_TEMP%\vc71"
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolchain.ps1 -OutputDir "%VC71_TOOLCHAIN_DIR%" -DownloadCacheDir "%VC71_DOWNLOAD_CACHE%"
+
+      - name: Save VC7.1 source archive cache
+        if: always() && steps.restore-vc71-downloads.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ env.VC71_DOWNLOAD_CACHE }}
+          key: vc71-downloads-${{ runner.os }}-vs2003-sdk-v1
 
       - name: Build Final Release
-        run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
+        run: scripts\build_vc71_nmake.bat "%VC71_TOOLCHAIN_DIR%"
 
       - name: Upload CvGameCoreDLL
         uses: actions/upload-artifact@v7
