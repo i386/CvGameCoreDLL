@@ -101,6 +101,25 @@ function Find-FirstFile {
     Get-ChildItem -Path $Root -Filter $Name -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 
+function Invoke-ProcessWithTimeout {
+    param(
+        [Parameter(Mandatory = $true)] [string] $FilePath,
+        [Parameter(Mandatory = $true)] [string] $Arguments,
+        [int] $TimeoutSeconds = 90
+    )
+
+    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -PassThru
+    $timeoutMilliseconds = $TimeoutSeconds * 1000
+    if (-not $process.WaitForExit($timeoutMilliseconds)) {
+        Write-Host "Process timed out after $TimeoutSeconds seconds; killing process tree for PID $($process.Id)"
+        & taskkill.exe /PID $process.Id /T /F | ForEach-Object { Write-Host $_ }
+        $process.WaitForExit()
+        return $null
+    }
+
+    return $process.ExitCode
+}
+
 if (Test-Path $OutputDir) {
     Remove-Item -Path $OutputDir -Recurse -Force
 }
@@ -138,8 +157,8 @@ if ($toolchainZipUrl) {
         foreach ($installerArgs in $installAttempts) {
             Write-Host "Running $toolkitExe $installerArgs"
             $env:__COMPAT_LAYER = "WINXPSP3"
-            $process = Start-Process -FilePath $toolkitExe -ArgumentList $installerArgs -Wait -PassThru
-            Write-Host "Installer exit code: $($process.ExitCode)"
+            $exitCode = Invoke-ProcessWithTimeout -FilePath $toolkitExe -Arguments $installerArgs -TimeoutSeconds 90
+            Write-Host "Installer exit code: $exitCode"
 
             $cl = Find-FirstFile -Root $toolkitInstall -Name "cl.exe"
             if ($cl) {
