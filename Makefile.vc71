@@ -10,7 +10,7 @@ CPP_DEFS = /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_USRDLL" /D "CVGAMECOREDLL_E
 
 CPP = cl.exe
 LINK = link.exe
-RC = rc.exe
+RC = "$(SDKROOT)\bin\rc.exe"
 
 CPP_FLAGS = /nologo /TP /O2 /Og /Oi /Oy /G7 /MD /EHsc /GR /W3 /GS- /FD $(CPP_DEFS) /I "Boost-1.32.0\include" /I "Python24\include"
 LINK_FLAGS = /nologo /DLL /SUBSYSTEM:WINDOWS /MACHINE:X86 /LARGEADDRESSAWARE /OPT:REF /OPT:ICF
@@ -140,4 +140,3 @@ $(RES): CvGameCoreDLL.rc resource.h
 clean:
 	@if exist "$(INTDIR)" rmdir /s /q "$(INTDIR)"
 	@if exist "$(OUTDIR)" rmdir /s /q "$(OUTDIR)"
-
