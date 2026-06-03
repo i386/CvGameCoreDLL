@@ -21,6 +21,7 @@ jobs:
       - name: Prepare VC7.1 toolchain
         env:
           VC71_TOOLCHAIN_URL: ${{ secrets.VC71_TOOLCHAIN_URL }}
+          VS2003_ISO_URL: ${{ vars.VS2003_ISO_URL }}
           VCTOOLKIT2003_URL: ${{ vars.VCTOOLKIT2003_URL }}
           PLATFORM_SDK_URL: ${{ vars.PLATFORM_SDK_URL }}
         run: |

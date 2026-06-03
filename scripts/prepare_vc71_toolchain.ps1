@@ -6,9 +6,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $defaultToolkitUrl = "https://archive.org/download/microsoft-visual-c-toolkit-2003/VCToolkitSetup.exe"
+$defaultVs2003IsoUrl = "https://archive.org/download/vsnet2003/MSDN%20Visual%20Studio%20NET%202003%20-%20Enterprise%20Architect%20%28Disc%201%29%28Disc%202082%29%28May%202003%29%28X09-51498%29.ISO"
 $defaultPlatformSdkUrl = "https://download.microsoft.com/download/7/5/e/75ec7f04-4c8c-4f38-b582-966e76602643/5.2.3790.1830.15.PlatformSDK_Svr2003SP1_rtm.img"
 
 $toolchainZipUrl = $env:VC71_TOOLCHAIN_URL
+$vs2003IsoUrl = if ($env:VS2003_ISO_URL) { $env:VS2003_ISO_URL } else { $defaultVs2003IsoUrl }
 $toolkitUrl = if ($env:VCTOOLKIT2003_URL) { $env:VCTOOLKIT2003_URL } else { $defaultToolkitUrl }
 $platformSdkUrl = if ($env:PLATFORM_SDK_URL) { $env:PLATFORM_SDK_URL } else { $defaultPlatformSdkUrl }
 
@@ -101,6 +103,29 @@ function Find-FirstFile {
     Get-ChildItem -Path $Root -Filter $Name -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 
+function Find-VcCompiler {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Root
+    )
+
+    $matches = Get-ChildItem -Path $Root -Filter "cl.exe" -Recurse -ErrorAction SilentlyContinue
+    $preferred = $matches |
+        Where-Object { $_.FullName -match '\\Vc7\\bin\\cl\.exe$' } |
+        Select-Object -First 1
+    if ($preferred) {
+        return $preferred
+    }
+
+    $preferred = $matches |
+        Where-Object { $_.FullName -match 'Visual C\+\+ Toolkit 2003\\bin\\cl\.exe$' } |
+        Select-Object -First 1
+    if ($preferred) {
+        return $preferred
+    }
+
+    $matches | Select-Object -First 1
+}
+
 function Invoke-ProcessWithTimeout {
     param(
         [Parameter(Mandatory = $true)] [string] $FilePath,
@@ -130,41 +155,58 @@ if ($toolchainZipUrl) {
     Invoke-Download -Uri $toolchainZipUrl -OutFile $zipPath
     Expand-Archive -Path $zipPath -DestinationPath $OutputDir -Force
 } else {
-    $toolkitExe = Join-Path $env:RUNNER_TEMP "VCToolkitSetup.exe"
-    $toolkitExtract = Join-Path $env:RUNNER_TEMP "vctoolkit-extract"
-    Invoke-Download -Uri $toolkitUrl -OutFile $toolkitExe
-    Expand-AnyArchive -Archive $toolkitExe -Destination $toolkitExtract
-    Expand-NestedArchives -Root $toolkitExtract
+    $vsIso = Join-Path $env:RUNNER_TEMP "VS2003.iso"
+    $vsExtract = Join-Path $env:RUNNER_TEMP "vs2003-extract"
+    Invoke-Download -Uri $vs2003IsoUrl -OutFile $vsIso
+    Expand-AnyArchive -Archive $vsIso -Destination $vsExtract
 
-    Write-Host "Visual C++ Toolkit extracted files:"
-    Get-ChildItem -Path $toolkitExtract -Recurse -File -ErrorAction SilentlyContinue |
-        Select-Object -First 80 |
-        ForEach-Object { Write-Host $_.FullName }
+    $cl = Find-VcCompiler -Root $vsExtract
+    $vcSourceRoot = $null
+    if ($cl) {
+        $vcSourceRoot = Split-Path -Parent (Split-Path -Parent $cl.FullName)
+    }
 
-    $cl = Find-FirstFile -Root $toolkitExtract -Name "cl.exe"
     if (-not $cl) {
-        $toolkitInstall = Join-Path $env:RUNNER_TEMP "vctoolkit-install"
-        New-Item -ItemType Directory -Force -Path $toolkitInstall | Out-Null
+        $toolkitExe = Join-Path $env:RUNNER_TEMP "VCToolkitSetup.exe"
+        $toolkitExtract = Join-Path $env:RUNNER_TEMP "vctoolkit-extract"
+        Invoke-Download -Uri $toolkitUrl -OutFile $toolkitExe
+        Expand-AnyArchive -Archive $toolkitExe -Destination $toolkitExtract
+        Expand-NestedArchives -Root $toolkitExtract
 
-        Write-Host "7-Zip did not expose cl.exe; trying InstallShield/MSI extraction modes"
-        $installAttempts = @(
-            "/s /v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install.log`"`"",
-            "/a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin.log`"`"",
-            "/s /a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin2.log`"`"",
-            "/v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install2.log`"`""
-        )
+        Write-Host "Visual C++ Toolkit extracted files:"
+        Get-ChildItem -Path $toolkitExtract -Recurse -File -ErrorAction SilentlyContinue |
+            Select-Object -First 80 |
+            ForEach-Object { Write-Host $_.FullName }
 
-        foreach ($installerArgs in $installAttempts) {
-            Write-Host "Running $toolkitExe $installerArgs"
-            $env:__COMPAT_LAYER = "WINXPSP3"
-            $exitCode = Invoke-ProcessWithTimeout -FilePath $toolkitExe -Arguments $installerArgs -TimeoutSeconds 90
-            Write-Host "Installer exit code: $exitCode"
+        $cl = Find-VcCompiler -Root $toolkitExtract
+        if (-not $cl) {
+            $toolkitInstall = Join-Path $env:RUNNER_TEMP "vctoolkit-install"
+            New-Item -ItemType Directory -Force -Path $toolkitInstall | Out-Null
 
-            $cl = Find-FirstFile -Root $toolkitInstall -Name "cl.exe"
-            if ($cl) {
-                $toolkitExtract = $toolkitInstall
-                break
+            Write-Host "7-Zip did not expose cl.exe; trying InstallShield/MSI extraction modes"
+            $installAttempts = @(
+                "/s /v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install.log`"`"",
+                "/a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin.log`"`"",
+                "/s /a /s /v`"/qn TARGETDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-admin2.log`"`"",
+                "/v`"/qn INSTALLDIR=`"$toolkitInstall`" /L*v `"$env:RUNNER_TEMP\vctoolkit-install2.log`"`""
+            )
+
+            foreach ($installerArgs in $installAttempts) {
+                Write-Host "Running $toolkitExe $installerArgs"
+                $env:__COMPAT_LAYER = "WINXPSP3"
+                $exitCode = Invoke-ProcessWithTimeout -FilePath $toolkitExe -Arguments $installerArgs -TimeoutSeconds 90
+                Write-Host "Installer exit code: $exitCode"
+
+                $cl = Find-VcCompiler -Root $toolkitInstall
+                if ($cl) {
+                    $toolkitExtract = $toolkitInstall
+                    break
+                }
             }
+        }
+
+        if ($cl) {
+            $vcSourceRoot = Split-Path -Parent (Split-Path -Parent $cl.FullName)
         }
     }
 
@@ -174,11 +216,10 @@ if ($toolchainZipUrl) {
                 Write-Host "---- $($_.FullName) ----"
                 Get-Content -Path $_.FullName -Tail 80 -ErrorAction SilentlyContinue
             }
-        throw "Could not find cl.exe after unpacking Visual C++ Toolkit 2003"
+        throw "Could not find cl.exe after unpacking Visual Studio 2003 media or Visual C++ Toolkit 2003"
     }
 
-    $vcRoot = Split-Path -Parent (Split-Path -Parent $cl.FullName)
-    Copy-Tree -Source $vcRoot -Destination (Join-Path $OutputDir "VC7")
+    Copy-Tree -Source $vcSourceRoot -Destination (Join-Path $OutputDir "VC7")
 
     $sdkImage = Join-Path $env:RUNNER_TEMP "PlatformSDK.img"
     Invoke-Download -Uri $platformSdkUrl -OutFile $sdkImage
