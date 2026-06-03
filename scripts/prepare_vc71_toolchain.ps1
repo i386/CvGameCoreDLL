@@ -59,6 +59,15 @@ function Copy-Tree {
     Copy-Item -Path (Join-Path $Source "*") -Destination $Destination -Recurse -Force
 }
 
+function Find-FirstFile {
+    param(
+        [Parameter(Mandatory = $true)] [string] $Root,
+        [Parameter(Mandatory = $true)] [string] $Name
+    )
+
+    Get-ChildItem -Path $Root -Filter $Name -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+
 if (Test-Path $OutputDir) {
     Remove-Item -Path $OutputDir -Recurse -Force
 }
@@ -74,7 +83,27 @@ if ($toolchainZipUrl) {
     Invoke-Download -Uri $toolkitUrl -OutFile $toolkitExe
     Expand-AnyArchive -Archive $toolkitExe -Destination $toolkitExtract
 
-    $cl = Get-ChildItem -Path $toolkitExtract -Filter cl.exe -Recurse | Select-Object -First 1
+    $cl = Find-FirstFile -Root $toolkitExtract -Name "cl.exe"
+    if (-not $cl) {
+        $toolkitInstall = Join-Path $env:RUNNER_TEMP "vctoolkit-install"
+        New-Item -ItemType Directory -Force -Path $toolkitInstall | Out-Null
+
+        Write-Host "7-Zip did not expose cl.exe; running Toolkit installer silently"
+        $installerArgs = @(
+            "/s",
+            "/v`"/qn INSTALLDIR=`"$toolkitInstall`"`""
+        )
+        $process = Start-Process -FilePath $toolkitExe -ArgumentList $installerArgs -Wait -PassThru
+        if ($process.ExitCode -ne 0) {
+            throw "Visual C++ Toolkit installer failed with exit code $($process.ExitCode)"
+        }
+
+        $cl = Find-FirstFile -Root $toolkitInstall -Name "cl.exe"
+        if ($cl) {
+            $toolkitExtract = $toolkitInstall
+        }
+    }
+
     if (-not $cl) {
         throw "Could not find cl.exe after unpacking Visual C++ Toolkit 2003"
     }
@@ -88,7 +117,7 @@ if ($toolchainZipUrl) {
     $sdkExtract = Join-Path $env:RUNNER_TEMP "platform-sdk-extract"
     Expand-AnyArchive -Archive $sdkImage -Destination $sdkExtract
 
-    $windowsHeader = Get-ChildItem -Path $sdkExtract -Filter windows.h -Recurse | Select-Object -First 1
+    $windowsHeader = Find-FirstFile -Root $sdkExtract -Name "windows.h"
     if (-not $windowsHeader) {
         throw "Could not find windows.h after unpacking Platform SDK image"
     }
@@ -98,9 +127,9 @@ if ($toolchainZipUrl) {
     Copy-Tree -Source $sdkRoot -Destination (Join-Path $OutputDir "PlatformSDK")
 }
 
-$foundCl = Get-ChildItem -Path $OutputDir -Filter cl.exe -Recurse | Select-Object -First 1
-$foundWindows = Get-ChildItem -Path $OutputDir -Filter windows.h -Recurse | Select-Object -First 1
-$foundWinmm = Get-ChildItem -Path $OutputDir -Filter winmm.lib -Recurse | Select-Object -First 1
+$foundCl = Find-FirstFile -Root $OutputDir -Name "cl.exe"
+$foundWindows = Find-FirstFile -Root $OutputDir -Name "windows.h"
+$foundWinmm = Find-FirstFile -Root $OutputDir -Name "winmm.lib"
 
 if (-not $foundCl) { throw "Prepared toolchain is missing cl.exe" }
 if (-not $foundWindows) { throw "Prepared toolchain is missing windows.h" }
