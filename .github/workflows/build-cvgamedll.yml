@@ -44,9 +44,9 @@ jobs:
           path: ${{ runner.temp }}\vc71-downloads
           key: vc71-downloads-${{ runner.os }}-vs2003-sdk-v1
 
-      - name: Cache prepared VC7.1 toolchain
-        id: cache-vc71-toolchain
-        uses: actions/cache@v5
+      - name: Restore prepared VC7.1 toolchain cache
+        id: restore-vc71-toolchain
+        uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}\vc71
           key: vc71-toolchain-${{ runner.os }}-${{ hashFiles('scripts/prepare_vc71_toolchain.ps1') }}-v1
@@ -54,7 +54,7 @@ jobs:
             vc71-toolchain-${{ runner.os }}-
 
       - name: Prepare VC7.1 toolchain
-        if: steps.cache-vc71-toolchain.outputs.cache-hit != 'true'
+        if: steps.restore-vc71-toolchain.outputs.cache-hit != 'true'
         env:
           VC71_TOOLCHAIN_URL: ${{ secrets.VC71_TOOLCHAIN_URL }}
           VS2003_ISO_URL: ${{ vars.VS2003_ISO_URL }}
@@ -62,6 +62,13 @@ jobs:
           PLATFORM_SDK_URL: ${{ vars.PLATFORM_SDK_URL }}
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolchain.ps1 -OutputDir "%RUNNER_TEMP%\vc71" -DownloadCacheDir "%RUNNER_TEMP%\vc71-downloads"
+
+      - name: Save prepared VC7.1 toolchain cache
+        if: steps.restore-vc71-toolchain.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ${{ runner.temp }}\vc71
+          key: vc71-toolchain-${{ runner.os }}-${{ hashFiles('scripts/prepare_vc71_toolchain.ps1') }}-v1
 
       - name: Build Final Release
         run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
