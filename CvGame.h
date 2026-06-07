@@ -398,10 +398,12 @@ public:
 	DllExport void setName(const TCHAR* szName);
 
 	// Script data needs to be a narrow string for pickling in Python
-	std::string getScriptData() const;																										// Exposed to Python	
-	void setScriptData(std::string szNewValue);																						// Exposed to Python	
-																																												
-	bool isDestroyedCityName(CvWString& szName) const;													
+	std::string getScriptData() const;																										// Exposed to Python
+	void setScriptData(std::string szNewValue);																						// Exposed to Python
+	const CvString& getBridgeModState() const;
+	void setBridgeModState(const char* szNewValue);
+
+	bool isDestroyedCityName(CvWString& szName) const;
 	void addDestroyedCityName(const CvWString& szName);													
 																																												
 	bool isGreatPersonBorn(CvWString& szName) const;													
@@ -587,6 +589,7 @@ protected:
 	PlayerTypes m_eEventPlayer;
 
 	CvString m_szScriptData;
+	CvString m_szBridgeModState;
 
 	int* m_aiRankPlayer;        // Ordered by rank...
 	int* m_aiPlayerRank;        // Ordered by player ID...

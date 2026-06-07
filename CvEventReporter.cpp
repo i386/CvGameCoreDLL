@@ -2,6 +2,22 @@
 #include "CvEventReporter.h"
 #include "CvDllPythonEvents.h"
 #include "CvInitCore.h"
+#include "CvGameBridge.h"
+
+namespace
+{
+	void bridgeSignal(const char* szName)
+	{
+		CvGameBridge::sendEvent(szName);
+		CvGameBridge::sendCallbackMirror(szName);
+	}
+
+	void bridgePayload(const char* szName, const CvString& szArgs)
+	{
+		CvGameBridge::sendEvent(szName, szArgs.GetCString());
+		CvGameBridge::sendCallbackMirror(szName, szArgs.GetCString());
+	}
+}
 
 //
 // static, singleton accessor
@@ -66,6 +82,7 @@ void CvEventReporter::reportModNetMessage(int iData1, int iData2, int iData3, in
 
 void CvEventReporter::init()
 {
+	bridgeSignal("init");
 	m_kPythonEventMgr.reportInit();
 }
 
@@ -76,36 +93,51 @@ void CvEventReporter::update(float fDeltaTime)
 
 void CvEventReporter::unInit()
 {
+	bridgeSignal("uninit");
 	m_kPythonEventMgr.reportUnInit();
 }
 
 void CvEventReporter::gameStart()
 {
+	bridgeSignal("game_start");
 	m_kPythonEventMgr.reportGameStart();
 }
 
 void CvEventReporter::gameEnd()
 {
+	bridgeSignal("game_end");
 	m_kPythonEventMgr.reportGameEnd();
 }
 
 void CvEventReporter::beginGameTurn(int iGameTurn)
 {
+	CvString szArgs;
+	szArgs.Format("{\"turn\":%d}", iGameTurn);
+	bridgePayload("begin_game_turn", szArgs);
 	m_kPythonEventMgr.reportBeginGameTurn(iGameTurn);
 }
 
 void CvEventReporter::endGameTurn(int iGameTurn)
 {
+	CvString szArgs;
+	szArgs.Format("{\"turn\":%d}", iGameTurn);
+	bridgePayload("end_game_turn", szArgs);
 	m_kPythonEventMgr.reportEndGameTurn(iGameTurn);
 }
 
 void CvEventReporter::beginPlayerTurn(int iGameTurn, PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"turn\":%d,\"player\":%d}", iGameTurn, ePlayer);
+	bridgePayload("begin_player_turn", szArgs);
 	m_kPythonEventMgr.reportBeginPlayerTurn(iGameTurn, ePlayer);
 }
 
 void CvEventReporter::endPlayerTurn(int iGameTurn, PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"turn\":%d,\"player\":%d}", iGameTurn, ePlayer);
+	bridgePayload("end_player_turn", szArgs);
 	m_kPythonEventMgr.reportEndPlayerTurn(iGameTurn, ePlayer);
 }
 
@@ -161,28 +193,58 @@ void CvEventReporter::gotoPlotSet(CvPlot *pPlot, PlayerTypes ePlayer)
 
 void CvEventReporter::cityBuilt( CvCity *pCity )
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", pCity->getOwnerINLINE(), pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_built", szArgs);
+	}
 	m_kPythonEventMgr.reportCityBuilt(pCity);
 	m_kStatistics.cityBuilt(pCity);
 }
 
 void CvEventReporter::cityRazed( CvCity *pCity, PlayerTypes ePlayer )
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"razed_by\":%d,\"x\":%d,\"y\":%d}", pCity->getOwnerINLINE(), pCity->getID(), ePlayer, pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_razed", szArgs);
+	}
 	m_kPythonEventMgr.reportCityRazed(pCity, ePlayer);
 	m_kStatistics.cityRazed(pCity, ePlayer);
 }
 
 void CvEventReporter::cityAcquired(PlayerTypes eOldOwner, PlayerTypes iPlayer, CvCity* pCity, bool bConquest, bool bTrade)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"old_player\":%d,\"player\":%d,\"city\":%d,\"conquest\":%d,\"trade\":%d,\"x\":%d,\"y\":%d}", eOldOwner, iPlayer, pCity->getID(), bConquest ? 1 : 0, bTrade ? 1 : 0, pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_acquired", szArgs);
+	}
 	m_kPythonEventMgr.reportCityAcquired(eOldOwner, iPlayer, pCity, bConquest, bTrade);
 }
 
 void CvEventReporter::cityAcquiredAndKept(PlayerTypes iPlayer, CvCity* pCity)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", iPlayer, pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_acquired_kept", szArgs);
+	}
 	m_kPythonEventMgr.reportCityAcquiredAndKept(iPlayer, pCity);
 }
 
 void CvEventReporter::cityLost( CvCity *pCity)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", pCity->getOwnerINLINE(), pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_lost", szArgs);
+	}
 	m_kPythonEventMgr.reportCityLost(pCity);
 }
 
@@ -193,6 +255,12 @@ void CvEventReporter::cultureExpansion( CvCity *pCity, PlayerTypes ePlayer )
 
 void CvEventReporter::cityGrowth(CvCity *pCity, PlayerTypes ePlayer)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"population\":%d}", ePlayer, pCity->getID(), pCity->getPopulation());
+		bridgePayload("city_growth", szArgs);
+	}
 	m_kPythonEventMgr.reportCityGrowth(pCity, ePlayer);
 }
 
@@ -228,6 +296,12 @@ void CvEventReporter::selectionGroupPushMission(CvSelectionGroup* pSelectionGrou
 
 void CvEventReporter::unitMove(CvPlot* pPlot, CvUnit* pUnit, CvPlot* pOldPlot)
 {
+	if (pPlot != NULL && pUnit != NULL && pOldPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"from_x\":%d,\"from_y\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pOldPlot->getX_INLINE(), pOldPlot->getY_INLINE(), pPlot->getX_INLINE(), pPlot->getY_INLINE());
+		bridgePayload("unit_move", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitMove(pPlot, pUnit, pOldPlot);
 }
 
@@ -238,23 +312,47 @@ void CvEventReporter::unitSetXY(CvPlot* pPlot, CvUnit* pUnit)
 
 void CvEventReporter::unitCreated(CvUnit *pUnit)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_created", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitCreated(pUnit);
 }
 
 void CvEventReporter::unitBuilt(CvCity *pCity, CvUnit *pUnit)
 {
+	if (pCity != NULL && pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pCity->getID(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_built", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitBuilt(pCity, pUnit);
 	m_kStatistics.unitBuilt(pUnit);
 }
 
 void CvEventReporter::unitKilled(CvUnit *pUnit, PlayerTypes eAttacker )
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"attacker\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), eAttacker, pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_killed", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitKilled(pUnit, eAttacker);
 	m_kStatistics.unitKilled(pUnit, eAttacker);
 }
 
 void CvEventReporter::unitLost(CvUnit *pUnit)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_lost", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitLost(pUnit);
 }
 
@@ -306,6 +404,12 @@ void CvEventReporter::greatPersonBorn(CvUnit *pUnit, PlayerTypes ePlayer, CvCity
 
 void CvEventReporter::buildingBuilt(CvCity *pCity, BuildingTypes eBuilding)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"building\":%d}", pCity->getOwnerINLINE(), pCity->getID(), eBuilding);
+		bridgePayload("building_built", szArgs);
+	}
 	m_kPythonEventMgr.reportBuildingBuilt(pCity, eBuilding);
 	m_kStatistics.buildingBuilt(pCity, eBuilding);
 }
@@ -317,6 +421,9 @@ void CvEventReporter::projectBuilt(CvCity *pCity, ProjectTypes eProject)
 
 void CvEventReporter::techAcquired(TechTypes eType, TeamTypes eTeam, PlayerTypes ePlayer, bool bAnnounce)
 {
+	CvString szArgs;
+	szArgs.Format("{\"team\":%d,\"player\":%d,\"tech\":%d,\"announce\":%d}", eTeam, ePlayer, eType, bAnnounce ? 1 : 0);
+	bridgePayload("tech_acquired", szArgs);
 	m_kPythonEventMgr.reportTechAcquired(eType, eTeam, ePlayer, bAnnounce);
 }
 
@@ -327,6 +434,9 @@ void CvEventReporter::techSelected(TechTypes eTech, PlayerTypes ePlayer)
 
 void CvEventReporter::religionFounded(ReligionTypes eType, PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d,\"religion\":%d}", ePlayer, eType);
+	bridgePayload("religion_founded", szArgs);
 	m_kPythonEventMgr.reportReligionFounded(eType, ePlayer);
 	m_kStatistics.religionFounded(eType, ePlayer);
 }
@@ -358,17 +468,26 @@ void CvEventReporter::corporationRemove(CorporationTypes eType, PlayerTypes ePla
 
 void CvEventReporter::goldenAge(PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d}", ePlayer);
+	bridgePayload("golden_age", szArgs);
 	m_kPythonEventMgr.reportGoldenAge(ePlayer);
 	m_kStatistics.goldenAge(ePlayer);
 }
 
 void CvEventReporter::endGoldenAge(PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d}", ePlayer);
+	bridgePayload("end_golden_age", szArgs);
 	m_kPythonEventMgr.reportEndGoldenAge(ePlayer);
 }
 
 void CvEventReporter::changeWar(bool bWar, TeamTypes eTeam, TeamTypes eOtherTeam)
 {
+	CvString szArgs;
+	szArgs.Format("{\"war\":%d,\"team\":%d,\"other_team\":%d}", bWar ? 1 : 0, eTeam, eOtherTeam);
+	bridgePayload("change_war", szArgs);
 	m_kPythonEventMgr.reportChangeWar(bWar, eTeam, eOtherTeam);
 }
 
@@ -384,6 +503,9 @@ void CvEventReporter::playerChangeStateReligion(PlayerTypes ePlayerID, ReligionT
 
 void CvEventReporter::playerGoldTrade(PlayerTypes eFromPlayer, PlayerTypes eToPlayer, int iAmount)
 {
+	CvString szArgs;
+	szArgs.Format("{\"from_player\":%d,\"to_player\":%d,\"amount\":%d}", eFromPlayer, eToPlayer, iAmount);
+	bridgePayload("player_gold_trade", szArgs);
 	m_kPythonEventMgr.reportPlayerGoldTrade(eFromPlayer, eToPlayer, iAmount);
 }
 
@@ -394,6 +516,9 @@ void CvEventReporter::chat(CvWString szString)
 
 void CvEventReporter::victory(TeamTypes eWinner, VictoryTypes eVictory)
 {
+	CvString szArgs;
+	szArgs.Format("{\"team\":%d,\"victory\":%d}", eWinner, eVictory);
+	bridgePayload("victory", szArgs);
 	m_kPythonEventMgr.reportVictory(eWinner, eVictory);
 	m_kStatistics.setVictory(eWinner, eVictory);
 
@@ -417,6 +542,7 @@ void CvEventReporter::vassalState(TeamTypes eMaster, TeamTypes eVassal, bool bVa
 
 void CvEventReporter::preSave()
 {
+	bridgeSignal("pre_save");
 	m_kPythonEventMgr.preSave();
 }
 

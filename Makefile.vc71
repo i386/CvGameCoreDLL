@@ -13,6 +13,7 @@ LINK = link.exe
 RC = "$(SDKROOT)\bin\rc.exe"
 
 CPP_FLAGS = /nologo /TP /O2 /Og /Oi /Oy /G7 /MD /EHsc /GR /W3 /FD $(CPP_DEFS) /I "Boost-1.32.0\include" /I "Python24\include"
+C_FLAGS = /nologo /TC /O2 /Og /Oi /Oy /G7 /MD /W3 /FD $(CPP_DEFS)
 LINK_FLAGS = /nologo /DLL /SUBSYSTEM:WINDOWS /MACHINE:X86 /LARGEADDRESSAWARE /OPT:REF /OPT:ICF
 LIBS = "Boost-1.32.0\libs\boost_python-vc71-mt-1_32.lib" "Python24\libs\python24.lib" user32.lib winmm.lib
 
@@ -38,6 +39,7 @@ OBJECTS = \
 	$(INTDIR)\CvEventReporter.obj \
 	$(INTDIR)\CvFractal.obj \
 	$(INTDIR)\CvGame.obj \
+	$(INTDIR)\CvGameBridge.obj \
 	$(INTDIR)\CvGameAI.obj \
 	$(INTDIR)\CvGameCoreDLL.obj \
 	$(INTDIR)\CvGameCoreUtils.obj \
@@ -120,7 +122,8 @@ OBJECTS = \
 	$(INTDIR)\CyUnitInterface1.obj \
 	$(INTDIR)\CyCity.obj \
 	$(INTDIR)\CyDeal.obj \
-	$(INTDIR)\CyGame.obj
+	$(INTDIR)\CyGame.obj \
+	$(INTDIR)\parson.obj
 
 all: dirs $(OUTDLL)
 
@@ -136,6 +139,9 @@ $(RES): CvGameCoreDLL.rc resource.h
 
 .cpp{$(INTDIR)}.obj:
 	$(CPP) $(CPP_FLAGS) /Fo"$@" /Fd"$(INTDIR)\vc70.pdb" /c "$<"
+
+$(INTDIR)\parson.obj: ThirdParty\parson\parson.c ThirdParty\parson\parson.h
+	$(CPP) $(C_FLAGS) /Fo"$@" /c ThirdParty\parson\parson.c
 
 clean:
 	@if exist "$(INTDIR)" rmdir /s /q "$(INTDIR)"

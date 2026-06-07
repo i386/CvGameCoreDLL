@@ -519,6 +519,9 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\CvGameBridge.cpp">
+			</File>
+			<File
 				RelativePath=".\CvGameAI.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
@@ -703,6 +706,33 @@
 			</File>
 			<File
 				RelativePath=".\CvMessageData.cpp">
+			</File>
+			<File
+				RelativePath=".\ThirdParty\parson\parson.c">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Final Release|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Final Debug|Win32">
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\CvPlayer.cpp">
@@ -1109,6 +1139,9 @@
 				RelativePath=".\CvGame.h">
 			</File>
 			<File
+				RelativePath=".\CvGameBridge.h">
+			</File>
+			<File
 				RelativePath=".\CvGameAI.h">
 			</File>
 			<File
@@ -1234,6 +1267,9 @@
 			</File>
 			<File
 				RelativePath=".\LinkedList.h">
+			</File>
+			<File
+				RelativePath=".\ThirdParty\parson\parson.h">
 			</File>
 			<File
 				RelativePath=".\resource.h">

@@ -24,6 +24,7 @@
 #include <set>
 #include "CvEventReporter.h"
 #include "CvMessageControl.h"
+#include "CvGameBridge.h"
 
 // interface uses
 #include "CvDLLInterfaceIFaceBase.h"
@@ -100,6 +101,7 @@ void CvGame::init(HandicapTypes eHandicap)
 
 	m_mapRand.init(GC.getInitCore().getMapRandSeed() % 73637381);
 	m_sorenRand.init(GC.getInitCore().getSyncRandSeed() % 52319761);
+	CvGameBridge::init();
 
 	//--------------------------------
 	// Init non-saved data
@@ -362,6 +364,8 @@ void CvGame::regenerateMap()
 
 void CvGame::uninit()
 {
+	CvGameBridge::shutdown();
+
 	SAFE_DELETE_ARRAY(m_aiShrineBuilding);
 	SAFE_DELETE_ARRAY(m_aiShrineReligion);
 	SAFE_DELETE_ARRAY(m_paiUnitCreatedCount);
@@ -456,6 +460,7 @@ void CvGame::reset(HandicapTypes eHandicap, bool bConstructorCall)
 	m_eGameState = GAMESTATE_ON;
 
 	m_szScriptData = "";
+	m_szBridgeModState = "";
 
 	for (iI = 0; iI < MAX_PLAYERS; iI++)
 	{
@@ -2045,6 +2050,8 @@ int CvGame::getTeamClosenessScore(int** aaiDistances, int* aiStartingLocs)
 void CvGame::update()
 {
 	PROFILE("CvGame::update");
+
+	CvGameBridge::poll();
 
 	if (!gDLL->GetWorldBuilderMode() || isInAdvancedStart())
 	{
@@ -5509,6 +5516,17 @@ void CvGame::setScriptData(std::string szNewValue)
 	m_szScriptData = szNewValue;
 }
 
+const CvString& CvGame::getBridgeModState() const
+{
+	return m_szBridgeModState;
+}
+
+
+void CvGame::setBridgeModState(const char* szNewValue)
+{
+	m_szBridgeModState = (szNewValue != NULL) ? szNewValue : "";
+}
+
 const CvWString & CvGame::getName()
 {
 	return GC.getInitCore().getGameName();
@@ -7551,6 +7569,14 @@ void CvGame::read(FDataStreamBase* pStream)
 	pStream->Read((int*)&m_eGameState);
 
 	pStream->ReadString(m_szScriptData);
+	if (uiFlag >= 2)
+	{
+		pStream->ReadString(m_szBridgeModState);
+	}
+	else
+	{
+		m_szBridgeModState = "";
+	}
 
 	if (uiFlag < 1)
 	{
@@ -7719,6 +7745,7 @@ void CvGame::read(FDataStreamBase* pStream)
 	pStream->Read(GC.getNumBuildingInfos(), m_aiShrineReligion);
 	pStream->Read(&m_iNumCultureVictoryCities);
 	pStream->Read(&m_eCultureVictoryCultureLevel);
+	CvGameBridge::init();
 }
 
 
@@ -7726,7 +7753,7 @@ void CvGame::write(FDataStreamBase* pStream)
 {
 	int iI;
 
-	uint uiFlag=1;
+	uint uiFlag=2;
 	pStream->Write(uiFlag);		// flag for expansion
 
 	pStream->Write(m_iElapsedGameTurns);
@@ -7771,6 +7798,7 @@ void CvGame::write(FDataStreamBase* pStream)
 	pStream->Write(m_eGameState);
 
 	pStream->WriteString(m_szScriptData);
+	pStream->WriteString(m_szBridgeModState);
 
 	pStream->Write(MAX_PLAYERS, m_aiRankPlayer);
 	pStream->Write(MAX_PLAYERS, m_aiPlayerRank);
