@@ -1,4 +1,6 @@
-use crate::events::{BridgeEvent, BridgeEventMessage};
+use crate::events::{
+    BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage,
+};
 use crate::protocol::{decode_jsonl, encode_jsonl, BridgeReply, Message};
 use crate::types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
 use serde::de::DeserializeOwned;
@@ -289,13 +291,22 @@ impl BridgeClient {
         self.read_control()
     }
 
-    pub fn next_callback_mirror(&mut self) -> Result<Message> {
+    pub fn next_callback_raw(&mut self) -> Result<Message> {
         let mut line = String::new();
         self.callback_reader.read_line(&mut line)?;
         if line.is_empty() {
             return Err(BridgeError::Protocol("callback pipe closed".to_string()));
         }
         Ok(decode_jsonl(&line)?)
+    }
+
+    pub fn next_callback_mirror(&mut self) -> Result<Message> {
+        match self.next_callback_raw()? {
+            msg @ Message::CallbackMirror { .. } => Ok(msg),
+            other => Err(BridgeError::Protocol(format!(
+                "expected callback_mirror, got {other:?}"
+            ))),
+        }
     }
 
     pub fn next_callback_event(&mut self) -> Result<BridgeEventMessage> {
@@ -310,11 +321,53 @@ impl BridgeClient {
         }
     }
 
+    pub fn next_callback_message(&mut self) -> Result<BridgeCallbackMessage> {
+        match self.next_callback_raw()? {
+            Message::CallbackMirror { seq, name, args } => {
+                Ok(BridgeCallbackMessage::Mirror(BridgeEventMessage {
+                    seq,
+                    event: BridgeEvent::from_name_args(name, args)?,
+                }))
+            }
+            Message::CallbackRequest { id, name, args } => {
+                Ok(BridgeCallbackMessage::Request(BridgeCallbackRequest {
+                    id,
+                    event: BridgeEvent::from_name_args(name, args)?,
+                }))
+            }
+            other => Err(BridgeError::Protocol(format!(
+                "expected callback message, got {other:?}"
+            ))),
+        }
+    }
+
+    pub fn next_callback_request(&mut self) -> Result<BridgeCallbackRequest> {
+        match self.next_callback_message()? {
+            BridgeCallbackMessage::Request(request) => Ok(request),
+            other => Err(BridgeError::Protocol(format!(
+                "expected callback_request, got {other:?}"
+            ))),
+        }
+    }
+
     pub fn write_callback_reply(&mut self, reply: BridgeReply) -> Result<()> {
         let line = encode_jsonl(&reply.into_message())?;
         self.callback_writer.write_all(line.as_bytes())?;
         self.callback_writer.flush()?;
         Ok(())
+    }
+
+    pub fn write_callback_success<T: Serialize>(&mut self, id: u64, result: &T) -> Result<()> {
+        self.write_callback_reply(BridgeReply::success(id, serde_json::to_value(result)?))
+    }
+
+    pub fn write_callback_error(
+        &mut self,
+        id: u64,
+        code: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Result<()> {
+        self.write_callback_reply(BridgeReply::error(id, code, message))
     }
 
     fn next_request_id(&mut self) -> u64 {

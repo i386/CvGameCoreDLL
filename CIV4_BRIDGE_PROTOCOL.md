@@ -24,6 +24,7 @@ Each message is one JSON object followed by `\n`.
 {"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","commands","callbacks","mod_state"]}
 {"type":"event","seq":1,"name":"begin_game_turn","args":{"turn":42}}
 {"type":"callback_mirror","seq":2,"name":"city_built","args":{"player":0,"city":3,"x":10,"y":12}}
+{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"x":10,"y":12}}
 {"type":"query","id":100,"name":"get_player_gold","args":{"player":0}}
 {"type":"command","id":101,"name":"set_player_gold","args":{"player":0,"value":500}}
 {"type":"reply","id":101,"ok":true,"result":{"gold":500}}
@@ -75,25 +76,43 @@ The string is saved and loaded with `CvGame`.
 
 This first bridge version mirrors selected Python event callbacks to the callback pipe as
 `callback_mirror` messages before the normal in-process Python event call runs. Blocking
-callback replacement is intentionally not enabled yet.
+callback replacement is not enabled in the DLL yet, but the protocol and Rust client reserve
+`callback_request` for that mode:
 
-The Rust `CallbackDispatcher` runs handlers over typed `callback_mirror` events. Handlers receive
-`&mut BridgeClient`, so they can query and command game state while reacting to callbacks:
+```json
+{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"x":10,"y":12}}
+{"type":"reply","id":200,"ok":true,"result":{"consume":false}}
+```
+
+Use `callback_mirror` for fire-and-forget events. Use `callback_request` when the DLL must wait for
+the external process to decide a return value. Callback request replies use the same `reply` shape
+as control-pipe query and command replies.
+
+The Rust `CallbackDispatcher` runs handlers over typed callback messages. Handlers receive
+`&mut BridgeClient`, so they can query and command game state while reacting to callbacks. When a
+blocking `callback_request` is dispatched, the dispatcher writes a success reply automatically; a
+handler can return `CallbackControl::Respond(value)` or `RespondAndStop(value)` to set the reply
+result.
 
 ```rust
 use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
+use serde_json::json;
 
 let mut client = BridgeClient::connect_default()?;
 let mut callbacks = CallbackDispatcher::new();
 
 callbacks.on_name("begin_player_turn", |client, event| {
-    if let BridgeEvent::BeginPlayerTurn { player, .. } = &event.event {
+    if let BridgeEvent::BeginPlayerTurn { player, .. } = event.event() {
         let state = client.get_player_state(*player)?;
         if state.gold < 100 {
             client.set_player_gold(*player, 100)?;
         }
     }
     Ok(CallbackControl::Continue)
+});
+
+callbacks.on_name("kbd_event", |_client, _event| {
+    Ok(CallbackControl::Respond(json!({ "consume": false })))
 });
 
 callbacks.on_name("pre_save", |_client, _event| Ok(CallbackControl::Stop));
@@ -109,5 +128,5 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_unit_state`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`
 - `spawn_unit`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
-- `next_bridge_event` and `next_callback_event`
+- `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
 - `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`

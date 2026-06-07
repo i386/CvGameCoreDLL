@@ -1,20 +1,24 @@
 use crate::client::{BridgeClient, Result};
-use crate::events::BridgeEventMessage;
+use crate::events::{BridgeCallbackMessage, BridgeEventMessage};
+use serde_json::{json, Value};
 
 pub type CallbackHandler =
-    dyn FnMut(&mut BridgeClient, &BridgeEventMessage) -> Result<CallbackControl>;
+    dyn FnMut(&mut BridgeClient, &BridgeCallbackMessage) -> Result<CallbackControl>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CallbackControl {
     Continue,
     Stop,
+    Respond(Value),
+    RespondAndStop(Value),
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallbackDispatch {
-    pub event: BridgeEventMessage,
+    pub callback: BridgeCallbackMessage,
     pub handlers_run: usize,
     pub stopped: bool,
+    pub reply_sent: bool,
 }
 
 pub struct CallbackDispatcher {
@@ -35,7 +39,7 @@ impl CallbackDispatcher {
 
     pub fn on_any<F>(&mut self, handler: F) -> &mut Self
     where
-        F: FnMut(&mut BridgeClient, &BridgeEventMessage) -> Result<CallbackControl> + 'static,
+        F: FnMut(&mut BridgeClient, &BridgeCallbackMessage) -> Result<CallbackControl> + 'static,
     {
         self.handlers.push(RegisteredHandler {
             name: None,
@@ -46,7 +50,7 @@ impl CallbackDispatcher {
 
     pub fn on_name<F>(&mut self, name: impl Into<String>, handler: F) -> &mut Self
     where
-        F: FnMut(&mut BridgeClient, &BridgeEventMessage) -> Result<CallbackControl> + 'static,
+        F: FnMut(&mut BridgeClient, &BridgeCallbackMessage) -> Result<CallbackControl> + 'static,
     {
         self.handlers.push(RegisteredHandler {
             name: Some(name.into()),
@@ -56,8 +60,8 @@ impl CallbackDispatcher {
     }
 
     pub fn dispatch_next(&mut self, client: &mut BridgeClient) -> Result<CallbackDispatch> {
-        let event = client.next_callback_event()?;
-        Ok(self.dispatch_event(client, event)?)
+        let callback = client.next_callback_message()?;
+        self.dispatch_callback(client, callback)
     }
 
     pub fn dispatch_event(
@@ -65,25 +69,53 @@ impl CallbackDispatcher {
         client: &mut BridgeClient,
         event: BridgeEventMessage,
     ) -> Result<CallbackDispatch> {
+        self.dispatch_callback(client, BridgeCallbackMessage::Mirror(event))
+    }
+
+    pub fn dispatch_callback(
+        &mut self,
+        client: &mut BridgeClient,
+        callback: BridgeCallbackMessage,
+    ) -> Result<CallbackDispatch> {
         let mut handlers_run = 0;
         let mut stopped = false;
+        let mut response = None;
 
         for registered in &mut self.handlers {
-            if !registered.matches(&event) {
+            if !registered.matches(&callback) {
                 continue;
             }
 
             handlers_run += 1;
-            if (registered.handler)(client, &event)? == CallbackControl::Stop {
-                stopped = true;
-                break;
+            match (registered.handler)(client, &callback)? {
+                CallbackControl::Continue => {}
+                CallbackControl::Stop => {
+                    stopped = true;
+                    break;
+                }
+                CallbackControl::Respond(value) => {
+                    response = Some(value);
+                }
+                CallbackControl::RespondAndStop(value) => {
+                    response = Some(value);
+                    stopped = true;
+                    break;
+                }
             }
         }
 
+        let mut reply_sent = false;
+        if let Some(id) = callback.request_id() {
+            let result = response.unwrap_or_else(|| json!({}));
+            client.write_callback_success(id, &result)?;
+            reply_sent = true;
+        }
+
         Ok(CallbackDispatch {
-            event,
+            callback,
             handlers_run,
             stopped,
+            reply_sent,
         })
     }
 
@@ -112,9 +144,9 @@ impl Default for CallbackDispatcher {
 }
 
 impl RegisteredHandler {
-    fn matches(&self, event: &BridgeEventMessage) -> bool {
+    fn matches(&self, callback: &BridgeCallbackMessage) -> bool {
         match &self.name {
-            Some(name) => name == event.event.name(),
+            Some(name) => name == callback.name(),
             None => true,
         }
     }
@@ -135,8 +167,8 @@ mod tests {
 
         {
             let calls = calls.clone();
-            dispatcher.on_name("begin_player_turn", move |_client, event| {
-                calls.borrow_mut().push(event.event.name().to_string());
+            dispatcher.on_name("begin_player_turn", move |_client, callback| {
+                calls.borrow_mut().push(callback.name().to_string());
                 Ok(CallbackControl::Continue)
             });
         }
@@ -161,6 +193,7 @@ mod tests {
 
         assert_eq!(dispatch.handlers_run, 2);
         assert!(!dispatch.stopped);
+        assert!(!dispatch.reply_sent);
         assert_eq!(
             calls.borrow().as_slice(),
             ["begin_player_turn".to_string(), "any".to_string()]
@@ -197,7 +230,45 @@ mod tests {
 
         assert_eq!(dispatch.handlers_run, 1);
         assert!(dispatch.stopped);
+        assert!(!dispatch.reply_sent);
         assert_eq!(calls.borrow().as_slice(), ["first".to_string()]);
+    }
+
+    #[test]
+    fn callback_request_sends_default_reply() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_any(|_client, _callback| Ok(CallbackControl::Continue));
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 42,
+            event: BridgeEvent::GameStart,
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
+    fn callback_request_can_set_response_and_stop() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_any(|_client, _callback| {
+            Ok(CallbackControl::RespondAndStop(json!({ "consume": true })))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 43,
+            event: BridgeEvent::GameStart,
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.stopped);
+        assert!(dispatch.reply_sent);
     }
 
     #[cfg(unix)]

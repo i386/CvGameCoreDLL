@@ -11,6 +11,42 @@ pub struct BridgeEventMessage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct BridgeCallbackRequest {
+    pub id: u64,
+    pub event: BridgeEvent,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BridgeCallbackMessage {
+    Mirror(BridgeEventMessage),
+    Request(BridgeCallbackRequest),
+}
+
+impl BridgeCallbackMessage {
+    pub fn event(&self) -> &BridgeEvent {
+        match self {
+            Self::Mirror(message) => &message.event,
+            Self::Request(request) => &request.event,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        self.event().name()
+    }
+
+    pub fn request_id(&self) -> Option<u64> {
+        match self {
+            Self::Mirror(_) => None,
+            Self::Request(request) => Some(request.id),
+        }
+    }
+
+    pub fn is_request(&self) -> bool {
+        self.request_id().is_some()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum BridgeEvent {
     Init,
     Uninit,

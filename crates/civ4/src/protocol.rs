@@ -22,6 +22,12 @@ pub enum Message {
         #[serde(default)]
         args: Value,
     },
+    CallbackRequest {
+        id: u64,
+        name: String,
+        #[serde(default)]
+        args: Value,
+    },
     Query {
         id: u64,
         name: String,
@@ -59,6 +65,27 @@ pub struct BridgeReply {
 }
 
 impl BridgeReply {
+    pub fn success(id: u64, result: Value) -> Self {
+        Self {
+            id,
+            ok: true,
+            result: Some(result),
+            error: None,
+        }
+    }
+
+    pub fn error(id: u64, code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            id,
+            ok: false,
+            result: None,
+            error: Some(BridgeErrorBody {
+                code: code.into(),
+                message: message.into(),
+            }),
+        }
+    }
+
     pub fn into_message(self) -> Message {
         Message::Reply {
             id: self.id,
@@ -109,6 +136,22 @@ mod tests {
             Message::Reply { id, ok, .. } => {
                 assert_eq!(id, 7);
                 assert!(ok);
+            }
+            other => panic!("unexpected message: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_callback_request() {
+        let decoded = decode_jsonl(
+            r#"{"type":"callback_request","id":9,"name":"kbd_event","args":{"key":65}}"#,
+        )
+        .unwrap();
+        match decoded {
+            Message::CallbackRequest { id, name, args } => {
+                assert_eq!(id, 9);
+                assert_eq!(name, "kbd_event");
+                assert_eq!(args["key"], 65);
             }
             other => panic!("unexpected message: {other:?}"),
         }
