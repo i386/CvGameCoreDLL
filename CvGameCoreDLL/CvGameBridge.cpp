@@ -8,6 +8,7 @@
 namespace
 {
 	static const DWORD PIPE_BUFFER_SIZE = 8192;
+	static const DWORD DEFAULT_CALLBACK_TIMEOUT_MS = 50;
 	static const char* DEFAULT_CONTROL_PIPE_NAME = "\\\\.\\pipe\\CvGameCoreDLL-Control";
 	static const char* DEFAULT_CALLBACK_PIPE_NAME = "\\\\.\\pipe\\CvGameCoreDLL-Callbacks";
 
@@ -23,10 +24,12 @@ namespace
 
 	static bool g_bEnabled = false;
 	static unsigned int g_uiNextSeq = 1;
+	static unsigned int g_uiNextCallbackId = 1;
 	static BridgePipe g_kControlPipe;
 	static BridgePipe g_kCallbackPipe;
 
 	void closePipe(BridgePipe& kPipe);
+	void pollPipe(BridgePipe& kPipe, bool bControl);
 
 	void setStringFromEnv(CvString& szValue, const char* szEnvName, const char* szDefault)
 	{
@@ -40,6 +43,21 @@ namespace
 		char szBuffer[32];
 		DWORD dwLength = GetEnvironmentVariableA("CVGAME_BRIDGE", szBuffer, sizeof(szBuffer));
 		return (dwLength > 0 && stricmp(szBuffer, "0") != 0 && stricmp(szBuffer, "false") != 0);
+	}
+
+	DWORD getCallbackTimeoutMs()
+	{
+		char szBuffer[32];
+		DWORD dwLength = GetEnvironmentVariableA("CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS", szBuffer, sizeof(szBuffer));
+		if (dwLength > 0 && dwLength < sizeof(szBuffer))
+		{
+			int iValue = atoi(szBuffer);
+			if (iValue > 0)
+			{
+				return (DWORD)iValue;
+			}
+		}
+		return DEFAULT_CALLBACK_TIMEOUT_MS;
 	}
 
 	bool ensurePipe(BridgePipe& kPipe)
@@ -120,6 +138,65 @@ namespace
 			return false;
 		}
 
+		return true;
+	}
+
+	bool readAvailable(BridgePipe& kPipe)
+	{
+		if (!kPipe.bConnected || kPipe.hPipe == INVALID_HANDLE_VALUE)
+		{
+			return false;
+		}
+
+		bool bReadAny = false;
+		for (;;)
+		{
+			char szBuffer[PIPE_BUFFER_SIZE + 1];
+			DWORD dwRead = 0;
+			BOOL bOk = ReadFile(kPipe.hPipe, szBuffer, PIPE_BUFFER_SIZE, &dwRead, NULL);
+			if (!bOk)
+			{
+				DWORD dwError = GetLastError();
+				if (dwError == ERROR_MORE_DATA && dwRead > 0)
+				{
+					szBuffer[dwRead] = 0;
+					kPipe.szReadBuffer += szBuffer;
+					bReadAny = true;
+					continue;
+				}
+				if (dwError == ERROR_BROKEN_PIPE || dwError == ERROR_PIPE_NOT_CONNECTED)
+				{
+					disconnectPipe(kPipe);
+				}
+				break;
+			}
+
+			if (dwRead == 0)
+			{
+				break;
+			}
+
+			szBuffer[dwRead] = 0;
+			kPipe.szReadBuffer += szBuffer;
+			bReadAny = true;
+		}
+		return bReadAny;
+	}
+
+	bool popBufferedLine(BridgePipe& kPipe, CvString& szLine)
+	{
+		std::string::size_type iPos = kPipe.szReadBuffer.find_first_of("\r\n");
+		if (iPos == CvString::npos)
+		{
+			return false;
+		}
+
+		szLine = kPipe.szReadBuffer.substr(0, iPos);
+		kPipe.szReadBuffer.erase(0, iPos + 1);
+		while (!kPipe.szReadBuffer.empty() && (kPipe.szReadBuffer[0] == '\r' || kPipe.szReadBuffer[0] == '\n'))
+		{
+			kPipe.szReadBuffer.erase(0, 1);
+		}
 		return true;
 	}
 
@@ -855,6 +932,7 @@ namespace
 					json_array_append_string(pCaps, "queries");
 					json_array_append_string(pCaps, "commands");
 					json_array_append_string(pCaps, "callbacks");
+					json_array_append_string(pCaps, "callback_requests");
 					json_array_append_string(pCaps, "mod_state");
 					json_object_set_value(pObject, "capabilities", pCapsValue);
 					writeLine(kPipe, serializeAndFree(pValue));
@@ -929,6 +1007,106 @@ namespace
 
 		writeLine(kPipe, serializeAndFree(pValue));
 	}
+
+	bool parseConsumeReply(const CvString& szLine, int iId, bool& bConsumed)
+	{
+		JSON_Value* pValue = json_parse_string(szLine.GetCString());
+		if (pValue == NULL || json_value_get_type(pValue) != JSONObject)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		JSON_Object* pObject = json_value_get_object(pValue);
+		const char* szType = json_object_get_string(pObject, "type");
+		int iReplyId = (int)json_object_get_number(pObject, "id");
+		if (szType == NULL || strcmp(szType, "reply") != 0 || iReplyId != iId)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		bool bHandled = true;
+		if (json_object_get_boolean(pObject, "ok"))
+		{
+			JSON_Object* pResult = json_object_get_object(pObject, "result");
+			if (pResult != NULL)
+			{
+				JSON_Value* pConsume = json_object_get_value(pResult, "consume");
+				if (pConsume != NULL)
+				{
+					if (json_value_get_type(pConsume) == JSONBoolean)
+					{
+						bConsumed = json_value_get_boolean(pConsume) ? true : false;
+					}
+					else if (json_value_get_type(pConsume) == JSONNumber)
+					{
+						bConsumed = ((int)json_value_get_number(pConsume)) != 0;
+					}
+				}
+			}
+		}
+
+		json_value_free(pValue);
+		return bHandled;
+	}
+
+	bool sendCallbackRequest(int iId, const char* szName, const char* szArgsJson)
+	{
+		if (!g_bEnabled || !g_kCallbackPipe.bConnected || szName == NULL)
+		{
+			return false;
+		}
+
+		JSON_Value* pValue = makeBaseMessage("callback_request");
+		JSON_Object* pObject = json_value_get_object(pValue);
+		json_object_set_number(pObject, "id", iId);
+		json_object_set_string(pObject, "name", szName);
+
+		if (szArgsJson != NULL && szArgsJson[0] != 0)
+		{
+			JSON_Value* pArgsValue = json_parse_string(szArgsJson);
+			if (pArgsValue != NULL && json_value_get_type(pArgsValue) == JSONObject)
+			{
+				json_object_set_value(pObject, "args", pArgsValue);
+			}
+			else
+			{
+				json_value_free(pArgsValue);
+			}
+		}
+
+		return writeLine(g_kCallbackPipe, serializeAndFree(pValue));
+	}
+
+	bool waitForConsumeReply(int iId, bool& bConsumed)
+	{
+		DWORD dwStarted = GetTickCount();
+		DWORD dwTimeout = getCallbackTimeoutMs();
+
+		for (;;)
+		{
+			readAvailable(g_kCallbackPipe);
+
+			CvString szLine;
+			while (popBufferedLine(g_kCallbackPipe, szLine))
+			{
+				if (!szLine.empty() && parseConsumeReply(szLine, iId, bConsumed))
+				{
+					return true;
+				}
+			}
+
+			pollPipe(g_kControlPipe, true);
+
+			if (!g_kCallbackPipe.bConnected || GetTickCount() - dwStarted >= dwTimeout)
+			{
+				return false;
+			}
+
+			Sleep(1);
+		}
+	}
 }
 
 void CvGameBridge::init()
@@ -988,4 +1166,25 @@ void CvGameBridge::sendEvent(const char* szName, const char* szArgsJson)
 void CvGameBridge::sendCallbackMirror(const char* szName, const char* szArgsJson)
 {
 	sendNamedMessage(g_kCallbackPipe, "callback_mirror", szName, szArgsJson);
+}
+
+bool CvGameBridge::requestCallbackConsume(const char* szName, const char* szArgsJson, bool& bConsumed)
+{
+	if (!g_bEnabled || !g_kCallbackPipe.bConnected)
+	{
+		return false;
+	}
+
+	int iId = (int)g_uiNextCallbackId++;
+	if (!sendCallbackRequest(iId, szName, szArgsJson))
+	{
+		return false;
+	}
+
+	if (!waitForConsumeReply(iId, bConsumed))
+	{
+		return false;
+	}
+
+	return true;
 }

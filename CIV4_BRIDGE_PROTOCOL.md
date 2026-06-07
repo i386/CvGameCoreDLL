@@ -21,10 +21,10 @@ Each message is one JSON object followed by `\n`.
 ## Messages
 
 ```json
-{"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","commands","callbacks","mod_state"]}
+{"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","commands","callbacks","callback_requests","mod_state"]}
 {"type":"event","seq":1,"name":"begin_game_turn","args":{"turn":42}}
 {"type":"callback_mirror","seq":2,"name":"city_built","args":{"player":0,"city":3,"x":10,"y":12}}
-{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"x":10,"y":12}}
+{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}}
 {"type":"query","id":100,"name":"get_player_gold","args":{"player":0}}
 {"type":"command","id":101,"name":"set_player_gold","args":{"player":0,"value":500}}
 {"type":"reply","id":101,"ok":true,"result":{"gold":500}}
@@ -74,14 +74,25 @@ The string is saved and loaded with `CvGame`.
 
 ## Callbacks
 
-This first bridge version mirrors selected Python event callbacks to the callback pipe as
-`callback_mirror` messages before the normal in-process Python event call runs. Blocking
-callback replacement is not enabled in the DLL yet, but the protocol and Rust client reserve
-`callback_request` for that mode:
+The bridge mirrors selected Python event callbacks to the callback pipe as `callback_mirror`
+messages before the normal in-process Python event call runs.
+
+Keyboard and mouse input callbacks are sent as blocking `callback_request` messages before Python.
+If the external process replies before the timeout, the DLL uses `result.consume` as the callback
+return value and skips Python. If there is no reply, the callback pipe is disconnected, or the reply
+times out, the DLL falls back to the normal Python callback. Set `CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS`
+to override the default 50ms timeout.
 
 ```json
-{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"x":10,"y":12}}
+{"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}}
 {"type":"reply","id":200,"ok":true,"result":{"consume":false}}
+```
+
+Input callback request payloads:
+
+```text
+kbd_event {"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}
+mouse_event {"evt":1,"cursor_x":100,"cursor_y":120,"x":10,"y":12,"interface_consumed":false}
 ```
 
 Use `callback_mirror` for fire-and-forget events. Use `callback_request` when the DLL must wait for

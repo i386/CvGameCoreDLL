@@ -1,6 +1,7 @@
 #include "CvGameCoreDLL.h"
 #include "CvEventReporter.h"
 #include "CvDllPythonEvents.h"
+#include "CvDLLEngineIFaceBase.h"
 #include "CvInitCore.h"
 #include "CvGameBridge.h"
 
@@ -39,6 +40,18 @@ void CvEventReporter::resetStatistics()
 //
 bool CvEventReporter::mouseEvent(int evt, int iCursorX, int iCursorY, bool bInterfaceConsumed)
 {
+	if (CvGameBridge::isEnabled())
+	{
+		NiPoint3 pt3Location;
+		CvPlot* pPlot = gDLL->getEngineIFace()->pickPlot(iCursorX, iCursorY, pt3Location);
+		CvString szArgs;
+		szArgs.Format("{\"evt\":%d,\"cursor_x\":%d,\"cursor_y\":%d,\"x\":%d,\"y\":%d,\"interface_consumed\":%d}", evt, iCursorX, iCursorY, pPlot ? pPlot->getX() : -1, pPlot ? pPlot->getY() : -1, bInterfaceConsumed ? 1 : 0);
+		bool bConsumed = false;
+		if (CvGameBridge::requestCallbackConsume("mouse_event", szArgs.GetCString(), bConsumed))
+		{
+			return bConsumed;
+		}
+	}
 	return m_kPythonEventMgr.reportMouseEvent(evt, iCursorX, iCursorY, bInterfaceConsumed);
 }
 
@@ -47,6 +60,18 @@ bool CvEventReporter::mouseEvent(int evt, int iCursorX, int iCursorY, bool bInte
 //
 bool CvEventReporter::kbdEvent(int evt, int key, int iCursorX, int iCursorY)
 {
+	if (CvGameBridge::isEnabled())
+	{
+		NiPoint3 pt3Location;
+		CvPlot* pPlot = gDLL->getEngineIFace()->pickPlot(iCursorX, iCursorY, pt3Location);
+		CvString szArgs;
+		szArgs.Format("{\"evt\":%d,\"key\":%d,\"cursor_x\":%d,\"cursor_y\":%d,\"x\":%d,\"y\":%d}", evt, key, iCursorX, iCursorY, pPlot ? pPlot->getX() : -1, pPlot ? pPlot->getY() : -1);
+		bool bConsumed = false;
+		if (CvGameBridge::requestCallbackConsume("kbd_event", szArgs.GetCString(), bConsumed))
+		{
+			return bConsumed;
+		}
+	}
 	return m_kPythonEventMgr.reportKbdEvent(evt, key, iCursorX, iCursorY);
 }
 

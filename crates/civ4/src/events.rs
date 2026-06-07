@@ -50,6 +50,20 @@ impl BridgeCallbackMessage {
 pub enum BridgeEvent {
     Init,
     Uninit,
+    KbdEvent {
+        evt: i32,
+        key: i32,
+        cursor_x: i32,
+        cursor_y: i32,
+        plot: Option<Plot>,
+    },
+    MouseEvent {
+        evt: i32,
+        cursor_x: i32,
+        cursor_y: i32,
+        plot: Option<Plot>,
+        interface_consumed: bool,
+    },
     GameStart,
     GameEnd,
     PreSave,
@@ -167,6 +181,8 @@ impl BridgeEvent {
         match self {
             Self::Init => "init",
             Self::Uninit => "uninit",
+            Self::KbdEvent { .. } => "kbd_event",
+            Self::MouseEvent { .. } => "mouse_event",
             Self::GameStart => "game_start",
             Self::GameEnd => "game_end",
             Self::PreSave => "pre_save",
@@ -201,6 +217,26 @@ impl BridgeEvent {
         Ok(match name.as_str() {
             "init" => Self::Init,
             "uninit" => Self::Uninit,
+            "kbd_event" => {
+                let payload: KbdEventPayload = decode(args)?;
+                Self::KbdEvent {
+                    evt: payload.evt,
+                    key: payload.key,
+                    cursor_x: payload.cursor_x,
+                    cursor_y: payload.cursor_y,
+                    plot: payload.plot(),
+                }
+            }
+            "mouse_event" => {
+                let payload: MouseEventPayload = decode(args)?;
+                Self::MouseEvent {
+                    evt: payload.evt,
+                    cursor_x: payload.cursor_x,
+                    cursor_y: payload.cursor_y,
+                    plot: payload.plot(),
+                    interface_consumed: payload.interface_consumed,
+                }
+            }
             "game_start" => Self::GameStart,
             "game_end" => Self::GameEnd,
             "pre_save" => Self::PreSave,
@@ -390,6 +426,43 @@ struct TurnPayload {
 struct PlayerTurnPayload {
     turn: i32,
     player: i32,
+}
+
+#[derive(Deserialize)]
+struct KbdEventPayload {
+    evt: i32,
+    key: i32,
+    cursor_x: i32,
+    cursor_y: i32,
+    x: i32,
+    y: i32,
+}
+
+impl KbdEventPayload {
+    fn plot(&self) -> Option<Plot> {
+        plot_from_xy(self.x, self.y)
+    }
+}
+
+#[derive(Deserialize)]
+struct MouseEventPayload {
+    evt: i32,
+    cursor_x: i32,
+    cursor_y: i32,
+    x: i32,
+    y: i32,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    interface_consumed: bool,
+}
+
+impl MouseEventPayload {
+    fn plot(&self) -> Option<Plot> {
+        plot_from_xy(self.x, self.y)
+    }
+}
+
+fn plot_from_xy(x: i32, y: i32) -> Option<Plot> {
+    (x >= 0 && y >= 0).then_some(Plot::new(x, y))
 }
 
 #[derive(Deserialize)]
@@ -692,6 +765,57 @@ mod tests {
                 conquest: true,
                 trade: false,
                 plot: Plot::new(10, 11),
+            }
+        );
+    }
+
+    #[test]
+    fn decodes_input_callback_payloads() {
+        let kbd = BridgeEvent::from_name_args(
+            "kbd_event".to_string(),
+            json!({
+                "evt": 6,
+                "key": 65,
+                "cursor_x": 100,
+                "cursor_y": 120,
+                "x": 10,
+                "y": 11
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(
+            kbd,
+            BridgeEvent::KbdEvent {
+                evt: 6,
+                key: 65,
+                cursor_x: 100,
+                cursor_y: 120,
+                plot: Some(Plot::new(10, 11)),
+            }
+        );
+
+        let mouse = BridgeEvent::from_name_args(
+            "mouse_event".to_string(),
+            json!({
+                "evt": 1,
+                "cursor_x": 70,
+                "cursor_y": 80,
+                "x": -1,
+                "y": -1,
+                "interface_consumed": 1
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(
+            mouse,
+            BridgeEvent::MouseEvent {
+                evt: 1,
+                cursor_x: 70,
+                cursor_y: 80,
+                plot: None,
+                interface_consumed: true,
             }
         );
     }
