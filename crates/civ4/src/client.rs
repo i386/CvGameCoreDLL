@@ -1,6 +1,6 @@
 use crate::events::{BridgeEvent, BridgeEventMessage};
 use crate::protocol::{decode_jsonl, encode_jsonl, BridgeReply, Message};
-use crate::types::{InfoType, PlayerId, Plot, UnitRef};
+use crate::types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -104,6 +104,35 @@ impl BridgeClient {
         Ok(result.gold)
     }
 
+    pub fn get_player_state<P: Into<PlayerId>>(&mut self, player: P) -> Result<PlayerState> {
+        let player = player.into();
+        self.query("get_player_state", json!({ "player": player.0 }))
+    }
+
+    pub fn get_map_state(&mut self) -> Result<MapState> {
+        self.query("get_map_state", json!({}))
+    }
+
+    pub fn get_plot_state(&mut self, plot: Plot) -> Result<PlotState> {
+        let result: PlotStateResult =
+            self.query("get_plot_state", json!({ "x": plot.x, "y": plot.y }))?;
+        Ok(result.into())
+    }
+
+    pub fn get_city_state(&mut self, city: CityRef) -> Result<CityState> {
+        self.query(
+            "get_city_state",
+            json!({ "player": city.player, "city": city.id }),
+        )
+    }
+
+    pub fn get_unit_state(&mut self, unit: UnitRef) -> Result<UnitState> {
+        self.query(
+            "get_unit_state",
+            json!({ "player": unit.player, "unit": unit.id }),
+        )
+    }
+
     pub fn set_player_gold<P: Into<PlayerId>>(&mut self, player: P, value: i32) -> Result<i32> {
         let player = player.into();
         let result: PlayerGoldResult = self.command(
@@ -111,6 +140,78 @@ impl BridgeClient {
             json!({ "player": player.0, "value": value }),
         )?;
         Ok(result.gold)
+    }
+
+    pub fn change_player_gold<P: Into<PlayerId>>(
+        &mut self,
+        player: P,
+        change: i32,
+    ) -> Result<PlayerState> {
+        let player = player.into();
+        self.command(
+            "change_player_gold",
+            json!({ "player": player.0, "change": change }),
+        )
+    }
+
+    pub fn set_city_population(&mut self, city: CityRef, value: i32) -> Result<CityState> {
+        self.command(
+            "set_city_population",
+            json!({ "player": city.player, "city": city.id, "value": value }),
+        )
+    }
+
+    pub fn change_city_population(&mut self, city: CityRef, change: i32) -> Result<CityState> {
+        self.command(
+            "change_city_population",
+            json!({ "player": city.player, "city": city.id, "change": change }),
+        )
+    }
+
+    pub fn set_city_culture<P: Into<PlayerId>>(
+        &mut self,
+        city: CityRef,
+        culture_player: P,
+        value: i32,
+    ) -> Result<CityState> {
+        let culture_player = culture_player.into();
+        self.command(
+            "set_city_culture",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "culture_player": culture_player.0,
+                "value": value
+            }),
+        )
+    }
+
+    pub fn set_owner_city_culture(&mut self, city: CityRef, value: i32) -> Result<CityState> {
+        self.command(
+            "set_city_culture",
+            json!({ "player": city.player, "city": city.id, "value": value }),
+        )
+    }
+
+    pub fn set_unit_damage(&mut self, unit: UnitRef, value: i32) -> Result<UnitState> {
+        self.command(
+            "set_unit_damage",
+            json!({ "player": unit.player, "unit": unit.id, "value": value }),
+        )
+    }
+
+    pub fn change_unit_damage(&mut self, unit: UnitRef, change: i32) -> Result<UnitState> {
+        self.command(
+            "change_unit_damage",
+            json!({ "player": unit.player, "unit": unit.id, "change": change }),
+        )
+    }
+
+    pub fn set_unit_experience(&mut self, unit: UnitRef, value: i32) -> Result<UnitState> {
+        self.command(
+            "set_unit_experience",
+            json!({ "player": unit.player, "unit": unit.id, "value": value }),
+        )
     }
 
     pub fn spawn_unit(&mut self, request: SpawnUnitRequest) -> Result<SpawnedUnit> {
@@ -375,6 +476,126 @@ pub struct SpawnedUnit {
     pub plot: Plot,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlayerState {
+    pub player: i32,
+    pub team: i32,
+    pub alive: bool,
+    pub human: bool,
+    pub gold: i32,
+    pub cities: i32,
+    pub units: i32,
+    pub population: i32,
+}
+
+impl PlayerState {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+
+    pub fn team_id(&self) -> TeamId {
+        TeamId(self.team)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct MapState {
+    pub width: i32,
+    pub height: i32,
+    pub plots: i32,
+    pub land_plots: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlotState {
+    pub plot: Plot,
+    pub owner: Option<PlayerId>,
+    pub terrain: i32,
+    pub feature: i32,
+    pub bonus: i32,
+    pub improvement: i32,
+    pub water: bool,
+    pub peak: bool,
+    pub units: i32,
+    pub city: Option<CityRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+struct PlotStateResult {
+    x: i32,
+    y: i32,
+    owner: i32,
+    terrain: i32,
+    feature: i32,
+    bonus: i32,
+    improvement: i32,
+    water: bool,
+    peak: bool,
+    units: i32,
+    city_player: i32,
+    city: i32,
+}
+
+impl From<PlotStateResult> for PlotState {
+    fn from(value: PlotStateResult) -> Self {
+        Self {
+            plot: Plot::new(value.x, value.y),
+            owner: (value.owner >= 0).then_some(PlayerId(value.owner)),
+            terrain: value.terrain,
+            feature: value.feature,
+            bonus: value.bonus,
+            improvement: value.improvement,
+            water: value.water,
+            peak: value.peak,
+            units: value.units,
+            city: (value.city_player >= 0 && value.city >= 0)
+                .then_some(CityRef::new(value.city_player, value.city)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityState {
+    pub player: i32,
+    pub city: i32,
+    pub x: i32,
+    pub y: i32,
+    pub population: i32,
+    pub culture: i32,
+}
+
+impl CityState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+
+    pub fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UnitState {
+    pub player: i32,
+    pub unit: i32,
+    pub unit_type: i32,
+    pub x: i32,
+    pub y: i32,
+    pub damage: i32,
+    pub experience: i32,
+    pub level: i32,
+}
+
+impl UnitState {
+    pub fn unit_ref(&self) -> UnitRef {
+        UnitRef::new(self.player, self.unit)
+    }
+
+    pub fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
 #[derive(Deserialize)]
 struct GameTurnResult {
     turn: i32,
@@ -430,6 +651,29 @@ mod tests {
                 "unit_ai": "UNITAI_ATTACK"
             })
         );
+    }
+
+    #[test]
+    fn plot_state_maps_negative_owner_and_city_to_none() {
+        let result = PlotStateResult {
+            x: 1,
+            y: 2,
+            owner: -1,
+            terrain: 3,
+            feature: -1,
+            bonus: -1,
+            improvement: -1,
+            water: false,
+            peak: false,
+            units: 0,
+            city_player: -1,
+            city: -1,
+        };
+
+        let state = PlotState::from(result);
+        assert_eq!(state.plot, Plot::new(1, 2));
+        assert_eq!(state.owner, None);
+        assert_eq!(state.city, None);
     }
 
     #[test]

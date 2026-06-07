@@ -24,10 +24,28 @@ pub struct CityRef {
     pub id: i32,
 }
 
+impl CityRef {
+    pub fn new<P: Into<PlayerId>>(player: P, id: i32) -> Self {
+        Self {
+            player: player.into().0,
+            id,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct UnitRef {
     pub player: i32,
     pub id: i32,
+}
+
+impl UnitRef {
+    pub fn new<P: Into<PlayerId>>(player: P, id: i32) -> Self {
+        Self {
+            player: player.into().0,
+            id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

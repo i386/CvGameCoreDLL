@@ -243,6 +243,137 @@ namespace
 		szReply = serializeAndFree(pValue);
 	}
 
+	JSON_Value* makeResultReplyValue(int iId, JSON_Object** ppResult)
+	{
+		JSON_Value* pValue = makeBaseMessage("reply");
+		JSON_Object* pObject = json_value_get_object(pValue);
+		JSON_Value* pResultValue = json_value_init_object();
+		JSON_Object* pResult = json_value_get_object(pResultValue);
+		json_object_set_number(pObject, "id", iId);
+		json_object_set_boolean(pObject, "ok", 1);
+		json_object_set_value(pObject, "result", pResultValue);
+		*ppResult = pResult;
+		return pValue;
+	}
+
+	bool getPlotArgs(JSON_Object* pArgs, int& iX, int& iY, CvPlot*& pPlot)
+	{
+		if (!getInt(pArgs, "x", iX) || !getInt(pArgs, "y", iY))
+		{
+			return false;
+		}
+		pPlot = GC.getMapINLINE().plot(iX, iY);
+		return (pPlot != NULL);
+	}
+
+	bool getCityArgs(JSON_Object* pArgs, int& iPlayer, int& iCity, CvCity*& pCity)
+	{
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return false;
+		}
+		if (!getInt(pArgs, "city", iCity))
+		{
+			return false;
+		}
+		pCity = GET_PLAYER((PlayerTypes)iPlayer).getCity(iCity);
+		return (pCity != NULL);
+	}
+
+	bool getUnitArgs(JSON_Object* pArgs, int& iPlayer, int& iUnit, CvUnit*& pUnit)
+	{
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return false;
+		}
+		if (!getInt(pArgs, "unit", iUnit))
+		{
+			return false;
+		}
+		pUnit = GET_PLAYER((PlayerTypes)iPlayer).getUnit(iUnit);
+		return (pUnit != NULL);
+	}
+
+	void setPlayerState(JSON_Object* pResult, int iPlayer)
+	{
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "team", kPlayer.getTeam());
+		json_object_set_boolean(pResult, "alive", kPlayer.isAlive() ? 1 : 0);
+		json_object_set_boolean(pResult, "human", kPlayer.isHuman() ? 1 : 0);
+		json_object_set_number(pResult, "gold", kPlayer.getGold());
+		json_object_set_number(pResult, "cities", kPlayer.getNumCities());
+		json_object_set_number(pResult, "units", kPlayer.getNumUnits());
+		json_object_set_number(pResult, "population", kPlayer.getTotalPopulation());
+	}
+
+	CvString makePlayerStateReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setPlayerState(pResult, iPlayer);
+		return serializeAndFree(pValue);
+	}
+
+	void setCityState(JSON_Object* pResult, CvCity* pCity)
+	{
+		int iPlayer = pCity->getOwnerINLINE();
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "x", pCity->getX_INLINE());
+		json_object_set_number(pResult, "y", pCity->getY_INLINE());
+		json_object_set_number(pResult, "population", pCity->getPopulation());
+		json_object_set_number(pResult, "culture", pCity->getCulture((PlayerTypes)iPlayer));
+	}
+
+	CvString makeCityStateReply(int iId, CvCity* pCity)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setCityState(pResult, pCity);
+		return serializeAndFree(pValue);
+	}
+
+	void setUnitState(JSON_Object* pResult, CvUnit* pUnit)
+	{
+		json_object_set_number(pResult, "player", pUnit->getOwnerINLINE());
+		json_object_set_number(pResult, "unit", pUnit->getID());
+		json_object_set_number(pResult, "unit_type", pUnit->getUnitType());
+		json_object_set_number(pResult, "x", pUnit->getX_INLINE());
+		json_object_set_number(pResult, "y", pUnit->getY_INLINE());
+		json_object_set_number(pResult, "damage", pUnit->getDamage());
+		json_object_set_number(pResult, "experience", pUnit->getExperience());
+		json_object_set_number(pResult, "level", pUnit->getLevel());
+	}
+
+	CvString makeUnitStateReply(int iId, CvUnit* pUnit)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setUnitState(pResult, pUnit);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makePlotStateReply(int iId, CvPlot* pPlot)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvCity* pCity = pPlot->getPlotCity();
+		json_object_set_number(pResult, "x", pPlot->getX_INLINE());
+		json_object_set_number(pResult, "y", pPlot->getY_INLINE());
+		json_object_set_number(pResult, "owner", pPlot->getOwnerINLINE());
+		json_object_set_number(pResult, "terrain", pPlot->getTerrainType());
+		json_object_set_number(pResult, "feature", pPlot->getFeatureType());
+		json_object_set_number(pResult, "bonus", pPlot->getBonusType(NO_TEAM));
+		json_object_set_number(pResult, "improvement", pPlot->getImprovementType());
+		json_object_set_boolean(pResult, "water", pPlot->isWater() ? 1 : 0);
+		json_object_set_boolean(pResult, "peak", pPlot->isPeak() ? 1 : 0);
+		json_object_set_number(pResult, "units", pPlot->getNumUnits());
+		json_object_set_number(pResult, "city_player", (pCity != NULL) ? pCity->getOwnerINLINE() : -1);
+		json_object_set_number(pResult, "city", (pCity != NULL) ? pCity->getID() : -1);
+		return serializeAndFree(pValue);
+	}
+
 	CvString handleQuery(int iId, const char* szName, JSON_Object* pArgs)
 	{
 		if (strcmp(szName, "get_game_turn") == 0)
@@ -262,6 +393,63 @@ namespace
 			CvString szReply;
 			setReplyResultInt(szReply, iId, "gold", GET_PLAYER((PlayerTypes)iPlayer).getGold());
 			return szReply;
+		}
+
+		if (strcmp(szName, "get_player_state") == 0)
+		{
+			int iPlayer = -1;
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makePlayerStateReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "get_map_state") == 0)
+		{
+			JSON_Object* pResult = NULL;
+			JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+			json_object_set_number(pResult, "width", GC.getMapINLINE().getGridWidthINLINE());
+			json_object_set_number(pResult, "height", GC.getMapINLINE().getGridHeightINLINE());
+			json_object_set_number(pResult, "plots", GC.getMapINLINE().numPlotsINLINE());
+			json_object_set_number(pResult, "land_plots", GC.getMapINLINE().getLandPlots());
+			return serializeAndFree(pValue);
+		}
+
+		if (strcmp(szName, "get_plot_state") == 0)
+		{
+			int iX = -1;
+			int iY = -1;
+			CvPlot* pPlot = NULL;
+			if (!getPlotArgs(pArgs, iX, iY, pPlot))
+			{
+				return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+			}
+			return makePlotStateReply(iId, pPlot);
+		}
+
+		if (strcmp(szName, "get_city_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			return makeCityStateReply(iId, pCity);
+		}
+
+		if (strcmp(szName, "get_unit_state") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			CvUnit* pUnit = NULL;
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			return makeUnitStateReply(iId, pUnit);
 		}
 
 		if (strcmp(szName, "get_mod_state") == 0)
@@ -293,6 +481,157 @@ namespace
 		CvString szReply;
 		setReplyResultInt(szReply, iId, "gold", GET_PLAYER((PlayerTypes)iPlayer).getGold());
 		return szReply;
+	}
+
+	CvString handleChangePlayerGold(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeGold(iChange);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetCityPopulation(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 1)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or less than one");
+		}
+
+		pCity->setPopulation(iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleChangeCityPopulation(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iChange = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pCity->getPopulation() + iChange < 1)
+		{
+			return makeErrorReply(iId, "bad_value", "population cannot be reduced below one");
+		}
+
+		pCity->changePopulation(iChange);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityCulture(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iCulturePlayer = -1;
+		int iValue = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "culture_player", iCulturePlayer))
+		{
+			iCulturePlayer = pCity->getOwnerINLINE();
+		}
+		if (!validPlayer(iCulturePlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "culture_player is out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setCulture((PlayerTypes)iCulturePlayer, iValue, true, true);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetUnitDamage(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0 || iValue > GC.getMAX_HIT_POINTS())
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or out of range");
+		}
+
+		pUnit->setDamage(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleChangeUnitDamage(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		pUnit->changeDamage(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitExperience(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pUnit->setExperience(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
 	}
 
 	CvString handleSpawnUnit(int iId, JSON_Object* pArgs)
@@ -334,17 +673,12 @@ namespace
 
 		markGameDataDirty();
 
-		JSON_Value* pValue = makeBaseMessage("reply");
-		JSON_Object* pObject = json_value_get_object(pValue);
-		JSON_Value* pResultValue = json_value_init_object();
-		JSON_Object* pResult = json_value_get_object(pResultValue);
-		json_object_set_number(pObject, "id", iId);
-		json_object_set_boolean(pObject, "ok", 1);
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		json_object_set_number(pResult, "player", iPlayer);
 		json_object_set_number(pResult, "unit", pUnit->getID());
 		json_object_set_number(pResult, "x", pUnit->getX_INLINE());
 		json_object_set_number(pResult, "y", pUnit->getY_INLINE());
-		json_object_set_value(pObject, "result", pResultValue);
 		return serializeAndFree(pValue);
 	}
 
@@ -373,6 +707,34 @@ namespace
 		if (strcmp(szName, "set_player_gold") == 0)
 		{
 			return handleSetPlayerGold(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_gold") == 0)
+		{
+			return handleChangePlayerGold(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_population") == 0)
+		{
+			return handleSetCityPopulation(iId, pArgs);
+		}
+		if (strcmp(szName, "change_city_population") == 0)
+		{
+			return handleChangeCityPopulation(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_culture") == 0)
+		{
+			return handleSetCityCulture(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_damage") == 0)
+		{
+			return handleSetUnitDamage(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_damage") == 0)
+		{
+			return handleChangeUnitDamage(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_experience") == 0)
+		{
+			return handleSetUnitExperience(iId, pArgs);
 		}
 		if (strcmp(szName, "spawn_unit") == 0)
 		{
