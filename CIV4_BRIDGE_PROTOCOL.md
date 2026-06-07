@@ -33,9 +33,9 @@ Each message is one JSON object followed by `\n`.
 ## Queries
 
 ```text
-get_game_turn
-get_player_gold
-get_mod_state
+get_game_turn -> {"turn":42}
+get_player_gold {"player":0} -> {"gold":500}
+get_mod_state -> {"json":"{\"schema_version\":1}"}
 ```
 
 ## Commands
@@ -43,10 +43,12 @@ get_mod_state
 Commands are rejected in multiplayer in this first version.
 
 ```text
-set_player_gold
-spawn_unit
-set_mod_state
+set_player_gold {"player":0,"value":500} -> {"gold":500}
+spawn_unit {"player":0,"unit_type":"UNIT_WARRIOR","x":10,"y":12} -> {"player":0,"unit":123,"x":10,"y":12}
+set_mod_state {"json":"{\"schema_version\":1}"} -> {"bytes":20}
 ```
+
+`unit_type` and `unit_ai` for `spawn_unit` may be either numeric Civ4 info IDs or XML type names.
 
 `set_mod_state` stores an opaque UTF-8 JSON string owned by the external Rust client:
 
@@ -61,3 +63,10 @@ The string is saved and loaded with `CvGame`.
 This first bridge version mirrors selected Python event callbacks to the callback pipe as
 `callback_mirror` messages before the normal in-process Python event call runs. Blocking
 callback replacement is intentionally not enabled yet.
+
+The Rust `civ4` crate exposes typed helpers for the current operation set:
+
+- `get_game_turn`, `get_player_gold`, `set_player_gold`
+- `spawn_unit`
+- `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
+- `next_bridge_event` and `next_callback_event`

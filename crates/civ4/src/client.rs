@@ -1,5 +1,8 @@
+use crate::events::{BridgeEvent, BridgeEventMessage};
 use crate::protocol::{decode_jsonl, encode_jsonl, BridgeReply, Message};
+use crate::types::{InfoType, PlayerId, Plot, UnitRef};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::VecDeque;
 use std::fs::{File, OpenOptions};
@@ -90,73 +93,120 @@ impl BridgeClient {
     }
 
     pub fn get_game_turn(&mut self) -> Result<i32> {
-        let result: Value = self.query("get_game_turn", json!({}))?;
-        result
-            .get("turn")
-            .and_then(Value::as_i64)
-            .map(|turn| turn as i32)
-            .ok_or_else(|| BridgeError::Protocol("get_game_turn reply missing turn".to_string()))
+        let result: GameTurnResult = self.query("get_game_turn", json!({}))?;
+        Ok(result.turn)
     }
 
-    pub fn get_player_gold(&mut self, player: i32) -> Result<i32> {
-        let result: Value = self.query("get_player_gold", json!({ "player": player }))?;
-        result
-            .get("gold")
-            .and_then(Value::as_i64)
-            .map(|gold| gold as i32)
-            .ok_or_else(|| BridgeError::Protocol("get_player_gold reply missing gold".to_string()))
+    pub fn get_player_gold<P: Into<PlayerId>>(&mut self, player: P) -> Result<i32> {
+        let player = player.into();
+        let result: PlayerGoldResult =
+            self.query("get_player_gold", json!({ "player": player.0 }))?;
+        Ok(result.gold)
     }
 
-    pub fn set_player_gold(&mut self, player: i32, value: i32) -> Result<i32> {
-        let result: Value = self.command(
+    pub fn set_player_gold<P: Into<PlayerId>>(&mut self, player: P, value: i32) -> Result<i32> {
+        let player = player.into();
+        let result: PlayerGoldResult = self.command(
             "set_player_gold",
-            json!({ "player": player, "value": value }),
+            json!({ "player": player.0, "value": value }),
         )?;
-        result
-            .get("gold")
-            .and_then(Value::as_i64)
-            .map(|gold| gold as i32)
-            .ok_or_else(|| BridgeError::Protocol("set_player_gold reply missing gold".to_string()))
+        Ok(result.gold)
+    }
+
+    pub fn spawn_unit(&mut self, request: SpawnUnitRequest) -> Result<SpawnedUnit> {
+        let args = request.into_args()?;
+        let result: SpawnUnitResult = self.command("spawn_unit", args)?;
+        Ok(SpawnedUnit {
+            unit: UnitRef {
+                player: result.player,
+                id: result.unit,
+            },
+            plot: Plot::new(result.x, result.y),
+        })
     }
 
     pub fn get_mod_state(&mut self) -> Result<String> {
-        let result: Value = self.query("get_mod_state", json!({}))?;
-        result
-            .get("json")
-            .and_then(Value::as_str)
-            .map(str::to_owned)
-            .ok_or_else(|| BridgeError::Protocol("get_mod_state reply missing json".to_string()))
+        let result: ModStateResult = self.query("get_mod_state", json!({}))?;
+        Ok(result.json)
     }
 
     pub fn set_mod_state(&mut self, json_state: &str) -> Result<usize> {
-        let result: Value = self.command("set_mod_state", json!({ "json": json_state }))?;
-        result
-            .get("bytes")
-            .and_then(Value::as_u64)
-            .map(|bytes| bytes as usize)
-            .ok_or_else(|| BridgeError::Protocol("set_mod_state reply missing bytes".to_string()))
+        let result: SetModStateResult =
+            self.command("set_mod_state", json!({ "json": json_state }))?;
+        Ok(result.bytes)
+    }
+
+    pub fn load_mod_state<T: DeserializeOwned>(&mut self) -> Result<Option<T>> {
+        let json_state = self.get_mod_state()?;
+        if json_state.trim().is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(serde_json::from_str(&json_state)?))
+    }
+
+    pub fn save_mod_state<T: Serialize>(&mut self, state: &T) -> Result<usize> {
+        let json_state = serde_json::to_string(state)?;
+        self.set_mod_state(&json_state)
     }
 
     pub fn next_event(&mut self) -> Result<Message> {
-        if let Some(event) = self.queued_events.pop_front() {
-            return Ok(event);
+        if let Some(pos) = self
+            .queued_events
+            .iter()
+            .position(|message| matches!(message, Message::Event { .. }))
+        {
+            return Ok(self.queued_events.remove(pos).expect("queued event exists"));
         }
 
         loop {
             let message = self.read_control()?;
-            match message {
-                Message::Event { .. } | Message::Hello { .. } | Message::Log { .. } => {
-                    return Ok(message);
+            if matches!(message, Message::Event { .. }) {
+                return Ok(message);
+            }
+            self.queued_events.push_back(message);
+        }
+    }
+
+    pub fn next_bridge_event(&mut self) -> Result<BridgeEventMessage> {
+        loop {
+            match self.next_event()? {
+                Message::Event { seq, name, args } => {
+                    return Ok(BridgeEventMessage {
+                        seq,
+                        event: BridgeEvent::from_name_args(name, args)?,
+                    });
                 }
                 other => self.queued_events.push_back(other),
             }
         }
     }
 
+    pub fn next_control_message(&mut self) -> Result<Message> {
+        if let Some(event) = self.queued_events.pop_front() {
+            return Ok(event);
+        }
+        self.read_control()
+    }
+
     pub fn next_callback_mirror(&mut self) -> Result<Message> {
         let mut line = String::new();
         self.callback_reader.read_line(&mut line)?;
+        if line.is_empty() {
+            return Err(BridgeError::Protocol("callback pipe closed".to_string()));
+        }
         Ok(decode_jsonl(&line)?)
+    }
+
+    pub fn next_callback_event(&mut self) -> Result<BridgeEventMessage> {
+        match self.next_callback_mirror()? {
+            Message::CallbackMirror { seq, name, args } => Ok(BridgeEventMessage {
+                seq,
+                event: BridgeEvent::from_name_args(name, args)?,
+            }),
+            other => Err(BridgeError::Protocol(format!(
+                "expected callback_mirror, got {other:?}"
+            ))),
+        }
     }
 
     pub fn write_callback_reply(&mut self, reply: BridgeReply) -> Result<()> {
@@ -189,6 +239,32 @@ impl BridgeClient {
     }
 
     fn wait_for_reply<T: DeserializeOwned>(&mut self, id: u64) -> Result<T> {
+        if let Some(pos) = self.queued_events.iter().position(|message| {
+            matches!(
+                message,
+                Message::Reply {
+                    id: reply_id,
+                    ..
+                } if *reply_id == id
+            )
+        }) {
+            let message = self.queued_events.remove(pos).expect("queued reply exists");
+            if let Message::Reply {
+                id: reply_id,
+                ok,
+                result,
+                error,
+            } = message
+            {
+                return decode_reply(BridgeReply {
+                    id: reply_id,
+                    ok,
+                    result,
+                    error,
+                });
+            }
+        }
+
         loop {
             match self.read_control()? {
                 Message::Reply {
@@ -236,4 +312,135 @@ fn decode_reply<T: DeserializeOwned>(reply: BridgeReply) -> Result<T> {
 
 fn open_pipe<P: AsRef<Path>>(path: P) -> io::Result<File> {
     OpenOptions::new().read(true).write(true).open(path)
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SpawnUnitRequest {
+    pub player: PlayerId,
+    pub unit_type: InfoType,
+    pub plot: Plot,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unit_ai: Option<InfoType>,
+}
+
+impl SpawnUnitRequest {
+    pub fn new<P, U>(player: P, unit_type: U, plot: Plot) -> Self
+    where
+        P: Into<PlayerId>,
+        U: Into<InfoType>,
+    {
+        Self {
+            player: player.into(),
+            unit_type: unit_type.into(),
+            plot,
+            unit_ai: None,
+        }
+    }
+
+    pub fn with_unit_ai<U>(mut self, unit_ai: U) -> Self
+    where
+        U: Into<InfoType>,
+    {
+        self.unit_ai = Some(unit_ai.into());
+        self
+    }
+
+    fn into_args(self) -> Result<Value> {
+        let mut value = serde_json::to_value(self)?;
+        let object = value.as_object_mut().ok_or_else(|| {
+            BridgeError::Protocol("spawn_unit args were not an object".to_string())
+        })?;
+        if let Some(plot) = object.remove("plot") {
+            let plot = plot.as_object().ok_or_else(|| {
+                BridgeError::Protocol("spawn_unit plot was not an object".to_string())
+            })?;
+            let x = plot
+                .get("x")
+                .cloned()
+                .ok_or_else(|| BridgeError::Protocol("spawn_unit plot missing x".to_string()))?;
+            let y = plot
+                .get("y")
+                .cloned()
+                .ok_or_else(|| BridgeError::Protocol("spawn_unit plot missing y".to_string()))?;
+            object.insert("x".to_string(), x);
+            object.insert("y".to_string(), y);
+        }
+        Ok(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpawnedUnit {
+    pub unit: UnitRef,
+    pub plot: Plot,
+}
+
+#[derive(Deserialize)]
+struct GameTurnResult {
+    turn: i32,
+}
+
+#[derive(Deserialize)]
+struct PlayerGoldResult {
+    gold: i32,
+}
+
+#[derive(Deserialize)]
+struct ModStateResult {
+    json: String,
+}
+
+#[derive(Deserialize)]
+struct SetModStateResult {
+    bytes: usize,
+}
+
+#[derive(Deserialize)]
+struct SpawnUnitResult {
+    player: i32,
+    unit: i32,
+    x: i32,
+    y: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+
+    #[derive(Debug, PartialEq, Serialize, Deserialize)]
+    struct TestState {
+        schema_version: u32,
+        enabled: bool,
+    }
+
+    #[test]
+    fn spawn_unit_request_flattens_plot() {
+        let request =
+            SpawnUnitRequest::new(0, "UNIT_WARRIOR", Plot::new(3, 4)).with_unit_ai("UNITAI_ATTACK");
+        let args = request.into_args().unwrap();
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 0,
+                "unit_type": "UNIT_WARRIOR",
+                "x": 3,
+                "y": 4,
+                "unit_ai": "UNITAI_ATTACK"
+            })
+        );
+    }
+
+    #[test]
+    fn mod_state_round_trips_through_json() {
+        let state = TestState {
+            schema_version: 1,
+            enabled: true,
+        };
+        let json_state = serde_json::to_string(&state).unwrap();
+        let decoded: TestState = serde_json::from_str(&json_state).unwrap();
+
+        assert_eq!(decoded, state);
+    }
 }

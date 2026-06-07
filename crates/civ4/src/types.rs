@@ -3,8 +3,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PlayerId(pub i32);
 
+impl From<i32> for PlayerId {
+    fn from(value: i32) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TeamId(pub i32);
+
+impl From<i32> for TeamId {
+    fn from(value: i32) -> Self {
+        Self(value)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CityRef {
@@ -22,4 +34,35 @@ pub struct UnitRef {
 pub struct Plot {
     pub x: i32,
     pub y: i32,
+}
+
+impl Plot {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum InfoType {
+    Id(i32),
+    Name(String),
+}
+
+impl From<i32> for InfoType {
+    fn from(value: i32) -> Self {
+        Self::Id(value)
+    }
+}
+
+impl From<&str> for InfoType {
+    fn from(value: &str) -> Self {
+        Self::Name(value.to_string())
+    }
+}
+
+impl From<String> for InfoType {
+    fn from(value: String) -> Self {
+        Self::Name(value)
+    }
 }
