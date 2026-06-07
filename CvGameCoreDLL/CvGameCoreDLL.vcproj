@@ -47,7 +47,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="boost_python-vc71-mt-gd-1_32.lib winmm.lib"
-				OutputFile="../Beyond the Sword/Assets/CvGameCoreDLL_DEBUG.dll"
+				OutputFile="../../Beyond the Sword/Assets/CvGameCoreDLL_DEBUG.dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="Python24\libs;&quot;boost-1.32.0\libs\&quot;"
 				GenerateDebugInformation="TRUE"
@@ -110,7 +110,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="boost_python-vc71-mt-1_32.lib  winmm.lib"
-				OutputFile="../Beyond the Sword/Assets/CvGameCoreDLL_RELEASE.dll"
+				OutputFile="../../Beyond the Sword/Assets/CvGameCoreDLL_RELEASE.dll"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="Python24\libs;&quot;boost-1.32.0\libs\&quot;"
 				GenerateDebugInformation="TRUE"
@@ -175,7 +175,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="boost_python-vc71-mt-1_32.lib  winmm.lib"
-				OutputFile="../Beyond the Sword/Assets/CvGameCoreDLL.dll"
+				OutputFile="../../Beyond the Sword/Assets/CvGameCoreDLL.dll"
 				LinkIncremental="1"
 				AdditionalLibraryDirectories="Python24\libs;&quot;boost-1.32.0\libs\&quot;"
 				GenerateDebugInformation="TRUE"
@@ -239,7 +239,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="boost_python-vc71-mt-1_32.lib winmm.lib msvcprt.lib"
-				OutputFile="../Beyond the Sword/Assets/CvGameCoreDLL.dll"
+				OutputFile="../../Beyond the Sword/Assets/CvGameCoreDLL.dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="Python24\libs;&quot;boost-1.32.0\libs\&quot;"
 				IgnoreDefaultLibraryNames="msvcprtd.lib"

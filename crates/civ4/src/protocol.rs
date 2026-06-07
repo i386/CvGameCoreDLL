@@ -103,7 +103,8 @@ mod tests {
 
     #[test]
     fn decodes_reply() {
-        let decoded = decode_jsonl(r#"{"type":"reply","id":7,"ok":true,"result":{"gold":500}}"#).unwrap();
+        let decoded =
+            decode_jsonl(r#"{"type":"reply","id":7,"ok":true,"result":{"gold":500}}"#).unwrap();
         match decoded {
             Message::Reply { id, ok, .. } => {
                 assert_eq!(id, 7);

@@ -73,9 +73,16 @@ jobs:
       - name: Build Final Release
         run: scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust workspace
+        shell: bash
+        run: cargo build --workspace --all-targets
+
       - name: Upload CvGameCoreDLL
         uses: actions/upload-artifact@v7
         with:
           name: CvGameCoreDLL-win32
-          path: artifacts/CvGameCoreDLL.dll
+          path: CvGameCoreDLL/artifacts/CvGameCoreDLL.dll
           if-no-files-found: error

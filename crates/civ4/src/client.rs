@@ -52,7 +52,10 @@ impl BridgeClient {
         )
     }
 
-    pub fn connect<P: AsRef<Path>, Q: AsRef<Path>>(control_pipe: P, callback_pipe: Q) -> Result<Self> {
+    pub fn connect<P: AsRef<Path>, Q: AsRef<Path>>(
+        control_pipe: P,
+        callback_pipe: Q,
+    ) -> Result<Self> {
         let control = open_pipe(control_pipe)?;
         let callbacks = open_pipe(callback_pipe)?;
 
@@ -105,7 +108,10 @@ impl BridgeClient {
     }
 
     pub fn set_player_gold(&mut self, player: i32, value: i32) -> Result<i32> {
-        let result: Value = self.command("set_player_gold", json!({ "player": player, "value": value }))?;
+        let result: Value = self.command(
+            "set_player_gold",
+            json!({ "player": player, "value": value }),
+        )?;
         result
             .get("gold")
             .and_then(Value::as_i64)
@@ -198,7 +204,9 @@ impl BridgeClient {
                         error,
                     })
                 }
-                msg @ Message::Event { .. } | msg @ Message::Hello { .. } | msg @ Message::Log { .. } => {
+                msg @ Message::Event { .. }
+                | msg @ Message::Hello { .. }
+                | msg @ Message::Log { .. } => {
                     self.queued_events.push_back(msg);
                 }
                 other => self.queued_events.push_back(other),
@@ -215,7 +223,9 @@ fn decode_reply<T: DeserializeOwned>(reply: BridgeReply) -> Result<T> {
                 message: error.message,
             });
         }
-        return Err(BridgeError::Protocol("reply failed without error body".to_string()));
+        return Err(BridgeError::Protocol(
+            "reply failed without error body".to_string(),
+        ));
     }
 
     let result = reply

@@ -43,8 +43,15 @@ The workflow downloads and extracts that archive, then runs:
 scripts\build_vc71_nmake.bat "%RUNNER_TEMP%\vc71"
 ```
 
-The output artifact is:
+The DLL output artifact is:
 
 ```text
-artifacts/CvGameCoreDLL.dll
+CvGameCoreDLL/artifacts/CvGameCoreDLL.dll
+```
+
+After the DLL build succeeds, the workflow builds the Rust workspace from the
+repository root:
+
+```cmd
+cargo build --workspace --all-targets
 ```

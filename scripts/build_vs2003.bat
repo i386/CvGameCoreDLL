@@ -5,7 +5,8 @@ set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Final Release|Win32"
 
 set "ROOT=%~dp0.."
-pushd "%ROOT%" || exit /b 1
+set "CVGAME_ROOT=%ROOT%\CvGameCoreDLL"
+pushd "%CVGAME_ROOT%" || exit /b 1
 
 set "DEVENV=%VS71COMNTOOLS%..\IDE\devenv.com"
 if exist "%DEVENV%" goto :have_devenv
@@ -38,7 +39,7 @@ if not exist "Python24\libs\python24.lib" (
   exit /b 1
 )
 
-if not exist "..\Beyond the Sword\Assets" mkdir "..\Beyond the Sword\Assets"
+if not exist "..\..\Beyond the Sword\Assets" mkdir "..\..\Beyond the Sword\Assets"
 if not exist "artifacts" mkdir "artifacts"
 
 echo Building CvGameCoreDLL.vcproj %CONFIG%
@@ -48,13 +49,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist "..\Beyond the Sword\Assets\CvGameCoreDLL.dll" (
+if not exist "..\..\Beyond the Sword\Assets\CvGameCoreDLL.dll" (
   echo Build completed but CvGameCoreDLL.dll was not found.
   popd
   exit /b 1
 )
 
-copy /y "..\Beyond the Sword\Assets\CvGameCoreDLL.dll" "artifacts\CvGameCoreDLL.dll" > nul
+copy /y "..\..\Beyond the Sword\Assets\CvGameCoreDLL.dll" "artifacts\CvGameCoreDLL.dll" > nul
 
 popd
 endlocal

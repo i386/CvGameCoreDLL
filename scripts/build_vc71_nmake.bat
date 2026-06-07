@@ -6,7 +6,8 @@ if "%TOOLCHAIN_ROOT%"=="" set "TOOLCHAIN_ROOT=%VC71_ROOT%"
 if "%TOOLCHAIN_ROOT%"=="" set "TOOLCHAIN_ROOT=%RUNNER_TEMP%\vc71"
 
 set "ROOT=%~dp0.."
-pushd "%ROOT%" || exit /b 1
+set "CVGAME_ROOT=%ROOT%\CvGameCoreDLL"
+pushd "%CVGAME_ROOT%" || exit /b 1
 
 if not exist "%TOOLCHAIN_ROOT%" (
   echo VC7.1 toolchain root not found: %TOOLCHAIN_ROOT%

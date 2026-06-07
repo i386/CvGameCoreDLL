@@ -6,12 +6,8 @@ This repository contains the `CvGameCoreDLL` source from **Sid Meier's Civilizat
 
 ## Repository layout
 
-- `Cv*.cpp` / `Cv*.h` - core game, AI, map, player, team, city, unit, XML, and utility code.
-- `Cy*.cpp` / `Cy*.h` - Python wrapper and interface bindings.
-- `Boost-1.32.0/` - Boost headers and libraries used by the original toolchain.
-- `Python24/` - Python 2.4 headers and import libraries used by the game.
-- `CvGameCoreDLL.vcproj` - Visual Studio .NET 2003 project file.
-- `Makefile.vc71` - command-line `nmake` build for the VC7.1 toolchain.
+- `CvGameCoreDLL/` - native DLL source, VC7.1 project, command-line makefile, Boost, Python 2.4, and C++ vendored dependencies.
+- `crates/` - Rust workspace crates for the Civ4 bridge client/protocol.
 - `scripts/` - helper scripts for preparing/building with the legacy compiler.
 - `BUILDING.md` - GitHub Actions toolchain preparation details.
 
@@ -39,18 +35,19 @@ If no argument is provided, the script checks `VC71_ROOT`, then `%RUNNER_TEMP%\v
 The `nmake` build currently supports:
 
 ```cmd
+cd CvGameCoreDLL
 nmake /nologo /f Makefile.vc71 CFG=FinalRelease
 ```
 
 The output DLL is written to:
 
 ```text
-artifacts/CvGameCoreDLL.dll
+CvGameCoreDLL/artifacts/CvGameCoreDLL.dll
 ```
 
 ## GitHub Actions build
 
-The workflow in `.github/workflows/build-cvgamedll.yml` builds the DLL on `windows-2022`.
+The workflow in `.github/workflows/build-cvgamedll.yml` builds the native DLL first, then builds the Rust workspace.
 
 Because hosted runners do not include the VC7.1 compiler, CI prepares the legacy toolchain with:
 
@@ -59,6 +56,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\prepare_vc71_toolcha
 ```
 
 See `BUILDING.md` for details on toolchain archive layouts, repository variables, and the optional `VC71_TOOLCHAIN_URL` secret.
+
+## Building the Rust workspace
+
+From the repository root:
+
+```cmd
+cargo build --workspace --all-targets
+```
 
 ## Installing the DLL
 
