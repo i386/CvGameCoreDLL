@@ -185,6 +185,19 @@ impl BridgeClient {
         self.query("get_player_state", json!({ "player": player.0 }))
     }
 
+    pub fn list_players(&mut self) -> Result<Vec<PlayerState>> {
+        let result: PlayersResult = self.query("list_players", json!({}))?;
+        Ok(result.players)
+    }
+
+    pub fn list_alive_players(&mut self) -> Result<Vec<PlayerState>> {
+        Ok(self
+            .list_players()?
+            .into_iter()
+            .filter(|player| player.alive)
+            .collect())
+    }
+
     pub fn get_map_state(&mut self) -> Result<MapState> {
         self.query("get_map_state", json!({}))
     }
@@ -202,11 +215,41 @@ impl BridgeClient {
         )
     }
 
+    pub fn list_player_cities<P: Into<PlayerId>>(&mut self, player: P) -> Result<Vec<CityState>> {
+        let player = player.into();
+        let result: PlayerCitiesResult =
+            self.query("list_player_cities", json!({ "player": player.0 }))?;
+        Ok(result.cities)
+    }
+
+    pub fn list_all_cities(&mut self) -> Result<Vec<CityState>> {
+        let mut cities = Vec::new();
+        for player in self.list_alive_players()? {
+            cities.extend(self.list_player_cities(player.player_id())?);
+        }
+        Ok(cities)
+    }
+
     pub fn get_unit_state(&mut self, unit: UnitRef) -> Result<UnitState> {
         self.query(
             "get_unit_state",
             json!({ "player": unit.player, "unit": unit.id }),
         )
+    }
+
+    pub fn list_player_units<P: Into<PlayerId>>(&mut self, player: P) -> Result<Vec<UnitState>> {
+        let player = player.into();
+        let result: PlayerUnitsResult =
+            self.query("list_player_units", json!({ "player": player.0 }))?;
+        Ok(result.units)
+    }
+
+    pub fn list_all_units(&mut self) -> Result<Vec<UnitState>> {
+        let mut units = Vec::new();
+        for player in self.list_alive_players()? {
+            units.extend(self.list_player_units(player.player_id())?);
+        }
+        Ok(units)
     }
 
     pub fn set_player_gold<P: Into<PlayerId>>(&mut self, player: P, value: i32) -> Result<i32> {
@@ -734,6 +777,21 @@ struct PlayerGoldResult {
 }
 
 #[derive(Deserialize)]
+struct PlayersResult {
+    players: Vec<PlayerState>,
+}
+
+#[derive(Deserialize)]
+struct PlayerCitiesResult {
+    cities: Vec<CityState>,
+}
+
+#[derive(Deserialize)]
+struct PlayerUnitsResult {
+    units: Vec<UnitState>,
+}
+
+#[derive(Deserialize)]
 struct ModStateResult {
     json: String,
 }
@@ -813,5 +871,53 @@ mod tests {
         let decoded: TestState = serde_json::from_str(&json_state).unwrap();
 
         assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn decodes_collection_query_results() {
+        let players: PlayersResult = serde_json::from_value(json!({
+            "players": [{
+                "player": 0,
+                "team": 0,
+                "alive": true,
+                "human": true,
+                "gold": 50,
+                "cities": 1,
+                "units": 2,
+                "population": 3
+            }]
+        }))
+        .unwrap();
+        assert_eq!(players.players[0].player_id(), PlayerId(0));
+
+        let cities: PlayerCitiesResult = serde_json::from_value(json!({
+            "player": 0,
+            "cities": [{
+                "player": 0,
+                "city": 7,
+                "x": 10,
+                "y": 11,
+                "population": 4,
+                "culture": 99
+            }]
+        }))
+        .unwrap();
+        assert_eq!(cities.cities[0].city_ref(), CityRef::new(0, 7));
+
+        let units: PlayerUnitsResult = serde_json::from_value(json!({
+            "player": 0,
+            "units": [{
+                "player": 0,
+                "unit": 42,
+                "unit_type": 1,
+                "x": 10,
+                "y": 11,
+                "damage": 0,
+                "experience": 2,
+                "level": 1
+            }]
+        }))
+        .unwrap();
+        assert_eq!(units.units[0].unit_ref(), UnitRef::new(0, 42));
     }
 }

@@ -451,6 +451,75 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makePlayersListReply(int iId)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pPlayersValue = json_value_init_array();
+		JSON_Array* pPlayers = json_value_get_array(pPlayersValue);
+
+		for (int iPlayer = 0; iPlayer < GC.getMAX_PLAYERS(); ++iPlayer)
+		{
+			CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+			if (!kPlayer.isEverAlive())
+			{
+				continue;
+			}
+
+			JSON_Value* pPlayerValue = json_value_init_object();
+			JSON_Object* pPlayer = json_value_get_object(pPlayerValue);
+			setPlayerState(pPlayer, iPlayer);
+			json_array_append_value(pPlayers, pPlayerValue);
+		}
+
+		json_object_set_value(pResult, "players", pPlayersValue);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCitiesListReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pCitiesValue = json_value_init_array();
+		JSON_Array* pCities = json_value_get_array(pCitiesValue);
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		int iLoop = 0;
+
+		for (CvCity* pCity = kPlayer.firstCity(&iLoop); pCity != NULL; pCity = kPlayer.nextCity(&iLoop))
+		{
+			JSON_Value* pCityValue = json_value_init_object();
+			JSON_Object* pCityObject = json_value_get_object(pCityValue);
+			setCityState(pCityObject, pCity);
+			json_array_append_value(pCities, pCityValue);
+		}
+
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_value(pResult, "cities", pCitiesValue);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeUnitsListReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pUnitsValue = json_value_init_array();
+		JSON_Array* pUnits = json_value_get_array(pUnitsValue);
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		int iLoop = 0;
+
+		for (CvUnit* pUnit = kPlayer.firstUnit(&iLoop); pUnit != NULL; pUnit = kPlayer.nextUnit(&iLoop))
+		{
+			JSON_Value* pUnitValue = json_value_init_object();
+			JSON_Object* pUnitObject = json_value_get_object(pUnitValue);
+			setUnitState(pUnitObject, pUnit);
+			json_array_append_value(pUnits, pUnitValue);
+		}
+
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_value(pResult, "units", pUnitsValue);
+		return serializeAndFree(pValue);
+	}
+
 	CvString handleQuery(int iId, const char* szName, JSON_Object* pArgs)
 	{
 		if (strcmp(szName, "get_game_turn") == 0)
@@ -480,6 +549,11 @@ namespace
 				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 			}
 			return makePlayerStateReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "list_players") == 0)
+		{
+			return makePlayersListReply(iId);
 		}
 
 		if (strcmp(szName, "get_map_state") == 0)
@@ -517,6 +591,16 @@ namespace
 			return makeCityStateReply(iId, pCity);
 		}
 
+		if (strcmp(szName, "list_player_cities") == 0)
+		{
+			int iPlayer = -1;
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makeCitiesListReply(iId, iPlayer);
+		}
+
 		if (strcmp(szName, "get_unit_state") == 0)
 		{
 			int iPlayer = -1;
@@ -527,6 +611,16 @@ namespace
 				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
 			}
 			return makeUnitStateReply(iId, pUnit);
+		}
+
+		if (strcmp(szName, "list_player_units") == 0)
+		{
+			int iPlayer = -1;
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makeUnitsListReply(iId, iPlayer);
 		}
 
 		if (strcmp(szName, "get_mod_state") == 0)
