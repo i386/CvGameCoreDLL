@@ -18,6 +18,31 @@ Set `CVGAME_BRIDGE_PIPE_PREFIX=Name` to use:
 
 Each message is one JSON object followed by `\n`.
 
+Rust clients should perform the hello handshake before registering gameplay behavior:
+
+```rust
+use civ4::{BridgeClient, Result};
+
+fn connect() -> Result<BridgeClient> {
+    let (client, hello) = BridgeClient::connect_default_with_handshake()?;
+    let missing = hello.missing_capabilities(&[
+        "events",
+        "queries",
+        "commands",
+        "callbacks",
+        "callback_requests",
+        "mod_state",
+    ]);
+    if !missing.is_empty() {
+        return Err(civ4::BridgeError::Protocol(format!(
+            "bridge is missing capabilities: {}",
+            missing.join(", ")
+        )));
+    }
+    Ok(client)
+}
+```
+
 ## Messages
 
 ```json
@@ -132,6 +157,7 @@ callbacks.run_until_stopped(&mut client)?;
 
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
+- `connect_default_with_handshake`, `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
 - `get_game_turn`, `get_player_gold`, `set_player_gold`
 - `get_player_state`, `change_player_gold`
 - `get_map_state`, `get_plot_state`

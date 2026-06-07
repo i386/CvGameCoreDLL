@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub const BRIDGE_PROTOCOL_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -52,6 +54,54 @@ pub enum Message {
         level: String,
         message: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BridgeHello {
+    pub protocol: u32,
+    pub side: String,
+    pub capabilities: Vec<String>,
+}
+
+impl BridgeHello {
+    pub fn has_capability(&self, capability: &str) -> bool {
+        self.capabilities
+            .iter()
+            .any(|available| available == capability)
+    }
+
+    pub fn missing_capabilities<'a>(&self, required: &'a [&'a str]) -> Vec<&'a str> {
+        required
+            .iter()
+            .copied()
+            .filter(|capability| !self.has_capability(capability))
+            .collect()
+    }
+
+    pub fn into_message(self) -> Message {
+        Message::Hello {
+            protocol: self.protocol,
+            side: self.side,
+            capabilities: self.capabilities,
+        }
+    }
+}
+
+impl Message {
+    pub fn into_hello(self) -> Option<BridgeHello> {
+        match self {
+            Self::Hello {
+                protocol,
+                side,
+                capabilities,
+            } => Some(BridgeHello {
+                protocol,
+                side,
+                capabilities,
+            }),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,5 +205,23 @@ mod tests {
             }
             other => panic!("unexpected message: {other:?}"),
         }
+    }
+
+    #[test]
+    fn hello_reports_capabilities() {
+        let hello = decode_jsonl(
+            r#"{"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","callback_requests"]}"#,
+        )
+        .unwrap()
+        .into_hello()
+        .unwrap();
+
+        assert_eq!(hello.protocol, BRIDGE_PROTOCOL_VERSION);
+        assert_eq!(hello.side, "dll");
+        assert!(hello.has_capability("queries"));
+        assert_eq!(
+            hello.missing_capabilities(&["queries", "commands", "callback_requests"]),
+            vec!["commands"]
+        );
     }
 }

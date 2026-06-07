@@ -10,5 +10,5 @@ pub use client::{
     SpawnUnitRequest, SpawnedUnit, UnitState,
 };
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
-pub use protocol::{BridgeReply, Message};
+pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};

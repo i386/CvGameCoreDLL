@@ -1,12 +1,15 @@
 use crate::events::{
     BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage,
 };
-use crate::protocol::{decode_jsonl, encode_jsonl, BridgeReply, Message};
+use crate::protocol::{
+    decode_jsonl, encode_jsonl, BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION,
+};
 use crate::types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::VecDeque;
+use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
@@ -33,6 +36,27 @@ impl From<serde_json::Error> for BridgeError {
     }
 }
 
+impl fmt::Display for BridgeError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(error) => write!(formatter, "I/O error: {error}"),
+            Self::Json(error) => write!(formatter, "JSON error: {error}"),
+            Self::Protocol(message) => write!(formatter, "bridge protocol error: {message}"),
+            Self::Bridge { code, message } => write!(formatter, "bridge error {code}: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for BridgeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(error) => Some(error),
+            Self::Json(error) => Some(error),
+            Self::Protocol(_) | Self::Bridge { .. } => None,
+        }
+    }
+}
+
 pub struct BridgeClient {
     next_id: u64,
     control_reader: BufReader<File>,
@@ -50,11 +74,23 @@ impl BridgeClient {
         )
     }
 
+    pub fn connect_default_with_handshake() -> Result<(Self, BridgeHello)> {
+        let mut client = Self::connect_default()?;
+        let hello = client.handshake()?;
+        Ok((client, hello))
+    }
+
     pub fn connect_with_prefix(prefix: &str) -> Result<Self> {
         Self::connect(
             format!(r"\\.\pipe\{prefix}-Control"),
             format!(r"\\.\pipe\{prefix}-Callbacks"),
         )
+    }
+
+    pub fn connect_with_prefix_and_handshake(prefix: &str) -> Result<(Self, BridgeHello)> {
+        let mut client = Self::connect_with_prefix(prefix)?;
+        let hello = client.handshake()?;
+        Ok((client, hello))
     }
 
     pub fn connect<P: AsRef<Path>, Q: AsRef<Path>>(
@@ -72,6 +108,44 @@ impl BridgeClient {
             callback_writer: callbacks,
             queued_events: VecDeque::new(),
         })
+    }
+
+    pub fn handshake(&mut self) -> Result<BridgeHello> {
+        let hello = self.next_hello()?;
+        if hello.protocol != BRIDGE_PROTOCOL_VERSION {
+            return Err(BridgeError::Protocol(format!(
+                "unsupported bridge protocol {}, expected {}",
+                hello.protocol, BRIDGE_PROTOCOL_VERSION
+            )));
+        }
+        if hello.side != "dll" {
+            return Err(BridgeError::Protocol(format!(
+                "unexpected bridge side {:?}, expected \"dll\"",
+                hello.side
+            )));
+        }
+        Ok(hello)
+    }
+
+    pub fn next_hello(&mut self) -> Result<BridgeHello> {
+        if let Some(pos) = self
+            .queued_events
+            .iter()
+            .position(|message| matches!(message, Message::Hello { .. }))
+        {
+            let message = self.queued_events.remove(pos).expect("queued hello exists");
+            return message
+                .into_hello()
+                .ok_or_else(|| BridgeError::Protocol("queued message was not hello".to_string()));
+        }
+
+        loop {
+            let message = self.read_control()?;
+            if let Some(hello) = message.clone().into_hello() {
+                return Ok(hello);
+            }
+            self.queued_events.push_back(message);
+        }
     }
 
     pub fn query<T: DeserializeOwned>(&mut self, name: &str, args: Value) -> Result<T> {
