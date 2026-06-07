@@ -277,6 +277,11 @@ namespace
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
 	}
 
+	bool validTeam(int iTeam)
+	{
+		return (iTeam >= 0 && iTeam < MAX_TEAMS);
+	}
+
 	bool canMutate()
 	{
 		return !GC.getGameINLINE().isGameMultiPlayer();
@@ -476,6 +481,45 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	void setPlayerOptionsState(JSON_Object* pResult, int iPlayer)
+	{
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		JSON_Value* pCivicsValue = json_value_init_array();
+		JSON_Array* pCivics = json_value_get_array(pCivicsValue);
+
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "team", kPlayer.getTeam());
+		json_object_set_number(pResult, "state_religion", kPlayer.getStateReligion());
+		json_object_set_number(pResult, "current_research", kPlayer.getCurrentResearch());
+
+		for (int iOption = 0; iOption < GC.getNumCivicOptionInfos(); ++iOption)
+		{
+			json_array_append_number(pCivics, kPlayer.getCivics((CivicOptionTypes)iOption));
+		}
+
+		json_object_set_value(pResult, "civics", pCivicsValue);
+	}
+
+	CvString makePlayerOptionsReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setPlayerOptionsState(pResult, iPlayer);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeTeamTechStateReply(int iId, int iTeam, int iTech)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvTeam& kTeam = GET_TEAM((TeamTypes)iTeam);
+		json_object_set_number(pResult, "team", iTeam);
+		json_object_set_number(pResult, "tech", iTech);
+		json_object_set_boolean(pResult, "has", kTeam.isHasTech((TechTypes)iTech) ? 1 : 0);
+		json_object_set_number(pResult, "progress", kTeam.getResearchProgress((TechTypes)iTech));
+		return serializeAndFree(pValue);
+	}
+
 	CvString makeCitiesListReply(int iId, int iPlayer)
 	{
 		JSON_Object* pResult = NULL;
@@ -554,6 +598,31 @@ namespace
 		if (strcmp(szName, "list_players") == 0)
 		{
 			return makePlayersListReply(iId);
+		}
+
+		if (strcmp(szName, "get_player_options") == 0)
+		{
+			int iPlayer = -1;
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makePlayerOptionsReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "get_team_tech_state") == 0)
+		{
+			int iTeam = -1;
+			if (!getInt(pArgs, "team", iTeam) || !validTeam(iTeam))
+			{
+				return makeErrorReply(iId, "bad_team", "team is missing or out of range");
+			}
+			int iTech = getInfoTypeFromValue(json_object_get_value(pArgs, "tech"));
+			if (iTech < 0 || iTech >= GC.getNumTechInfos())
+			{
+				return makeErrorReply(iId, "bad_tech", "tech is missing or out of range");
+			}
+			return makeTeamTechStateReply(iId, iTeam, iTech);
 		}
 
 		if (strcmp(szName, "get_map_state") == 0)
@@ -868,6 +937,148 @@ namespace
 		return szReply;
 	}
 
+	CvString handleSetPlayerCivic(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+
+		int iCivic = getInfoTypeFromValue(json_object_get_value(pArgs, "civic"));
+		if (iCivic < 0 || iCivic >= GC.getNumCivicInfos())
+		{
+			return makeErrorReply(iId, "bad_civic", "civic is missing or out of range");
+		}
+
+		int iOption = -1;
+		if (!getInt(pArgs, "civic_option", iOption))
+		{
+			iOption = GC.getCivicInfo((CivicTypes)iCivic).getCivicOptionType();
+		}
+		if (iOption < 0 || iOption >= GC.getNumCivicOptionInfos())
+		{
+			return makeErrorReply(iId, "bad_civic_option", "civic_option is out of range");
+		}
+		if (GC.getCivicInfo((CivicTypes)iCivic).getCivicOptionType() != iOption)
+		{
+			return makeErrorReply(iId, "bad_civic_option", "civic does not belong to civic_option");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setCivics((CivicOptionTypes)iOption, (CivicTypes)iCivic);
+		markGameDataDirty();
+		return makePlayerOptionsReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerStateReligion(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+
+		JSON_Value* pReligion = json_object_get_value(pArgs, "religion");
+		if (pReligion == NULL)
+		{
+			return makeErrorReply(iId, "bad_religion", "religion is missing or out of range");
+		}
+
+		int iReligion = getInfoTypeFromValue(pReligion);
+		if (iReligion < NO_RELIGION || iReligion >= GC.getNumReligionInfos())
+		{
+			return makeErrorReply(iId, "bad_religion", "religion is missing or out of range");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setLastStateReligion((ReligionTypes)iReligion);
+		markGameDataDirty();
+		return makePlayerOptionsReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerResearch(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+
+		int iTech = getInfoTypeFromValue(json_object_get_value(pArgs, "tech"));
+		if (iTech < 0 || iTech >= GC.getNumTechInfos())
+		{
+			return makeErrorReply(iId, "bad_tech", "tech is missing or out of range");
+		}
+
+		bool bOk = GET_PLAYER((PlayerTypes)iPlayer).pushResearch((TechTypes)iTech, true);
+		if (!bOk)
+		{
+			return makeErrorReply(iId, "research_rejected", "player cannot research tech");
+		}
+
+		markGameDataDirty();
+		return makePlayerOptionsReply(iId, iPlayer);
+	}
+
+	CvString handleSetTeamHasTech(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iPlayer = NO_PLAYER;
+		int iHas = 0;
+		if (!getInt(pArgs, "team", iTeam) || !validTeam(iTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team is missing or out of range");
+		}
+		getInt(pArgs, "player", iPlayer);
+		if (iPlayer != NO_PLAYER && !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is out of range");
+		}
+		if (!getInt(pArgs, "has", iHas))
+		{
+			return makeErrorReply(iId, "bad_has", "has is missing");
+		}
+
+		int iTech = getInfoTypeFromValue(json_object_get_value(pArgs, "tech"));
+		if (iTech < 0 || iTech >= GC.getNumTechInfos())
+		{
+			return makeErrorReply(iId, "bad_tech", "tech is missing or out of range");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).setHasTech((TechTypes)iTech, iHas != 0, (PlayerTypes)iPlayer, false, true);
+		markGameDataDirty();
+		return makeTeamTechStateReply(iId, iTeam, iTech);
+	}
+
+	CvString handleChangeTeamResearchProgress(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iPlayer = NO_PLAYER;
+		int iChange = 0;
+		if (!getInt(pArgs, "team", iTeam) || !validTeam(iTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team is missing or out of range");
+		}
+		getInt(pArgs, "player", iPlayer);
+		if (iPlayer != NO_PLAYER && !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		int iTech = getInfoTypeFromValue(json_object_get_value(pArgs, "tech"));
+		if (iTech < 0 || iTech >= GC.getNumTechInfos())
+		{
+			return makeErrorReply(iId, "bad_tech", "tech is missing or out of range");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).changeResearchProgress((TechTypes)iTech, iChange, (PlayerTypes)iPlayer);
+		markGameDataDirty();
+		return makeTeamTechStateReply(iId, iTeam, iTech);
+	}
+
 	CvString handleCommand(int iId, const char* szName, JSON_Object* pArgs)
 	{
 		if (!canMutate())
@@ -914,6 +1125,26 @@ namespace
 		if (strcmp(szName, "set_mod_state") == 0)
 		{
 			return handleSetModState(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_civic") == 0)
+		{
+			return handleSetPlayerCivic(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_state_religion") == 0)
+		{
+			return handleSetPlayerStateReligion(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_research") == 0)
+		{
+			return handleSetPlayerResearch(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_has_tech") == 0)
+		{
+			return handleSetTeamHasTech(iId, pArgs);
+		}
+		if (strcmp(szName, "change_team_research_progress") == 0)
+		{
+			return handleChangeTeamResearchProgress(iId, pArgs);
 		}
 
 		return makeErrorReply(iId, "unknown_command", "command name is not supported");

@@ -63,6 +63,8 @@ get_game_turn -> {"turn":42}
 get_player_gold {"player":0} -> {"gold":500}
 get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"human":true,"gold":500,"cities":3,"units":8,"population":12}
 list_players -> {"players":[player state, ...]}
+get_player_options {"player":0} -> {"player":0,"team":0,"state_religion":-1,"current_research":3,"civics":[1,2,3,4,5]}
+get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":7,"has":true,"progress":0}
 get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
 get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42}
@@ -87,10 +89,18 @@ change_unit_damage {"player":0,"unit":123,"change":-10} -> unit state
 set_unit_experience {"player":0,"unit":123,"value":5} -> unit state
 spawn_unit {"player":0,"unit_type":"UNIT_WARRIOR","x":10,"y":12} -> {"player":0,"unit":123,"x":10,"y":12}
 set_mod_state {"json":"{\"schema_version\":1}"} -> {"bytes":20}
+set_player_civic {"player":0,"civic":"CIVIC_SLAVERY"} -> player options
+set_player_state_religion {"player":0,"religion":"RELIGION_BUDDHISM"} -> player options
+set_player_research {"player":0,"tech":"TECH_BRONZE_WORKING"} -> player options
+set_team_has_tech {"team":0,"tech":"TECH_BRONZE_WORKING","has":1,"player":0} -> team tech state
+change_team_research_progress {"team":0,"tech":"TECH_BRONZE_WORKING","change":50,"player":0} -> team tech state
 ```
 
 `unit_type` and `unit_ai` for `spawn_unit` may be either numeric Civ4 info IDs or XML type names.
+`tech`, `civic`, and `religion` may also be either numeric Civ4 info IDs or XML type names.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
+If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
+Use religion `-1` with `set_player_state_religion` to clear a player's state religion.
 
 `set_mod_state` stores an opaque UTF-8 JSON string owned by the external Rust client:
 
@@ -162,7 +172,9 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 
 - `connect_default_with_handshake`, `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
 - `get_game_turn`, `get_player_gold`, `set_player_gold`
-- `get_player_state`, `list_players`, `list_alive_players`, `change_player_gold`
+- `get_player_state`, `get_player_options`, `list_players`, `list_alive_players`, `change_player_gold`
+- `set_player_civic`, `set_player_civic_for_option`, `set_player_state_religion`, `clear_player_state_religion`, `set_player_research`
+- `get_team_tech_state`, `set_team_has_tech`, `grant_team_tech`, `change_team_research_progress`
 - `get_map_state`, `get_plot_state`
 - `get_city_state`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `get_unit_state`, `list_player_units`, `list_all_units`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`

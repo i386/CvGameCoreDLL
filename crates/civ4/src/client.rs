@@ -198,6 +198,79 @@ impl BridgeClient {
             .collect())
     }
 
+    pub fn get_player_options<P: Into<PlayerId>>(&mut self, player: P) -> Result<PlayerOptions> {
+        let player = player.into();
+        self.query("get_player_options", json!({ "player": player.0 }))
+    }
+
+    pub fn set_player_civic<P, C>(&mut self, player: P, civic: C) -> Result<PlayerOptions>
+    where
+        P: Into<PlayerId>,
+        C: Into<InfoType>,
+    {
+        let player = player.into();
+        self.command(
+            "set_player_civic",
+            json!({ "player": player.0, "civic": civic.into() }),
+        )
+    }
+
+    pub fn set_player_civic_for_option<P, C>(
+        &mut self,
+        player: P,
+        civic_option: i32,
+        civic: C,
+    ) -> Result<PlayerOptions>
+    where
+        P: Into<PlayerId>,
+        C: Into<InfoType>,
+    {
+        let player = player.into();
+        self.command(
+            "set_player_civic",
+            json!({ "player": player.0, "civic_option": civic_option, "civic": civic.into() }),
+        )
+    }
+
+    pub fn set_player_state_religion<P, R>(
+        &mut self,
+        player: P,
+        religion: R,
+    ) -> Result<PlayerOptions>
+    where
+        P: Into<PlayerId>,
+        R: Into<InfoType>,
+    {
+        let player = player.into();
+        self.command(
+            "set_player_state_religion",
+            json!({ "player": player.0, "religion": religion.into() }),
+        )
+    }
+
+    pub fn clear_player_state_religion<P: Into<PlayerId>>(
+        &mut self,
+        player: P,
+    ) -> Result<PlayerOptions> {
+        let player = player.into();
+        self.command(
+            "set_player_state_religion",
+            json!({ "player": player.0, "religion": -1 }),
+        )
+    }
+
+    pub fn set_player_research<P, T>(&mut self, player: P, tech: T) -> Result<PlayerOptions>
+    where
+        P: Into<PlayerId>,
+        T: Into<InfoType>,
+    {
+        let player = player.into();
+        self.command(
+            "set_player_research",
+            json!({ "player": player.0, "tech": tech.into() }),
+        )
+    }
+
     pub fn get_map_state(&mut self) -> Result<MapState> {
         self.query("get_map_state", json!({}))
     }
@@ -250,6 +323,77 @@ impl BridgeClient {
             units.extend(self.list_player_units(player.player_id())?);
         }
         Ok(units)
+    }
+
+    pub fn get_team_tech_state<T, I>(&mut self, team: T, tech: I) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        self.query(
+            "get_team_tech_state",
+            json!({ "team": team.0, "tech": tech.into() }),
+        )
+    }
+
+    pub fn set_team_has_tech<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        has: bool,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        let mut args = json!({
+            "team": team.0,
+            "tech": tech.into(),
+            "has": if has { 1 } else { 0 },
+        });
+        if let Some(player) = player {
+            args["player"] = json!(player.0);
+        }
+        self.command("set_team_has_tech", args)
+    }
+
+    pub fn grant_team_tech<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        self.set_team_has_tech(team, tech, true, player)
+    }
+
+    pub fn change_team_research_progress<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        change: i32,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        let mut args = json!({
+            "team": team.0,
+            "tech": tech.into(),
+            "change": change,
+        });
+        if let Some(player) = player {
+            args["player"] = json!(player.0);
+        }
+        self.command("change_team_research_progress", args)
     }
 
     pub fn set_player_gold<P: Into<PlayerId>>(&mut self, player: P, value: i32) -> Result<i32> {
@@ -669,6 +813,33 @@ impl PlayerState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlayerOptions {
+    pub player: i32,
+    pub team: i32,
+    pub state_religion: i32,
+    pub current_research: i32,
+    pub civics: Vec<i32>,
+}
+
+impl PlayerOptions {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+
+    pub fn team_id(&self) -> TeamId {
+        TeamId(self.team)
+    }
+
+    pub fn state_religion(&self) -> Option<i32> {
+        (self.state_religion >= 0).then_some(self.state_religion)
+    }
+
+    pub fn current_research(&self) -> Option<i32> {
+        (self.current_research >= 0).then_some(self.current_research)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct MapState {
     pub width: i32,
     pub height: i32,
@@ -763,6 +934,20 @@ impl UnitState {
 
     pub fn plot(&self) -> Plot {
         Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct TeamTechState {
+    pub team: i32,
+    pub tech: i32,
+    pub has: bool,
+    pub progress: i32,
+}
+
+impl TeamTechState {
+    pub fn team_id(&self) -> TeamId {
+        TeamId(self.team)
     }
 }
 
@@ -919,5 +1104,36 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(units.units[0].unit_ref(), UnitRef::new(0, 42));
+    }
+
+    #[test]
+    fn decodes_player_options_and_team_tech_state() {
+        let options: PlayerOptions = serde_json::from_value(json!({
+            "player": 0,
+            "team": 0,
+            "state_religion": -1,
+            "current_research": 3,
+            "civics": [1, 2, 3, 4, 5]
+        }))
+        .unwrap();
+
+        assert_eq!(options.player_id(), PlayerId(0));
+        assert_eq!(options.team_id(), TeamId(0));
+        assert_eq!(options.state_religion(), None);
+        assert_eq!(options.current_research(), Some(3));
+        assert_eq!(options.civics, vec![1, 2, 3, 4, 5]);
+
+        let tech: TeamTechState = serde_json::from_value(json!({
+            "team": 0,
+            "tech": 7,
+            "has": true,
+            "progress": 42
+        }))
+        .unwrap();
+
+        assert_eq!(tech.team_id(), TeamId(0));
+        assert_eq!(tech.tech, 7);
+        assert!(tech.has);
+        assert_eq!(tech.progress, 42);
     }
 }
