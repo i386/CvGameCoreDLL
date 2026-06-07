@@ -77,6 +77,29 @@ This first bridge version mirrors selected Python event callbacks to the callbac
 `callback_mirror` messages before the normal in-process Python event call runs. Blocking
 callback replacement is intentionally not enabled yet.
 
+The Rust `CallbackDispatcher` runs handlers over typed `callback_mirror` events. Handlers receive
+`&mut BridgeClient`, so they can query and command game state while reacting to callbacks:
+
+```rust
+use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
+
+let mut client = BridgeClient::connect_default()?;
+let mut callbacks = CallbackDispatcher::new();
+
+callbacks.on_name("begin_player_turn", |client, event| {
+    if let BridgeEvent::BeginPlayerTurn { player, .. } = &event.event {
+        let state = client.get_player_state(*player)?;
+        if state.gold < 100 {
+            client.set_player_gold(*player, 100)?;
+        }
+    }
+    Ok(CallbackControl::Continue)
+});
+
+callbacks.on_name("pre_save", |_client, _event| Ok(CallbackControl::Stop));
+callbacks.run_until_stopped(&mut client)?;
+```
+
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
 - `get_game_turn`, `get_player_gold`, `set_player_gold`
@@ -87,3 +110,4 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `spawn_unit`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `next_bridge_event` and `next_callback_event`
+- `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`

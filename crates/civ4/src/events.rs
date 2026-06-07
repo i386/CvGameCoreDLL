@@ -127,6 +127,40 @@ pub enum BridgeEvent {
 }
 
 impl BridgeEvent {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Init => "init",
+            Self::Uninit => "uninit",
+            Self::GameStart => "game_start",
+            Self::GameEnd => "game_end",
+            Self::PreSave => "pre_save",
+            Self::BeginGameTurn { .. } => "begin_game_turn",
+            Self::EndGameTurn { .. } => "end_game_turn",
+            Self::BeginPlayerTurn { .. } => "begin_player_turn",
+            Self::EndPlayerTurn { .. } => "end_player_turn",
+            Self::CityBuilt { .. } => "city_built",
+            Self::CityRazed { .. } => "city_razed",
+            Self::CityAcquired { .. } => "city_acquired",
+            Self::CityAcquiredKept { .. } => "city_acquired_kept",
+            Self::CityLost { .. } => "city_lost",
+            Self::CityGrowth { .. } => "city_growth",
+            Self::UnitMove { .. } => "unit_move",
+            Self::UnitCreated { .. } => "unit_created",
+            Self::UnitBuilt { .. } => "unit_built",
+            Self::UnitKilled { .. } => "unit_killed",
+            Self::UnitLost { .. } => "unit_lost",
+            Self::BuildingBuilt { .. } => "building_built",
+            Self::TechAcquired { .. } => "tech_acquired",
+            Self::ReligionFounded { .. } => "religion_founded",
+            Self::GoldenAge { .. } => "golden_age",
+            Self::EndGoldenAge { .. } => "end_golden_age",
+            Self::ChangeWar { .. } => "change_war",
+            Self::PlayerGoldTrade { .. } => "player_gold_trade",
+            Self::Victory { .. } => "victory",
+            Self::Unknown { name, .. } => name,
+        }
+    }
+
     pub fn from_name_args(name: String, args: Value) -> serde_json::Result<Self> {
         Ok(match name.as_str() {
             "init" => Self::Init,
@@ -639,5 +673,16 @@ mod tests {
                 args: json!({ "payload": 1 }),
             }
         );
+        assert_eq!(event.name(), "future_event");
+    }
+
+    #[test]
+    fn returns_protocol_name_for_known_event() {
+        let event = BridgeEvent::BeginPlayerTurn {
+            turn: 7,
+            player: PlayerId(0),
+        };
+
+        assert_eq!(event.name(), "begin_player_turn");
     }
 }

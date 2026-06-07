@@ -1,8 +1,10 @@
+pub mod callbacks;
 pub mod client;
 pub mod events;
 pub mod protocol;
 pub mod types;
 
+pub use callbacks::{CallbackControl, CallbackDispatch, CallbackDispatcher};
 pub use client::{
     BridgeClient, BridgeError, CityState, MapState, PlayerState, PlotState, Result,
     SpawnUnitRequest, SpawnedUnit, UnitState,
