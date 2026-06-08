@@ -168,51 +168,107 @@ void CvEventReporter::endPlayerTurn(int iGameTurn, PlayerTypes ePlayer)
 
 void CvEventReporter::firstContact(TeamTypes eTeamID1, TeamTypes eTeamID2)
 {
+	CvString szArgs;
+	szArgs.Format("{\"team\":%d,\"other_team\":%d}", eTeamID1, eTeamID2);
+	bridgePayload("first_contact", szArgs);
 	m_kPythonEventMgr.reportFirstContact(eTeamID1, eTeamID2);
 }
 
 void CvEventReporter::combatResult(CvUnit* pWinner, CvUnit* pLoser)
 {
+	if (pWinner != NULL && pLoser != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"winner_player\":%d,\"winner_unit\":%d,\"winner_unit_type\":%d,\"winner_x\":%d,\"winner_y\":%d,\"loser_player\":%d,\"loser_unit\":%d,\"loser_unit_type\":%d,\"loser_x\":%d,\"loser_y\":%d}",
+			pWinner->getOwnerINLINE(), pWinner->getID(), pWinner->getUnitType(), pWinner->getX_INLINE(), pWinner->getY_INLINE(),
+			pLoser->getOwnerINLINE(), pLoser->getID(), pLoser->getUnitType(), pLoser->getX_INLINE(), pLoser->getY_INLINE());
+		bridgePayload("combat_result", szArgs);
+	}
 	m_kPythonEventMgr.reportCombatResult(pWinner, pLoser);
 }
 
 void CvEventReporter::improvementBuilt(int iImprovementType, int iX, int iY)
 {
+	CvString szArgs;
+	szArgs.Format("{\"improvement\":%d,\"x\":%d,\"y\":%d}", iImprovementType, iX, iY);
+	bridgePayload("improvement_built", szArgs);
 	m_kPythonEventMgr.reportImprovementBuilt(iImprovementType, iX, iY);
 }
 
 void CvEventReporter::improvementDestroyed(int iImprovementType, int iPlayer, int iX, int iY)
 {
+	CvString szArgs;
+	szArgs.Format("{\"improvement\":%d,\"player\":%d,\"x\":%d,\"y\":%d}", iImprovementType, iPlayer, iX, iY);
+	bridgePayload("improvement_destroyed", szArgs);
 	m_kPythonEventMgr.reportImprovementDestroyed(iImprovementType, iPlayer, iX, iY);
 }
 
 void CvEventReporter::routeBuilt(int iRouteType, int iX, int iY)
 {
+	CvString szArgs;
+	szArgs.Format("{\"route\":%d,\"x\":%d,\"y\":%d}", iRouteType, iX, iY);
+	bridgePayload("route_built", szArgs);
 	m_kPythonEventMgr.reportRouteBuilt(iRouteType, iX, iY);
 }
 
 void CvEventReporter::plotRevealed(CvPlot *pPlot, TeamTypes eTeam)
 {
+	if (pPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"x\":%d,\"y\":%d,\"team\":%d}", pPlot->getX_INLINE(), pPlot->getY_INLINE(), eTeam);
+		bridgePayload("plot_revealed", szArgs);
+	}
 	m_kPythonEventMgr.reportPlotRevealed(pPlot, eTeam);
 }
 
 void CvEventReporter::plotFeatureRemoved(CvPlot *pPlot, FeatureTypes eFeature, CvCity* pCity)
 {
+	if (pPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"x\":%d,\"y\":%d,\"feature\":%d,\"city_player\":%d,\"city\":%d}",
+			pPlot->getX_INLINE(), pPlot->getY_INLINE(), eFeature,
+			pCity ? pCity->getOwnerINLINE() : -1, pCity ? pCity->getID() : -1);
+		bridgePayload("plot_feature_removed", szArgs);
+	}
 	m_kPythonEventMgr.reportPlotFeatureRemoved(pPlot, eFeature, pCity);
 }
 
 void CvEventReporter::plotPicked(CvPlot *pPlot)
 {
+	if (pPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"x\":%d,\"y\":%d}", pPlot->getX_INLINE(), pPlot->getY_INLINE());
+		bridgePayload("plot_picked", szArgs);
+	}
 	m_kPythonEventMgr.reportPlotPicked(pPlot);
 }
 
 void CvEventReporter::nukeExplosion(CvPlot *pPlot, CvUnit* pNukeUnit)
 {
+	if (pPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"x\":%d,\"y\":%d,\"player\":%d,\"unit\":%d,\"unit_type\":%d}",
+			pPlot->getX_INLINE(), pPlot->getY_INLINE(),
+			pNukeUnit ? pNukeUnit->getOwnerINLINE() : -1,
+			pNukeUnit ? pNukeUnit->getID() : -1,
+			pNukeUnit ? pNukeUnit->getUnitType() : -1);
+		bridgePayload("nuke_explosion", szArgs);
+	}
 	m_kPythonEventMgr.reportNukeExplosion(pPlot, pNukeUnit);
 }
 
 void CvEventReporter::gotoPlotSet(CvPlot *pPlot, PlayerTypes ePlayer)
 {
+	if (pPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"x\":%d,\"y\":%d,\"player\":%d}", pPlot->getX_INLINE(), pPlot->getY_INLINE(), ePlayer);
+		bridgePayload("goto_plot_set", szArgs);
+	}
 	m_kPythonEventMgr.reportGotoPlotSet(pPlot, ePlayer);
 }
 
@@ -275,6 +331,12 @@ void CvEventReporter::cityLost( CvCity *pCity)
 
 void CvEventReporter::cultureExpansion( CvCity *pCity, PlayerTypes ePlayer )
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", ePlayer, pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("culture_expansion", szArgs);
+	}
 	m_kPythonEventMgr.reportCultureExpansion(pCity, ePlayer);
 }
 
@@ -291,31 +353,67 @@ void CvEventReporter::cityGrowth(CvCity *pCity, PlayerTypes ePlayer)
 
 void CvEventReporter::cityDoTurn( CvCity *pCity, PlayerTypes ePlayer )
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", ePlayer, pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_do_turn", szArgs);
+	}
 	m_kPythonEventMgr.reportCityProduction(pCity, ePlayer);
 }
 
 void CvEventReporter::cityBuildingUnit(CvCity* pCity, UnitTypes eUnitType)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"unit_type\":%d}", pCity->getOwnerINLINE(), pCity->getID(), eUnitType);
+		bridgePayload("city_building_unit", szArgs);
+	}
 	m_kPythonEventMgr.reportCityBuildingUnit(pCity, eUnitType);
 }
 
 void CvEventReporter::cityBuildingBuilding(CvCity* pCity, BuildingTypes eBuildingType)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"building\":%d}", pCity->getOwnerINLINE(), pCity->getID(), eBuildingType);
+		bridgePayload("city_building_building", szArgs);
+	}
 	m_kPythonEventMgr.reportCityBuildingBuilding(pCity, eBuildingType);
 }
 
 void CvEventReporter::cityRename(CvCity* pCity)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d}", pCity->getOwnerINLINE(), pCity->getID(), pCity->getX_INLINE(), pCity->getY_INLINE());
+		bridgePayload("city_rename", szArgs);
+	}
 	m_kPythonEventMgr.reportCityRename(pCity);
 }
 
 void CvEventReporter::cityHurry(CvCity* pCity, HurryTypes eHurry)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"hurry\":%d}", pCity->getOwnerINLINE(), pCity->getID(), eHurry);
+		bridgePayload("city_hurry", szArgs);
+	}
 	m_kPythonEventMgr.reportCityHurry(pCity, eHurry);
 }
 
 void CvEventReporter::selectionGroupPushMission(CvSelectionGroup* pSelectionGroup, MissionTypes eMission)
 {
+	if (pSelectionGroup != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"group\":%d,\"mission\":%d}", pSelectionGroup->getOwnerINLINE(), pSelectionGroup->getID(), eMission);
+		bridgePayload("selection_group_push_mission", szArgs);
+	}
 	m_kPythonEventMgr.reportSelectionGroupPushMission(pSelectionGroup, eMission);
 }
 
@@ -332,6 +430,12 @@ void CvEventReporter::unitMove(CvPlot* pPlot, CvUnit* pUnit, CvPlot* pOldPlot)
 
 void CvEventReporter::unitSetXY(CvPlot* pPlot, CvUnit* pUnit)
 {
+	if (pPlot != NULL && pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), pPlot->getX_INLINE(), pPlot->getY_INLINE());
+		bridgePayload("unit_set_xy", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitSetXY(pPlot, pUnit);
 }
 
@@ -383,46 +487,106 @@ void CvEventReporter::unitLost(CvUnit *pUnit)
 
 void CvEventReporter::unitPromoted(CvUnit *pUnit, PromotionTypes ePromotion)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"promotion\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), ePromotion, pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_promoted", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitPromoted(pUnit, ePromotion);
 }
 
 void CvEventReporter::unitSelected( CvUnit *pUnit)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_selected", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitSelected(pUnit);
 }
 
 void CvEventReporter::unitRename(CvUnit* pUnit)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_rename", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitRename(pUnit);
 }
 
 void CvEventReporter::unitPillage(CvUnit* pUnit, ImprovementTypes eImprovement, RouteTypes eRoute, PlayerTypes ePlayer)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"improvement\":%d,\"route\":%d,\"pillage_player\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), eImprovement, eRoute, ePlayer, pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_pillage", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitPillage(pUnit, eImprovement, eRoute, ePlayer);
 }
 
 void CvEventReporter::unitSpreadReligionAttempt(CvUnit* pUnit, ReligionTypes eReligion, bool bSuccess)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"religion\":%d,\"success\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), eReligion, bSuccess ? 1 : 0, pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_spread_religion_attempt", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitSpreadReligionAttempt(pUnit, eReligion, bSuccess);
 }
 
 void CvEventReporter::unitGifted(CvUnit* pUnit, PlayerTypes eGiftingPlayer, CvPlot* pPlotLocation)
 {
+	if (pUnit != NULL && pPlotLocation != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"gifting_player\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), eGiftingPlayer, pPlotLocation->getX_INLINE(), pPlotLocation->getY_INLINE());
+		bridgePayload("unit_gifted", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitGifted(pUnit, eGiftingPlayer, pPlotLocation);
 }
 
 void CvEventReporter::unitBuildImprovement(CvUnit* pUnit, BuildTypes eBuild, bool bFinished)
 {
+	if (pUnit != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"build\":%d,\"finished\":%d,\"x\":%d,\"y\":%d}", pUnit->getOwnerINLINE(), pUnit->getID(), pUnit->getUnitType(), eBuild, bFinished ? 1 : 0, pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("unit_build_improvement", szArgs);
+	}
 	m_kPythonEventMgr.reportUnitBuildImprovement(pUnit, eBuild, bFinished);
 }
 
 void CvEventReporter::goodyReceived(PlayerTypes ePlayer, CvPlot *pGoodyPlot, CvUnit *pGoodyUnit, GoodyTypes eGoodyType)
 {
+	if (pGoodyPlot != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"x\":%d,\"y\":%d,\"unit_player\":%d,\"unit\":%d,\"unit_type\":%d,\"goody\":%d}",
+			ePlayer, pGoodyPlot->getX_INLINE(), pGoodyPlot->getY_INLINE(),
+			pGoodyUnit ? pGoodyUnit->getOwnerINLINE() : -1,
+			pGoodyUnit ? pGoodyUnit->getID() : -1,
+			pGoodyUnit ? pGoodyUnit->getUnitType() : -1,
+			eGoodyType);
+		bridgePayload("goody_received", szArgs);
+	}
 	m_kPythonEventMgr.reportGoodyReceived(ePlayer, pGoodyPlot, pGoodyUnit, eGoodyType);
 }
 
 void CvEventReporter::greatPersonBorn(CvUnit *pUnit, PlayerTypes ePlayer, CvCity *pCity)
 {
+	if (pUnit != NULL && pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city_player\":%d,\"city\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d}",
+			ePlayer, pCity->getOwnerINLINE(), pCity->getID(), pUnit->getID(), pUnit->getUnitType(), pUnit->getX_INLINE(), pUnit->getY_INLINE());
+		bridgePayload("great_person_born", szArgs);
+	}
 	m_kPythonEventMgr.reportGreatPersonBorn( pUnit, ePlayer, pCity);
 	m_kStatistics.unitBuilt(pUnit);
 }
@@ -441,6 +605,12 @@ void CvEventReporter::buildingBuilt(CvCity *pCity, BuildingTypes eBuilding)
 
 void CvEventReporter::projectBuilt(CvCity *pCity, ProjectTypes eProject)
 {
+	if (pCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"project\":%d}", pCity->getOwnerINLINE(), pCity->getID(), eProject);
+		bridgePayload("project_built", szArgs);
+	}
 	m_kPythonEventMgr.reportProjectBuilt(pCity, eProject);
 }
 
@@ -454,6 +624,9 @@ void CvEventReporter::techAcquired(TechTypes eType, TeamTypes eTeam, PlayerTypes
 
 void CvEventReporter::techSelected(TechTypes eTech, PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d,\"tech\":%d}", ePlayer, eTech);
+	bridgePayload("tech_selected", szArgs);
 	m_kPythonEventMgr.reportTechSelected(eTech, ePlayer);
 }
 
@@ -468,26 +641,53 @@ void CvEventReporter::religionFounded(ReligionTypes eType, PlayerTypes ePlayer)
 
 void CvEventReporter::religionSpread(ReligionTypes eType, PlayerTypes ePlayer, CvCity* pSpreadCity)
 {
+	if (pSpreadCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"religion\":%d}", ePlayer, pSpreadCity->getID(), eType);
+		bridgePayload("religion_spread", szArgs);
+	}
 	m_kPythonEventMgr.reportReligionSpread(eType, ePlayer, pSpreadCity);
 }
 
 void CvEventReporter::religionRemove(ReligionTypes eType, PlayerTypes ePlayer, CvCity* pSpreadCity)
 {
+	if (pSpreadCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"religion\":%d}", ePlayer, pSpreadCity->getID(), eType);
+		bridgePayload("religion_remove", szArgs);
+	}
 	m_kPythonEventMgr.reportReligionRemove(eType, ePlayer, pSpreadCity);
 }
 
 void CvEventReporter::corporationFounded(CorporationTypes eType, PlayerTypes ePlayer)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d,\"corporation\":%d}", ePlayer, eType);
+	bridgePayload("corporation_founded", szArgs);
 	m_kPythonEventMgr.reportCorporationFounded(eType, ePlayer);
 }
 
 void CvEventReporter::corporationSpread(CorporationTypes eType, PlayerTypes ePlayer, CvCity* pSpreadCity)
 {
+	if (pSpreadCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"corporation\":%d}", ePlayer, pSpreadCity->getID(), eType);
+		bridgePayload("corporation_spread", szArgs);
+	}
 	m_kPythonEventMgr.reportCorporationSpread(eType, ePlayer, pSpreadCity);
 }
 
 void CvEventReporter::corporationRemove(CorporationTypes eType, PlayerTypes ePlayer, CvCity* pSpreadCity)
 {
+	if (pSpreadCity != NULL)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"city\":%d,\"corporation\":%d}", ePlayer, pSpreadCity->getID(), eType);
+		bridgePayload("corporation_remove", szArgs);
+	}
 	m_kPythonEventMgr.reportCorporationRemove(eType, ePlayer, pSpreadCity);
 }
 
@@ -518,11 +718,17 @@ void CvEventReporter::changeWar(bool bWar, TeamTypes eTeam, TeamTypes eOtherTeam
 
 void CvEventReporter::setPlayerAlive( PlayerTypes ePlayerID, bool bNewValue )
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d,\"alive\":%d}", ePlayerID, bNewValue ? 1 : 0);
+	bridgePayload("set_player_alive", szArgs);
 	m_kPythonEventMgr.reportSetPlayerAlive( ePlayerID, bNewValue );
 }
 
 void CvEventReporter::playerChangeStateReligion(PlayerTypes ePlayerID, ReligionTypes eNewReligion, ReligionTypes eOldReligion)
 {
+	CvString szArgs;
+	szArgs.Format("{\"player\":%d,\"new_religion\":%d,\"old_religion\":%d}", ePlayerID, eNewReligion, eOldReligion);
+	bridgePayload("player_change_state_religion", szArgs);
 	m_kPythonEventMgr.reportPlayerChangeStateReligion(ePlayerID, eNewReligion, eOldReligion);
 }
 
@@ -562,6 +768,9 @@ void CvEventReporter::victory(TeamTypes eWinner, VictoryTypes eVictory)
 
 void CvEventReporter::vassalState(TeamTypes eMaster, TeamTypes eVassal, bool bVassal)
 {
+	CvString szArgs;
+	szArgs.Format("{\"master\":%d,\"vassal\":%d,\"is_vassal\":%d}", eMaster, eVassal, bVassal ? 1 : 0);
+	bridgePayload("vassal_state", szArgs);
 	m_kPythonEventMgr.reportVassalState(eMaster, eVassal, bVassal);
 }
 

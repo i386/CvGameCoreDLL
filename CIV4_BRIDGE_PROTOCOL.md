@@ -18,13 +18,45 @@ Set `CVGAME_BRIDGE_PIPE_PREFIX=Name` to use:
 
 Each message is one JSON object followed by `\n`.
 
+## Companion Autolaunch
+
+Set `CVGAME_BRIDGE_AUTOLAUNCH=1` with `CVGAME_BRIDGE=1` to let the DLL launch a
+Rust companion process after it creates the bridge pipes. This ports the old
+companion launch hook onto the new bridge direction: the DLL owns the named pipe
+server, launches the companion, and the companion connects back as a bridge
+client.
+
+Executable discovery order:
+
+```text
+%CVGAME_BRIDGE_COMPANION_EXE%
+CvGameCoreDLL.dll directory\CvGameBridgeCompanion.exe
+CvGameCoreDLL.dll directory\AgesBeyondCompanion.exe
+CvGameCoreDLL.dll directory\..\Companion\CvGameBridgeCompanion.exe
+CvGameCoreDLL.dll directory\..\Companion\AgesBeyondCompanion.exe
+CvGameCoreDLL.dll directory\..\CvGameBridgeCompanion.exe
+CvGameCoreDLL.dll directory\..\AgesBeyondCompanion.exe
+```
+
+Optional knobs:
+
+```text
+CVGAME_BRIDGE_COMPANION_EXE=C:\path\to\Companion.exe
+CVGAME_BRIDGE_COMPANION_ARGS=--some --companion --flags
+```
+
+The launched process inherits the game environment. Rust companions should use
+`BridgeClient::connect_from_env_with_handshake()` so they respect
+`CVGAME_BRIDGE_PIPE_PREFIX`, `CVGAME_BRIDGE_CONTROL_PIPE`, and
+`CVGAME_BRIDGE_CALLBACK_PIPE`.
+
 Rust clients should perform the hello handshake before registering gameplay behavior:
 
 ```rust
 use civ4::{BridgeClient, Result};
 
 fn connect() -> Result<BridgeClient> {
-    let (client, hello) = BridgeClient::connect_default_with_handshake()?;
+    let (client, hello) = BridgeClient::connect_from_env_with_handshake()?;
     let missing = hello.missing_capabilities(&[
         "events",
         "queries",
@@ -238,7 +270,7 @@ The string is saved and loaded with `CvGame`.
 
 ## Callbacks
 
-The bridge mirrors selected Python event callbacks to the callback pipe as `callback_mirror`
+The bridge mirrors the main Python event callbacks to the callback pipe as `callback_mirror`
 messages before the normal in-process Python event call runs.
 
 Keyboard and mouse input callbacks are sent as blocking `callback_request` messages before Python.
@@ -259,6 +291,49 @@ kbd_event {"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}
 mouse_event {"evt":1,"cursor_x":100,"cursor_y":120,"x":10,"y":12,"interface_consumed":false}
 ```
 
+Callback mirror payloads cover most of `CvEventReporter`. Object references are serialized as
+stable game IDs and coordinates:
+
+```text
+first_contact {"team":0,"other_team":1}
+combat_result {"winner_player":0,"winner_unit":12,"winner_unit_type":3,"winner_x":10,"winner_y":11,"loser_player":1,"loser_unit":9,"loser_unit_type":4,"loser_x":10,"loser_y":11}
+improvement_built {"improvement":2,"x":10,"y":12}
+improvement_destroyed {"improvement":2,"player":0,"x":10,"y":12}
+route_built {"route":1,"x":10,"y":12}
+plot_revealed {"x":10,"y":12,"team":0}
+plot_feature_removed {"x":10,"y":12,"feature":1,"city_player":0,"city":3}
+plot_picked {"x":10,"y":12}
+nuke_explosion {"x":10,"y":12,"player":0,"unit":123,"unit_type":7}
+goto_plot_set {"x":10,"y":12,"player":0}
+culture_expansion {"player":0,"city":3,"x":10,"y":12}
+city_do_turn {"player":0,"city":3,"x":10,"y":12}
+city_building_unit {"player":0,"city":3,"unit_type":1}
+city_building_building {"player":0,"city":3,"building":12}
+city_rename {"player":0,"city":3,"x":10,"y":12}
+city_hurry {"player":0,"city":3,"hurry":1}
+selection_group_push_mission {"player":0,"group":42,"mission":1}
+unit_set_xy {"player":0,"unit":123,"unit_type":1,"x":10,"y":12}
+unit_promoted {"player":0,"unit":123,"unit_type":1,"promotion":4,"x":10,"y":12}
+unit_selected {"player":0,"unit":123,"unit_type":1,"x":10,"y":12}
+unit_rename {"player":0,"unit":123,"unit_type":1,"x":10,"y":12}
+unit_pillage {"player":0,"unit":123,"unit_type":1,"improvement":2,"route":1,"pillage_player":1,"x":10,"y":12}
+unit_spread_religion_attempt {"player":0,"unit":123,"unit_type":1,"religion":0,"success":1,"x":10,"y":12}
+unit_gifted {"player":1,"unit":123,"unit_type":1,"gifting_player":0,"x":10,"y":12}
+unit_build_improvement {"player":0,"unit":123,"unit_type":1,"build":5,"finished":1,"x":10,"y":12}
+goody_received {"player":0,"x":10,"y":12,"unit_player":0,"unit":123,"unit_type":1,"goody":2}
+great_person_born {"player":0,"city_player":0,"city":3,"unit":123,"unit_type":8,"x":10,"y":12}
+project_built {"player":0,"city":3,"project":1}
+tech_selected {"player":0,"tech":7}
+religion_spread {"player":0,"city":3,"religion":0}
+religion_remove {"player":0,"city":3,"religion":0}
+corporation_founded {"player":0,"corporation":0}
+corporation_spread {"player":0,"city":3,"corporation":0}
+corporation_remove {"player":0,"city":3,"corporation":0}
+set_player_alive {"player":0,"alive":1}
+player_change_state_religion {"player":0,"new_religion":1,"old_religion":0}
+vassal_state {"master":0,"vassal":1,"is_vassal":1}
+```
+
 Use `callback_mirror` for fire-and-forget events. Use `callback_request` when the DLL must wait for
 the external process to decide a return value. Callback request replies use the same `reply` shape
 as control-pipe query and command replies.
@@ -273,7 +348,7 @@ result.
 use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
 use serde_json::json;
 
-let mut client = BridgeClient::connect_default()?;
+let (mut client, _hello) = BridgeClient::connect_from_env_with_handshake()?;
 let mut callbacks = CallbackDispatcher::new();
 
 callbacks.on_name("begin_player_turn", |client, event| {
@@ -296,7 +371,8 @@ callbacks.run_until_stopped(&mut client)?;
 
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
-- `connect_default_with_handshake`, `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
+- `connect_from_env_with_handshake`, `connect_default_with_handshake`,
+  `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
 - `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
 - `set_game_start_turn`, `set_game_start_year`, `set_game_estimate_end_turn`, `set_game_target_score`
 - `set_game_max_city_elimination`, `set_game_advanced_start_points`, `set_game_ai_auto_play`, `change_game_ai_auto_play`
@@ -334,5 +410,6 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
+- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
 - `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`

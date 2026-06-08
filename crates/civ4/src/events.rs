@@ -1,8 +1,6 @@
+use crate::event_payloads::*;
 use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
-use serde::de::{self, DeserializeOwned, Deserializer, Visitor};
-use serde::Deserialize;
 use serde_json::Value;
-use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BridgeEventMessage {
@@ -81,6 +79,52 @@ pub enum BridgeEvent {
         turn: i32,
         player: PlayerId,
     },
+    FirstContact {
+        team: TeamId,
+        other_team: TeamId,
+    },
+    CombatResult {
+        winner: UnitRef,
+        winner_unit_type: i32,
+        winner_plot: Plot,
+        loser: UnitRef,
+        loser_unit_type: i32,
+        loser_plot: Plot,
+    },
+    ImprovementBuilt {
+        improvement: i32,
+        plot: Plot,
+    },
+    ImprovementDestroyed {
+        improvement: i32,
+        player: PlayerId,
+        plot: Plot,
+    },
+    RouteBuilt {
+        route: i32,
+        plot: Plot,
+    },
+    PlotRevealed {
+        plot: Plot,
+        team: TeamId,
+    },
+    PlotFeatureRemoved {
+        plot: Plot,
+        feature: i32,
+        city: Option<CityRef>,
+    },
+    PlotPicked {
+        plot: Plot,
+    },
+    NukeExplosion {
+        plot: Plot,
+        unit: Option<UnitRef>,
+        unit_type: i32,
+    },
+    GotoPlotSet {
+        plot: Plot,
+        player: PlayerId,
+    },
     CityBuilt {
         city: CityRef,
         plot: Plot,
@@ -109,10 +153,44 @@ pub enum BridgeEvent {
         city: CityRef,
         population: i32,
     },
+    CultureExpansion {
+        city: CityRef,
+        plot: Plot,
+    },
+    CityDoTurn {
+        city: CityRef,
+        plot: Plot,
+    },
+    CityBuildingUnit {
+        city: CityRef,
+        unit_type: i32,
+    },
+    CityBuildingBuilding {
+        city: CityRef,
+        building: i32,
+    },
+    CityRename {
+        city: CityRef,
+        plot: Plot,
+    },
+    CityHurry {
+        city: CityRef,
+        hurry: i32,
+    },
+    SelectionGroupPushMission {
+        player: PlayerId,
+        group: i32,
+        mission: i32,
+    },
     UnitMove {
         unit: UnitRef,
         from: Plot,
         to: Plot,
+    },
+    UnitSetXY {
+        unit: UnitRef,
+        unit_type: i32,
+        plot: Plot,
     },
     UnitCreated {
         unit: UnitRef,
@@ -136,9 +214,71 @@ pub enum BridgeEvent {
         unit_type: i32,
         plot: Plot,
     },
+    UnitPromoted {
+        unit: UnitRef,
+        unit_type: i32,
+        promotion: i32,
+        plot: Plot,
+    },
+    UnitSelected {
+        unit: UnitRef,
+        unit_type: i32,
+        plot: Plot,
+    },
+    UnitRename {
+        unit: UnitRef,
+        unit_type: i32,
+        plot: Plot,
+    },
+    UnitPillage {
+        unit: UnitRef,
+        unit_type: i32,
+        improvement: i32,
+        route: i32,
+        pillage_player: PlayerId,
+        plot: Plot,
+    },
+    UnitSpreadReligionAttempt {
+        unit: UnitRef,
+        unit_type: i32,
+        religion: i32,
+        success: bool,
+        plot: Plot,
+    },
+    UnitGifted {
+        unit: UnitRef,
+        unit_type: i32,
+        gifting_player: PlayerId,
+        plot: Plot,
+    },
+    UnitBuildImprovement {
+        unit: UnitRef,
+        unit_type: i32,
+        build: i32,
+        finished: bool,
+        plot: Plot,
+    },
+    GoodyReceived {
+        player: PlayerId,
+        plot: Plot,
+        unit: Option<UnitRef>,
+        unit_type: i32,
+        goody: i32,
+    },
+    GreatPersonBorn {
+        player: PlayerId,
+        city: CityRef,
+        unit: UnitRef,
+        unit_type: i32,
+        plot: Plot,
+    },
     BuildingBuilt {
         city: CityRef,
         building: i32,
+    },
+    ProjectBuilt {
+        city: CityRef,
+        project: i32,
     },
     TechAcquired {
         team: TeamId,
@@ -146,9 +286,33 @@ pub enum BridgeEvent {
         tech: i32,
         announce: bool,
     },
+    TechSelected {
+        player: PlayerId,
+        tech: i32,
+    },
     ReligionFounded {
         player: PlayerId,
         religion: i32,
+    },
+    ReligionSpread {
+        city: CityRef,
+        religion: i32,
+    },
+    ReligionRemove {
+        city: CityRef,
+        religion: i32,
+    },
+    CorporationFounded {
+        player: PlayerId,
+        corporation: i32,
+    },
+    CorporationSpread {
+        city: CityRef,
+        corporation: i32,
+    },
+    CorporationRemove {
+        city: CityRef,
+        corporation: i32,
     },
     GoldenAge {
         player: PlayerId,
@@ -166,9 +330,23 @@ pub enum BridgeEvent {
         to_player: PlayerId,
         amount: i32,
     },
+    SetPlayerAlive {
+        player: PlayerId,
+        alive: bool,
+    },
+    PlayerChangeStateReligion {
+        player: PlayerId,
+        new_religion: i32,
+        old_religion: i32,
+    },
     Victory {
         team: TeamId,
         victory: i32,
+    },
+    VassalState {
+        master: TeamId,
+        vassal: TeamId,
+        is_vassal: bool,
     },
     Unknown {
         name: String,
@@ -190,25 +368,62 @@ impl BridgeEvent {
             Self::EndGameTurn { .. } => "end_game_turn",
             Self::BeginPlayerTurn { .. } => "begin_player_turn",
             Self::EndPlayerTurn { .. } => "end_player_turn",
+            Self::FirstContact { .. } => "first_contact",
+            Self::CombatResult { .. } => "combat_result",
+            Self::ImprovementBuilt { .. } => "improvement_built",
+            Self::ImprovementDestroyed { .. } => "improvement_destroyed",
+            Self::RouteBuilt { .. } => "route_built",
+            Self::PlotRevealed { .. } => "plot_revealed",
+            Self::PlotFeatureRemoved { .. } => "plot_feature_removed",
+            Self::PlotPicked { .. } => "plot_picked",
+            Self::NukeExplosion { .. } => "nuke_explosion",
+            Self::GotoPlotSet { .. } => "goto_plot_set",
             Self::CityBuilt { .. } => "city_built",
             Self::CityRazed { .. } => "city_razed",
             Self::CityAcquired { .. } => "city_acquired",
             Self::CityAcquiredKept { .. } => "city_acquired_kept",
             Self::CityLost { .. } => "city_lost",
             Self::CityGrowth { .. } => "city_growth",
+            Self::CultureExpansion { .. } => "culture_expansion",
+            Self::CityDoTurn { .. } => "city_do_turn",
+            Self::CityBuildingUnit { .. } => "city_building_unit",
+            Self::CityBuildingBuilding { .. } => "city_building_building",
+            Self::CityRename { .. } => "city_rename",
+            Self::CityHurry { .. } => "city_hurry",
+            Self::SelectionGroupPushMission { .. } => "selection_group_push_mission",
             Self::UnitMove { .. } => "unit_move",
+            Self::UnitSetXY { .. } => "unit_set_xy",
             Self::UnitCreated { .. } => "unit_created",
             Self::UnitBuilt { .. } => "unit_built",
             Self::UnitKilled { .. } => "unit_killed",
             Self::UnitLost { .. } => "unit_lost",
+            Self::UnitPromoted { .. } => "unit_promoted",
+            Self::UnitSelected { .. } => "unit_selected",
+            Self::UnitRename { .. } => "unit_rename",
+            Self::UnitPillage { .. } => "unit_pillage",
+            Self::UnitSpreadReligionAttempt { .. } => "unit_spread_religion_attempt",
+            Self::UnitGifted { .. } => "unit_gifted",
+            Self::UnitBuildImprovement { .. } => "unit_build_improvement",
+            Self::GoodyReceived { .. } => "goody_received",
+            Self::GreatPersonBorn { .. } => "great_person_born",
             Self::BuildingBuilt { .. } => "building_built",
+            Self::ProjectBuilt { .. } => "project_built",
             Self::TechAcquired { .. } => "tech_acquired",
+            Self::TechSelected { .. } => "tech_selected",
             Self::ReligionFounded { .. } => "religion_founded",
+            Self::ReligionSpread { .. } => "religion_spread",
+            Self::ReligionRemove { .. } => "religion_remove",
+            Self::CorporationFounded { .. } => "corporation_founded",
+            Self::CorporationSpread { .. } => "corporation_spread",
+            Self::CorporationRemove { .. } => "corporation_remove",
             Self::GoldenAge { .. } => "golden_age",
             Self::EndGoldenAge { .. } => "end_golden_age",
             Self::ChangeWar { .. } => "change_war",
             Self::PlayerGoldTrade { .. } => "player_gold_trade",
+            Self::SetPlayerAlive { .. } => "set_player_alive",
+            Self::PlayerChangeStateReligion { .. } => "player_change_state_religion",
             Self::Victory { .. } => "victory",
+            Self::VassalState { .. } => "vassal_state",
             Self::Unknown { name, .. } => name,
         }
     }
@@ -262,6 +477,82 @@ impl BridgeEvent {
                     player: PlayerId(payload.player),
                 }
             }
+            "first_contact" => {
+                let payload: TeamPairPayload = decode(args)?;
+                Self::FirstContact {
+                    team: TeamId(payload.team),
+                    other_team: TeamId(payload.other_team),
+                }
+            }
+            "combat_result" => {
+                let payload: CombatResultPayload = decode(args)?;
+                Self::CombatResult {
+                    winner: payload.winner(),
+                    winner_unit_type: payload.winner_unit_type,
+                    winner_plot: payload.winner_plot(),
+                    loser: payload.loser(),
+                    loser_unit_type: payload.loser_unit_type,
+                    loser_plot: payload.loser_plot(),
+                }
+            }
+            "improvement_built" => {
+                let payload: ImprovementBuiltPayload = decode(args)?;
+                Self::ImprovementBuilt {
+                    improvement: payload.improvement,
+                    plot: payload.plot(),
+                }
+            }
+            "improvement_destroyed" => {
+                let payload: ImprovementDestroyedPayload = decode(args)?;
+                Self::ImprovementDestroyed {
+                    improvement: payload.improvement,
+                    player: PlayerId(payload.player),
+                    plot: payload.plot(),
+                }
+            }
+            "route_built" => {
+                let payload: RouteBuiltPayload = decode(args)?;
+                Self::RouteBuilt {
+                    route: payload.route,
+                    plot: payload.plot(),
+                }
+            }
+            "plot_revealed" => {
+                let payload: PlotTeamPayload = decode(args)?;
+                Self::PlotRevealed {
+                    plot: payload.plot(),
+                    team: TeamId(payload.team),
+                }
+            }
+            "plot_feature_removed" => {
+                let payload: PlotFeatureRemovedPayload = decode(args)?;
+                Self::PlotFeatureRemoved {
+                    plot: payload.plot(),
+                    feature: payload.feature,
+                    city: payload.city(),
+                }
+            }
+            "plot_picked" => {
+                let payload: PlotPayload = decode(args)?;
+                Self::PlotPicked {
+                    plot: payload.plot(),
+                }
+            }
+            "nuke_explosion" => {
+                let payload: UnitOptionalPayload = decode(args)?;
+                Self::NukeExplosion {
+                    plot: payload.plot(),
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                }
+            }
+            "goto_plot_set" => {
+                let payload: PlotPlayerPayload = decode(args)?;
+                Self::GotoPlotSet {
+                    plot: payload.plot(),
+                    player: PlayerId(payload.player),
+                }
+            }
             "city_built" => {
                 let payload: CityPlotPayload = decode(args)?;
                 Self::CityBuilt {
@@ -308,12 +599,70 @@ impl BridgeEvent {
                     population: payload.population,
                 }
             }
+            "culture_expansion" => {
+                let payload: CityPlotPayload = decode(args)?;
+                Self::CultureExpansion {
+                    city: payload.city(),
+                    plot: payload.plot(),
+                }
+            }
+            "city_do_turn" => {
+                let payload: CityPlotPayload = decode(args)?;
+                Self::CityDoTurn {
+                    city: payload.city(),
+                    plot: payload.plot(),
+                }
+            }
+            "city_building_unit" => {
+                let payload: CityUnitTypePayload = decode(args)?;
+                Self::CityBuildingUnit {
+                    city: payload.city(),
+                    unit_type: payload.unit_type,
+                }
+            }
+            "city_building_building" => {
+                let payload: CityBuildingPayload = decode(args)?;
+                Self::CityBuildingBuilding {
+                    city: payload.city(),
+                    building: payload.building,
+                }
+            }
+            "city_rename" => {
+                let payload: CityPlotPayload = decode(args)?;
+                Self::CityRename {
+                    city: payload.city(),
+                    plot: payload.plot(),
+                }
+            }
+            "city_hurry" => {
+                let payload: CityHurryPayload = decode(args)?;
+                Self::CityHurry {
+                    city: payload.city(),
+                    hurry: payload.hurry,
+                }
+            }
+            "selection_group_push_mission" => {
+                let payload: SelectionGroupMissionPayload = decode(args)?;
+                Self::SelectionGroupPushMission {
+                    player: PlayerId(payload.player),
+                    group: payload.group,
+                    mission: payload.mission,
+                }
+            }
             "unit_move" => {
                 let payload: UnitMovePayload = decode(args)?;
                 Self::UnitMove {
                     unit: payload.unit(),
                     from: Plot::new(payload.from_x, payload.from_y),
                     to: Plot::new(payload.x, payload.y),
+                }
+            }
+            "unit_set_xy" => {
+                let payload: UnitPlotPayload = decode(args)?;
+                Self::UnitSetXY {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    plot: payload.plot(),
                 }
             }
             "unit_created" => {
@@ -350,11 +699,103 @@ impl BridgeEvent {
                     plot: payload.plot(),
                 }
             }
+            "unit_promoted" => {
+                let payload: UnitPromotionPayload = decode(args)?;
+                Self::UnitPromoted {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    promotion: payload.promotion,
+                    plot: payload.plot(),
+                }
+            }
+            "unit_selected" => {
+                let payload: UnitPlotPayload = decode(args)?;
+                Self::UnitSelected {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    plot: payload.plot(),
+                }
+            }
+            "unit_rename" => {
+                let payload: UnitPlotPayload = decode(args)?;
+                Self::UnitRename {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    plot: payload.plot(),
+                }
+            }
+            "unit_pillage" => {
+                let payload: UnitPillagePayload = decode(args)?;
+                Self::UnitPillage {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    improvement: payload.improvement,
+                    route: payload.route,
+                    pillage_player: PlayerId(payload.pillage_player),
+                    plot: payload.plot(),
+                }
+            }
+            "unit_spread_religion_attempt" => {
+                let payload: UnitReligionAttemptPayload = decode(args)?;
+                Self::UnitSpreadReligionAttempt {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    religion: payload.religion,
+                    success: payload.success,
+                    plot: payload.plot(),
+                }
+            }
+            "unit_gifted" => {
+                let payload: UnitGiftedPayload = decode(args)?;
+                Self::UnitGifted {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    gifting_player: PlayerId(payload.gifting_player),
+                    plot: payload.plot(),
+                }
+            }
+            "unit_build_improvement" => {
+                let payload: UnitBuildImprovementPayload = decode(args)?;
+                Self::UnitBuildImprovement {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    build: payload.build,
+                    finished: payload.finished,
+                    plot: payload.plot(),
+                }
+            }
+            "goody_received" => {
+                let payload: GoodyReceivedPayload = decode(args)?;
+                Self::GoodyReceived {
+                    player: PlayerId(payload.player),
+                    plot: payload.plot(),
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    goody: payload.goody,
+                }
+            }
+            "great_person_born" => {
+                let payload: GreatPersonBornPayload = decode(args)?;
+                Self::GreatPersonBorn {
+                    player: PlayerId(payload.player),
+                    city: payload.city(),
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    plot: payload.plot(),
+                }
+            }
             "building_built" => {
                 let payload: BuildingBuiltPayload = decode(args)?;
                 Self::BuildingBuilt {
                     city: payload.city(),
                     building: payload.building,
+                }
+            }
+            "project_built" => {
+                let payload: CityProjectPayload = decode(args)?;
+                Self::ProjectBuilt {
+                    city: payload.city(),
+                    project: payload.project,
                 }
             }
             "tech_acquired" => {
@@ -366,11 +807,53 @@ impl BridgeEvent {
                     announce: payload.announce,
                 }
             }
+            "tech_selected" => {
+                let payload: TechSelectedPayload = decode(args)?;
+                Self::TechSelected {
+                    player: PlayerId(payload.player),
+                    tech: payload.tech,
+                }
+            }
             "religion_founded" => {
                 let payload: ReligionFoundedPayload = decode(args)?;
                 Self::ReligionFounded {
                     player: PlayerId(payload.player),
                     religion: payload.religion,
+                }
+            }
+            "religion_spread" => {
+                let payload: CityReligionPayload = decode(args)?;
+                Self::ReligionSpread {
+                    city: payload.city(),
+                    religion: payload.religion,
+                }
+            }
+            "religion_remove" => {
+                let payload: CityReligionPayload = decode(args)?;
+                Self::ReligionRemove {
+                    city: payload.city(),
+                    religion: payload.religion,
+                }
+            }
+            "corporation_founded" => {
+                let payload: CorporationFoundedPayload = decode(args)?;
+                Self::CorporationFounded {
+                    player: PlayerId(payload.player),
+                    corporation: payload.corporation,
+                }
+            }
+            "corporation_spread" => {
+                let payload: CityCorporationPayload = decode(args)?;
+                Self::CorporationSpread {
+                    city: payload.city(),
+                    corporation: payload.corporation,
+                }
+            }
+            "corporation_remove" => {
+                let payload: CityCorporationPayload = decode(args)?;
+                Self::CorporationRemove {
+                    city: payload.city(),
+                    corporation: payload.corporation,
                 }
             }
             "golden_age" => {
@@ -401,6 +884,21 @@ impl BridgeEvent {
                     amount: payload.amount,
                 }
             }
+            "set_player_alive" => {
+                let payload: PlayerAlivePayload = decode(args)?;
+                Self::SetPlayerAlive {
+                    player: PlayerId(payload.player),
+                    alive: payload.alive,
+                }
+            }
+            "player_change_state_religion" => {
+                let payload: PlayerStateReligionPayload = decode(args)?;
+                Self::PlayerChangeStateReligion {
+                    player: PlayerId(payload.player),
+                    new_religion: payload.new_religion,
+                    old_religion: payload.old_religion,
+                }
+            }
             "victory" => {
                 let payload: VictoryPayload = decode(args)?;
                 Self::Victory {
@@ -408,441 +906,15 @@ impl BridgeEvent {
                     victory: payload.victory,
                 }
             }
+            "vassal_state" => {
+                let payload: VassalStatePayload = decode(args)?;
+                Self::VassalState {
+                    master: TeamId(payload.master),
+                    vassal: TeamId(payload.vassal),
+                    is_vassal: payload.is_vassal,
+                }
+            }
             _ => Self::Unknown { name, args },
         })
-    }
-}
-
-fn decode<T: DeserializeOwned>(args: Value) -> serde_json::Result<T> {
-    serde_json::from_value(args)
-}
-
-#[derive(Deserialize)]
-struct TurnPayload {
-    turn: i32,
-}
-
-#[derive(Deserialize)]
-struct PlayerTurnPayload {
-    turn: i32,
-    player: i32,
-}
-
-#[derive(Deserialize)]
-struct KbdEventPayload {
-    evt: i32,
-    key: i32,
-    cursor_x: i32,
-    cursor_y: i32,
-    x: i32,
-    y: i32,
-}
-
-impl KbdEventPayload {
-    fn plot(&self) -> Option<Plot> {
-        plot_from_xy(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct MouseEventPayload {
-    evt: i32,
-    cursor_x: i32,
-    cursor_y: i32,
-    x: i32,
-    y: i32,
-    #[serde(deserialize_with = "deserialize_int_bool")]
-    interface_consumed: bool,
-}
-
-impl MouseEventPayload {
-    fn plot(&self) -> Option<Plot> {
-        plot_from_xy(self.x, self.y)
-    }
-}
-
-fn plot_from_xy(x: i32, y: i32) -> Option<Plot> {
-    (x >= 0 && y >= 0).then_some(Plot::new(x, y))
-}
-
-#[derive(Deserialize)]
-struct CityPlotPayload {
-    player: i32,
-    city: i32,
-    x: i32,
-    y: i32,
-}
-
-impl CityPlotPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct CityRazedPayload {
-    player: i32,
-    city: i32,
-    razed_by: i32,
-    x: i32,
-    y: i32,
-}
-
-impl CityRazedPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct CityAcquiredPayload {
-    old_player: i32,
-    player: i32,
-    city: i32,
-    #[serde(deserialize_with = "deserialize_int_bool")]
-    conquest: bool,
-    #[serde(deserialize_with = "deserialize_int_bool")]
-    trade: bool,
-    x: i32,
-    y: i32,
-}
-
-impl CityAcquiredPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct CityGrowthPayload {
-    player: i32,
-    city: i32,
-    population: i32,
-}
-
-impl CityGrowthPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct UnitMovePayload {
-    player: i32,
-    unit: i32,
-    from_x: i32,
-    from_y: i32,
-    x: i32,
-    y: i32,
-}
-
-impl UnitMovePayload {
-    fn unit(&self) -> UnitRef {
-        UnitRef {
-            player: self.player,
-            id: self.unit,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct UnitPlotPayload {
-    player: i32,
-    unit: i32,
-    unit_type: i32,
-    x: i32,
-    y: i32,
-}
-
-impl UnitPlotPayload {
-    fn unit(&self) -> UnitRef {
-        UnitRef {
-            player: self.player,
-            id: self.unit,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct UnitBuiltPayload {
-    player: i32,
-    city: i32,
-    unit: i32,
-    unit_type: i32,
-    x: i32,
-    y: i32,
-}
-
-impl UnitBuiltPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-
-    fn unit(&self) -> UnitRef {
-        UnitRef {
-            player: self.player,
-            id: self.unit,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct UnitKilledPayload {
-    player: i32,
-    unit: i32,
-    unit_type: i32,
-    attacker: i32,
-    x: i32,
-    y: i32,
-}
-
-impl UnitKilledPayload {
-    fn unit(&self) -> UnitRef {
-        UnitRef {
-            player: self.player,
-            id: self.unit,
-        }
-    }
-
-    fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Deserialize)]
-struct BuildingBuiltPayload {
-    player: i32,
-    city: i32,
-    building: i32,
-}
-
-impl BuildingBuiltPayload {
-    fn city(&self) -> CityRef {
-        CityRef {
-            player: self.player,
-            id: self.city,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct TechAcquiredPayload {
-    team: i32,
-    player: i32,
-    tech: i32,
-    #[serde(deserialize_with = "deserialize_int_bool")]
-    announce: bool,
-}
-
-#[derive(Deserialize)]
-struct ReligionFoundedPayload {
-    player: i32,
-    religion: i32,
-}
-
-#[derive(Deserialize)]
-struct PlayerPayload {
-    player: i32,
-}
-
-#[derive(Deserialize)]
-struct ChangeWarPayload {
-    #[serde(deserialize_with = "deserialize_int_bool")]
-    war: bool,
-    team: i32,
-    other_team: i32,
-}
-
-#[derive(Deserialize)]
-struct PlayerGoldTradePayload {
-    from_player: i32,
-    to_player: i32,
-    amount: i32,
-}
-
-#[derive(Deserialize)]
-struct VictoryPayload {
-    team: i32,
-    victory: i32,
-}
-
-fn deserialize_int_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct IntBoolVisitor;
-
-    impl<'de> Visitor<'de> for IntBoolVisitor {
-        type Value = bool;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a boolean or integer boolean")
-        }
-
-        fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E> {
-            Ok(value)
-        }
-
-        fn visit_i64<E>(self, value: i64) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(value != 0)
-        }
-
-        fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(value != 0)
-        }
-    }
-
-    deserializer.deserialize_any(IntBoolVisitor)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn decodes_known_event_payload() {
-        let event = BridgeEvent::from_name_args(
-            "city_acquired".to_string(),
-            json!({
-                "old_player": 1,
-                "player": 2,
-                "city": 9,
-                "conquest": 1,
-                "trade": 0,
-                "x": 10,
-                "y": 11
-            }),
-        )
-        .unwrap();
-
-        assert_eq!(
-            event,
-            BridgeEvent::CityAcquired {
-                old_player: PlayerId(1),
-                city: CityRef { player: 2, id: 9 },
-                conquest: true,
-                trade: false,
-                plot: Plot::new(10, 11),
-            }
-        );
-    }
-
-    #[test]
-    fn decodes_input_callback_payloads() {
-        let kbd = BridgeEvent::from_name_args(
-            "kbd_event".to_string(),
-            json!({
-                "evt": 6,
-                "key": 65,
-                "cursor_x": 100,
-                "cursor_y": 120,
-                "x": 10,
-                "y": 11
-            }),
-        )
-        .unwrap();
-
-        assert_eq!(
-            kbd,
-            BridgeEvent::KbdEvent {
-                evt: 6,
-                key: 65,
-                cursor_x: 100,
-                cursor_y: 120,
-                plot: Some(Plot::new(10, 11)),
-            }
-        );
-
-        let mouse = BridgeEvent::from_name_args(
-            "mouse_event".to_string(),
-            json!({
-                "evt": 1,
-                "cursor_x": 70,
-                "cursor_y": 80,
-                "x": -1,
-                "y": -1,
-                "interface_consumed": 1
-            }),
-        )
-        .unwrap();
-
-        assert_eq!(
-            mouse,
-            BridgeEvent::MouseEvent {
-                evt: 1,
-                cursor_x: 70,
-                cursor_y: 80,
-                plot: None,
-                interface_consumed: true,
-            }
-        );
-    }
-
-    #[test]
-    fn preserves_unknown_event_payload() {
-        let event =
-            BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 }))
-                .unwrap();
-
-        assert_eq!(
-            event,
-            BridgeEvent::Unknown {
-                name: "future_event".to_string(),
-                args: json!({ "payload": 1 }),
-            }
-        );
-        assert_eq!(event.name(), "future_event");
-    }
-
-    #[test]
-    fn returns_protocol_name_for_known_event() {
-        let event = BridgeEvent::BeginPlayerTurn {
-            turn: 7,
-            player: PlayerId(0),
-        };
-
-        assert_eq!(event.name(), "begin_player_turn");
     }
 }

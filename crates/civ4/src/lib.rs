@@ -2,6 +2,9 @@ pub mod callbacks;
 mod city_api;
 pub mod client;
 pub mod commands;
+mod event_payloads;
+#[cfg(test)]
+mod event_tests;
 pub mod events;
 mod game_api;
 mod player_api;
