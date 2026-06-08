@@ -1412,6 +1412,26 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeUnitCommandResultReply(int iId, int iPlayer, int iGroup, int iCommand, int iData1, int iData2, int iExecuted, int iExecutingPlayer, int iExecutingUnit)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvUnit* pUnit = (iExecutingPlayer >= 0 && validPlayer(iExecutingPlayer) && iExecutingUnit >= 0) ? GET_PLAYER((PlayerTypes)iExecutingPlayer).getUnit(iExecutingUnit) : NULL;
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "group", iGroup);
+		json_object_set_number(pResult, "command", iCommand);
+		json_object_set_number(pResult, "data1", iData1);
+		json_object_set_number(pResult, "data2", iData2);
+		json_object_set_boolean(pResult, "executed", iExecuted != 0 ? 1 : 0);
+		json_object_set_number(pResult, "executing_player", iExecutingPlayer);
+		json_object_set_number(pResult, "executing_unit", iExecutingUnit);
+		json_object_set_boolean(pResult, "unit_exists", pUnit != NULL ? 1 : 0);
+		json_object_set_number(pResult, "x", pUnit != NULL ? pUnit->getX_INLINE() : -1);
+		json_object_set_number(pResult, "y", pUnit != NULL ? pUnit->getY_INLINE() : -1);
+		json_object_set_number(pResult, "current_group", pUnit != NULL ? pUnit->getGroupID() : -1);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlotStateReply(int iId, CvPlot* pPlot)
 	{
 		JSON_Object* pResult = NULL;
@@ -3934,6 +3954,64 @@ namespace
 		return makeSelectionGroupStateReply(iId, pGroup);
 	}
 
+	CvString handleDoUnitGroupCommand(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iCommand = NO_COMMAND;
+		int iData1 = -1;
+		int iData2 = -1;
+		int iGroup = -1;
+		int iExecutingPlayer = -1;
+		int iExecutingUnit = -1;
+		CvUnit* pUnit = NULL;
+		CvUnit* pExecutingUnit = NULL;
+		CvSelectionGroup* pGroup = NULL;
+		CLLNode<IDInfo>* pUnitNode = NULL;
+		JSON_Value* pCommandValue = json_object_get_value(pArgs, "command");
+
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		iCommand = getCommandTypeFromValue(pCommandValue);
+		if (pCommandValue == NULL || iCommand < 0 || iCommand >= NUM_COMMAND_TYPES)
+		{
+			return makeErrorReply(iId, "bad_command", "command is missing or out of range");
+		}
+		pGroup = pUnit->getGroup();
+		if (pGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "unit has no selection group");
+		}
+		iGroup = pGroup->getID();
+		getInt(pArgs, "data1", iData1);
+		getInt(pArgs, "data2", iData2);
+
+		pUnitNode = pGroup->headUnitNode();
+		while (pUnitNode != NULL)
+		{
+			CvUnit* pLoopUnit = ::getUnit(pUnitNode->m_data);
+			pUnitNode = pGroup->nextUnitNode(pUnitNode);
+			if (pLoopUnit != NULL && pLoopUnit->canDoCommand((CommandTypes)iCommand, iData1, iData2, false, false))
+			{
+				pExecutingUnit = pLoopUnit;
+				break;
+			}
+		}
+
+		if (pExecutingUnit == NULL)
+		{
+			return makeUnitCommandResultReply(iId, iPlayer, iGroup, iCommand, iData1, iData2, 0, -1, -1);
+		}
+
+		iExecutingPlayer = pExecutingUnit->getOwnerINLINE();
+		iExecutingUnit = pExecutingUnit->getID();
+		pExecutingUnit->doCommand((CommandTypes)iCommand, iData1, iData2);
+		markGameDataDirty();
+		return makeUnitCommandResultReply(iId, iPlayer, iGroup, iCommand, iData1, iData2, 1, iExecutingPlayer, iExecutingUnit);
+	}
+
 	CvString handleKillUnit(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -5055,6 +5133,10 @@ namespace
 		if (strcmp(szName, "clear_unit_group_mission_queue") == 0)
 		{
 			return handleClearUnitGroupMissionQueue(iId, pArgs);
+		}
+		if (strcmp(szName, "do_unit_group_command") == 0)
+		{
+			return handleDoUnitGroupCommand(iId, pArgs);
 		}
 		if (strcmp(szName, "kill_unit") == 0)
 		{

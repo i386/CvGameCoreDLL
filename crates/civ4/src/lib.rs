@@ -42,7 +42,7 @@ pub use state::{
     PlayerGoldPerTurnState, PlayerOptions, PlayerState, PlotCultureState, PlotState,
     PlotVisibilityState, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
     SelectionGroupMissionState, SelectionGroupState, TeamRelationState, TeamState, TeamTechState,
-    UnitDetailState, UnitPromotionState, UnitState,
+    UnitCommandResult, UnitDetailState, UnitPromotionState, UnitState,
 };
 pub use types::{
     CityProductionRule, CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot,

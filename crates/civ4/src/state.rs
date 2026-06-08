@@ -1,7 +1,7 @@
 pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
 pub use crate::selection_group_state::{
     SelectionGroupCommandCheck, SelectionGroupMissionCheck, SelectionGroupMissionState,
-    SelectionGroupState,
+    SelectionGroupState, UnitCommandResult,
 };
 use crate::types::{CityRef, PlayerId, Plot, TeamId};
 pub use crate::unit_state::{KilledUnit, UnitDetailState, UnitPromotionState, UnitState};

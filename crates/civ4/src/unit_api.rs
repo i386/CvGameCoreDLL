@@ -4,7 +4,7 @@ use crate::commands::{
 };
 use crate::state::{
     KilledUnit, PlayerUnitsResult, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
-    SelectionGroupState, UnitDetailState, UnitPromotionState, UnitState,
+    SelectionGroupState, UnitCommandResult, UnitDetailState, UnitPromotionState, UnitState,
 };
 use crate::types::{InfoType, PlayerId, Plot, UnitRef};
 use serde_json::json;
@@ -250,6 +250,14 @@ impl BridgeClient {
             "clear_unit_group_mission_queue",
             json!({ "player": unit.player, "unit": unit.id }),
         )
+    }
+
+    pub fn do_unit_group_command(
+        &mut self,
+        unit: UnitRef,
+        command: UnitGroupCommand,
+    ) -> Result<UnitCommandResult> {
+        self.command("do_unit_group_command", command.into_args(unit))
     }
 
     pub fn kill_unit(&mut self, unit: UnitRef, killer: Option<PlayerId>) -> Result<KilledUnit> {

@@ -223,6 +223,7 @@ set_unit_promotion {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1","has":
 push_unit_group_mission {"player":0,"unit":123,"mission":"MISSION_MOVE_TO","data1":11,"data2":12,"append":0,"manual":0} -> selection group state
 pop_unit_group_mission {"player":0,"unit":123} -> selection group state
 clear_unit_group_mission_queue {"player":0,"unit":123} -> selection group state
+do_unit_group_command {"player":0,"unit":123,"command":"load_unit","data1":0,"data2":456} -> {"player":0,"group":9,"command":10,"data1":0,"data2":456,"executed":true,"executing_player":0,"executing_unit":123,"unit_exists":true,"x":10,"y":12,"current_group":9}
 kill_unit {"player":0,"unit":123,"killer":1} -> {"player":0,"unit":123,"killed":true}
 spawn_unit {"player":0,"unit_type":"UNIT_WARRIOR","x":10,"y":12} -> {"player":0,"unit":123,"x":10,"y":12}
 set_mod_state {"json":"{\"schema_version\":1}"} -> {"bytes":20}
@@ -298,6 +299,10 @@ optional `x`/`y`, `test_visible`, and `use_cache` fields matching Civ4's `canSta
 `promotion`, `upgrade`, `automate`, `wake`, `cancel`, `cancel_all`, `stop_automation`, `delete`,
 `gift`, `load`, `load_unit`, `unload`, `unload_all`, or `hotkey`, plus optional `data1`, `data2`,
 `test_visible`, and `use_cache` fields matching Civ4's `canDoCommand`.
+`do_unit_group_command` accepts the same `command`, `data1`, and `data2` fields. It executes the
+command on the first unit in the selected unit's group that can actually perform it. Some commands
+can delete, gift, upgrade, load, or unload units; the reply reports the executing unit's original
+ID and whether that same ID still exists after the command.
 
 `set_mod_state` stores an opaque UTF-8 JSON string owned by the external Rust client:
 
@@ -470,7 +475,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_unit_xy`, `set_unit_moves`, `change_unit_moves`, `finish_unit_moves`, `set_unit_level`, `change_unit_level`
 - `set_unit_fortify_turns`, `change_unit_fortify_turns`, `set_unit_made_attack`, `set_unit_base_combat`
 - `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
-- `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `UnitGroupMission`, `UnitGroupCommand`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, and `SelectionGroupCommandCheck`
+- `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `do_unit_group_command`, `UnitGroupMission`, `UnitGroupCommand`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, `SelectionGroupCommandCheck`, and `UnitCommandResult`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`

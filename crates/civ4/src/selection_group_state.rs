@@ -51,6 +51,37 @@ impl SelectionGroupCommandCheck {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UnitCommandResult {
+    pub player: i32,
+    pub group: i32,
+    pub command: i32,
+    pub data1: i32,
+    pub data2: i32,
+    pub executed: bool,
+    pub executing_player: i32,
+    pub executing_unit: i32,
+    pub unit_exists: bool,
+    pub x: i32,
+    pub y: i32,
+    pub current_group: i32,
+}
+
+impl UnitCommandResult {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+
+    pub fn executing_unit_ref(&self) -> Option<UnitRef> {
+        (self.executing_player >= 0 && self.executing_unit >= 0)
+            .then_some(UnitRef::new(self.executing_player, self.executing_unit))
+    }
+
+    pub fn plot(&self) -> Option<Plot> {
+        (self.x >= 0 && self.y >= 0).then_some(Plot::new(self.x, self.y))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SelectionGroupState {
     pub player: i32,
     pub group: i32,
@@ -192,5 +223,28 @@ mod tests {
 
         assert_eq!(check.player_id(), PlayerId(0));
         assert!(check.can_do);
+    }
+
+    #[test]
+    fn decodes_unit_command_result() {
+        let result: UnitCommandResult = serde_json::from_value(json!({
+            "player": 0,
+            "group": 9,
+            "command": 10,
+            "data1": 1,
+            "data2": 99,
+            "executed": true,
+            "executing_player": 0,
+            "executing_unit": 42,
+            "unit_exists": true,
+            "x": 11,
+            "y": 12,
+            "current_group": 9
+        }))
+        .unwrap();
+
+        assert_eq!(result.player_id(), PlayerId(0));
+        assert_eq!(result.executing_unit_ref(), Some(UnitRef::new(0, 42)));
+        assert_eq!(result.plot(), Some(Plot::new(11, 12)));
     }
 }
