@@ -1,5 +1,5 @@
 use crate::events::BridgeEvent;
-use crate::types::CityProductionRule;
+use crate::types::{CityProductionItem, CityProductionRule};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BridgeEventKind {
@@ -225,6 +225,13 @@ impl BridgeEvent {
     pub fn kind(&self) -> Option<BridgeEventKind> {
         BridgeEventKind::from_name(self.name())
     }
+
+    pub fn city_production_item(&self) -> Option<CityProductionItem> {
+        match self {
+            Self::CityProductionRule { rule, item, .. } => Some(rule.item(*item)),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -260,5 +267,26 @@ mod tests {
             .kind(),
             None
         );
+    }
+
+    #[test]
+    fn gets_typed_city_production_item_from_event() {
+        let event = BridgeEvent::CityProductionRule {
+            rule: CityProductionRule::CannotConstruct,
+            city: crate::types::CityRef::new(0, 1),
+            plot: crate::types::Plot::new(2, 3),
+            item: 12,
+            continue_current: false,
+            test_visible: false,
+            ignore_cost: false,
+            ignore_upgrades: false,
+        };
+
+        assert_eq!(
+            event.city_production_item(),
+            Some(CityProductionItem::Building(12))
+        );
+        assert_eq!(event.city_production_item().unwrap().id(), 12);
+        assert_eq!(BridgeEvent::GameStart.city_production_item(), None);
     }
 }

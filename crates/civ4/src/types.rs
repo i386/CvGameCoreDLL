@@ -134,6 +134,23 @@ pub enum CityProductionRule {
     CannotMaintain,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CityProductionItem {
+    Unit(i32),
+    Building(i32),
+    Project(i32),
+    Process(i32),
+}
+
+impl CityProductionItem {
+    pub fn id(self) -> i32 {
+        match self {
+            Self::Unit(id) | Self::Building(id) | Self::Project(id) | Self::Process(id) => id,
+        }
+    }
+}
+
 impl CityProductionRule {
     pub fn name(self) -> &'static str {
         match self {
@@ -159,6 +176,15 @@ impl CityProductionRule {
             "can_maintain" => Some(Self::CanMaintain),
             "cannot_maintain" => Some(Self::CannotMaintain),
             _ => None,
+        }
+    }
+
+    pub fn item(self, id: i32) -> CityProductionItem {
+        match self {
+            Self::CanTrain | Self::CannotTrain => CityProductionItem::Unit(id),
+            Self::CanConstruct | Self::CannotConstruct => CityProductionItem::Building(id),
+            Self::CanCreate | Self::CannotCreate => CityProductionItem::Project(id),
+            Self::CanMaintain | Self::CannotMaintain => CityProductionItem::Process(id),
         }
     }
 }
