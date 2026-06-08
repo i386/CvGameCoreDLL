@@ -417,7 +417,8 @@ handler can return `CallbackControl::consume(...)` for input callbacks,
 `CallbackControl::rule_value(...)` for game-rule callbacks, or `CallbackControl::Respond(value)` /
 `RespondAndStop(value)` for custom reply payloads. Manual callback loops can use
 `BridgeClient::write_input_callback_reply(...)` and `write_rule_callback_reply(...)` with a
-`callback_request` id.
+`callback_request` id. Use `on_bridge_event(...)` when the handler only needs the typed
+`BridgeEvent`; use `on_event(...)` when it needs the full `BridgeCallbackMessage`.
 
 ```rust
 use civ4::{
@@ -428,8 +429,8 @@ use civ4::{
 let (mut client, _hello) = BridgeClient::connect_from_env_with_handshake()?;
 let mut callbacks = CallbackDispatcher::new();
 
-callbacks.on_event(BridgeEventKind::BeginPlayerTurn, |client, event| {
-    if let BridgeEvent::BeginPlayerTurn { player, .. } = event.event() {
+callbacks.on_bridge_event(BridgeEventKind::BeginPlayerTurn, |client, event| {
+    if let BridgeEvent::BeginPlayerTurn { player, .. } = event {
         let state = client.get_player_state(*player)?;
         if state.gold < 100 {
             client.set_player_gold(*player, 100)?;
@@ -442,8 +443,8 @@ callbacks.on_event(BridgeEventKind::KbdEvent, |_client, _event| {
     Ok(CallbackControl::consume(false))
 });
 
-callbacks.on_event(BridgeEventKind::CityProductionRule(CityProductionRule::CannotTrain), |_client, event| {
-    let veto = matches!(event.event().city_production_item(), Some(CityProductionItem::Unit(1)));
+callbacks.on_bridge_event(BridgeEventKind::CityProductionRule(CityProductionRule::CannotTrain), |_client, event| {
+    let veto = matches!(event.city_production_item(), Some(CityProductionItem::Unit(1)));
     Ok(CallbackControl::rule_value(veto))
 });
 
@@ -500,4 +501,4 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `BridgeEventKind`, `CityProductionRule`, and `CityProductionItem`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, `next_callback_request`, `write_input_callback_reply`, and `write_rule_callback_reply`
-- `CallbackDispatcher`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, and `RuleCallbackReply`
+- `CallbackDispatcher`, `on_event`, `on_bridge_event`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, and `RuleCallbackReply`

@@ -1,6 +1,6 @@
 use crate::client::{BridgeClient, Result};
 use crate::event_kind::BridgeEventKind;
-use crate::events::{BridgeCallbackMessage, BridgeEventMessage};
+use crate::events::{BridgeCallbackMessage, BridgeEvent, BridgeEventMessage};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -114,6 +114,15 @@ impl CallbackDispatcher {
         F: FnMut(&mut BridgeClient, &BridgeCallbackMessage) -> Result<CallbackControl> + 'static,
     {
         self.on_name(kind.name(), handler)
+    }
+
+    pub fn on_bridge_event<F>(&mut self, kind: BridgeEventKind, mut handler: F) -> &mut Self
+    where
+        F: FnMut(&mut BridgeClient, &BridgeEvent) -> Result<CallbackControl> + 'static,
+    {
+        self.on_event(kind, move |client, callback| {
+            handler(client, callback.event())
+        })
     }
 
     pub fn dispatch_next(&mut self, client: &mut BridgeClient) -> Result<CallbackDispatch> {
@@ -346,6 +355,71 @@ mod tests {
         let dispatch = dispatcher.dispatch_event(&mut client, event).unwrap();
 
         assert_eq!(dispatch.handlers_run, 1);
+    }
+
+    #[test]
+    fn dispatches_direct_bridge_event_handlers() {
+        let calls = Rc::new(RefCell::new(Vec::new()));
+        let mut dispatcher = CallbackDispatcher::new();
+
+        {
+            let calls = calls.clone();
+            dispatcher.on_bridge_event(BridgeEventKind::BeginPlayerTurn, move |_client, event| {
+                if let BridgeEvent::BeginPlayerTurn { player, .. } = event {
+                    calls.borrow_mut().push(*player);
+                }
+                Ok(CallbackControl::Continue)
+            });
+        }
+
+        let event = BridgeEventMessage {
+            seq: 5,
+            event: BridgeEvent::BeginPlayerTurn {
+                turn: 8,
+                player: PlayerId(1),
+            },
+        };
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_event(&mut client, event).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert_eq!(calls.borrow().as_slice(), [PlayerId(1)]);
+    }
+
+    #[test]
+    fn direct_bridge_event_handlers_can_respond_to_rule_callbacks() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(
+            BridgeEventKind::CityProductionRule(CityProductionRule::CannotTrain),
+            |_client, event| {
+                let veto = matches!(
+                    event.city_production_item(),
+                    Some(crate::types::CityProductionItem::Unit(4))
+                );
+                Ok(CallbackControl::rule_value(veto))
+            },
+        );
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 44,
+            event: BridgeEvent::CityProductionRule {
+                rule: CityProductionRule::CannotTrain,
+                city: crate::types::CityRef::new(0, 1),
+                plot: crate::types::Plot::new(2, 3),
+                item: 4,
+                continue_current: false,
+                test_visible: false,
+                ignore_cost: false,
+                ignore_upgrades: false,
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
     }
 
     #[test]
