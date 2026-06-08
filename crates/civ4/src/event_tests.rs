@@ -250,6 +250,76 @@ fn decodes_unit_cannot_move_into_callback_payload() {
 }
 
 #[test]
+fn decodes_player_research_callback_payloads() {
+    let is_research =
+        BridgeEvent::from_name_args("is_player_research".to_string(), json!({ "player": 1 }))
+            .unwrap();
+    assert_eq!(
+        is_research,
+        BridgeEvent::IsPlayerResearch {
+            player: PlayerId(1)
+        }
+    );
+
+    let can_research = BridgeEvent::from_name_args(
+        "can_research".to_string(),
+        json!({ "player": 1, "tech": 12, "trade": true }),
+    )
+    .unwrap();
+    assert_eq!(
+        can_research,
+        BridgeEvent::CanResearch {
+            player: PlayerId(1),
+            tech: 12,
+            trade: true,
+        }
+    );
+
+    let cannot_research = BridgeEvent::from_name_args(
+        "cannot_research".to_string(),
+        json!({ "player": 1, "tech": 12, "trade": 0 }),
+    )
+    .unwrap();
+    assert_eq!(
+        cannot_research,
+        BridgeEvent::CannotResearch {
+            player: PlayerId(1),
+            tech: 12,
+            trade: false,
+        }
+    );
+}
+
+#[test]
+fn decodes_player_civic_callback_payloads() {
+    let can_do_civic = BridgeEvent::from_name_args(
+        "can_do_civic".to_string(),
+        json!({ "player": 2, "civic": 7 }),
+    )
+    .unwrap();
+    assert_eq!(
+        can_do_civic,
+        BridgeEvent::CanDoCivic {
+            player: PlayerId(2),
+            civic: 7,
+        }
+    );
+
+    let cannot_do_civic = BridgeEvent::from_name_args(
+        "cannot_do_civic".to_string(),
+        json!({ "player": 2, "civic": 7 }),
+    )
+    .unwrap();
+    assert_eq!(
+        cannot_do_civic,
+        BridgeEvent::CannotDoCivic {
+            player: PlayerId(2),
+            civic: 7,
+        }
+    );
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

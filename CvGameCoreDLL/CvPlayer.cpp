@@ -31,6 +31,40 @@
 #include "CvDLLEngineIFaceBase.h"
 #include "CvDLLFAStarIFaceBase.h"
 #include "CvDLLPythonIFaceBase.h"
+#include "CvGameBridge.h"
+
+namespace
+{
+	const char* bridgeBoolString(bool bValue)
+	{
+		return bValue ? "true" : "false";
+	}
+
+	CvString makeBridgePlayerArgs(const CvPlayer* pPlayer)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d}", pPlayer->getID());
+		return szArgs;
+	}
+
+	CvString makeBridgePlayerTechArgs(const CvPlayer* pPlayer, TechTypes eTech, bool bTrade)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"tech\":%d,\"trade\":%s}",
+			pPlayer->getID(),
+			eTech,
+			bridgeBoolString(bTrade));
+		return szArgs;
+	}
+
+	CvString makeBridgePlayerCivicArgs(const CvPlayer* pPlayer, CivicTypes eCivic)
+	{
+		CvString szArgs;
+		szArgs.Format("{\"player\":%d,\"civic\":%d}", pPlayer->getID(), eCivic);
+		return szArgs;
+	}
+}
 
 // Public Functions...
 
@@ -6486,14 +6520,26 @@ bool CvPlayer::isResearch() const
 {
 	if(GC.getUSE_IS_PLAYER_RESEARCH_CALLBACK())
 	{
-		CyArgsList argsList;
-		long lResult;
-		argsList.add(getID());
-		lResult = 1;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "isPlayerResearch", argsList.makeFunctionArgs(), &lResult);
-		if (lResult == 0)
+		bool bBridgeResult = true;
+		CvString szBridgeArgs = makeBridgePlayerArgs(this);
+		if (CvGameBridge::requestCallbackBool("is_player_research", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (!bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			long lResult;
+			argsList.add(getID());
+			lResult = 1;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "isPlayerResearch", argsList.makeFunctionArgs(), &lResult);
+			if (lResult == 0)
+			{
+				return false;
+			}
 		}
 	}
 
@@ -6520,15 +6566,27 @@ bool CvPlayer::canEverResearch(TechTypes eTech) const
 
 	if(GC.getUSE_CANNOT_RESEARCH_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getID());
-		argsList.add(eTech);
-		argsList.add(false);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotResearch", argsList.makeFunctionArgs(), &lResult);
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerTechArgs(this, eTech, false);
+		if (CvGameBridge::requestCallbackBool("cannot_research", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add(getID());
+			argsList.add(eTech);
+			argsList.add(false);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotResearch", argsList.makeFunctionArgs(), &lResult);
+			if (lResult == 1)
+			{
+				return false;
+			}
 		}
 	}
 
@@ -6544,15 +6602,27 @@ bool CvPlayer::canResearch(TechTypes eTech, bool bTrade) const
 
 	if(GC.getUSE_CAN_RESEARCH_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getID());
-		argsList.add(eTech);
-		argsList.add(bTrade);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canResearch", argsList.makeFunctionArgs(), &lResult);
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerTechArgs(this, eTech, bTrade);
+		if (CvGameBridge::requestCallbackBool("can_research", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return true;
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add(getID());
+			argsList.add(eTech);
+			argsList.add(bTrade);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canResearch", argsList.makeFunctionArgs(), &lResult);
+			if (lResult == 1)
+			{
+				return true;
+			}
 		}
 	}
 
@@ -6760,14 +6830,26 @@ bool CvPlayer::canDoCivics(CivicTypes eCivic) const
 
 	if(GC.getUSE_CAN_DO_CIVIC_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getID());
-		argsList.add(eCivic);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canDoCivic", argsList.makeFunctionArgs(), &lResult);
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerCivicArgs(this, eCivic);
+		if (CvGameBridge::requestCallbackBool("can_do_civic", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return true;
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add(getID());
+			argsList.add(eCivic);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canDoCivic", argsList.makeFunctionArgs(), &lResult);
+			if (lResult == 1)
+			{
+				return true;
+			}
 		}
 	}
 
@@ -6778,14 +6860,26 @@ bool CvPlayer::canDoCivics(CivicTypes eCivic) const
 
 	if(GC.getUSE_CANNOT_DO_CIVIC_CALLBACK())
 	{
-		CyArgsList argsList2; // XXX
-		argsList2.add(getID());
-		argsList2.add(eCivic);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotDoCivic", argsList2.makeFunctionArgs(), &lResult);
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerCivicArgs(this, eCivic);
+		if (CvGameBridge::requestCallbackBool("cannot_do_civic", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyArgsList argsList2; // XXX
+			argsList2.add(getID());
+			argsList2.add(eCivic);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotDoCivic", argsList2.makeFunctionArgs(), &lResult);
+			if (lResult == 1)
+			{
+				return false;
+			}
 		}
 	}
 

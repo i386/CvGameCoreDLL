@@ -14,6 +14,11 @@ pub enum BridgeEventKind {
     EndGameTurn,
     BeginPlayerTurn,
     EndPlayerTurn,
+    IsPlayerResearch,
+    CanResearch,
+    CannotResearch,
+    CanDoCivic,
+    CannotDoCivic,
     FirstContact,
     CombatResult,
     ImprovementBuilt,
@@ -89,6 +94,11 @@ impl BridgeEventKind {
             Self::EndGameTurn => "end_game_turn",
             Self::BeginPlayerTurn => "begin_player_turn",
             Self::EndPlayerTurn => "end_player_turn",
+            Self::IsPlayerResearch => "is_player_research",
+            Self::CanResearch => "can_research",
+            Self::CannotResearch => "cannot_research",
+            Self::CanDoCivic => "can_do_civic",
+            Self::CannotDoCivic => "cannot_do_civic",
             Self::FirstContact => "first_contact",
             Self::CombatResult => "combat_result",
             Self::ImprovementBuilt => "improvement_built",
@@ -164,6 +174,11 @@ impl BridgeEventKind {
             "end_game_turn" => Self::EndGameTurn,
             "begin_player_turn" => Self::BeginPlayerTurn,
             "end_player_turn" => Self::EndPlayerTurn,
+            "is_player_research" => Self::IsPlayerResearch,
+            "can_research" => Self::CanResearch,
+            "cannot_research" => Self::CannotResearch,
+            "can_do_civic" => Self::CanDoCivic,
+            "cannot_do_civic" => Self::CannotDoCivic,
             "first_contact" => Self::FirstContact,
             "combat_result" => Self::CombatResult,
             "improvement_built" => Self::ImprovementBuilt,
@@ -265,6 +280,14 @@ mod tests {
         assert_eq!(
             BridgeEventKind::from_name("unit_cannot_move_into"),
             Some(BridgeEventKind::UnitCannotMoveInto)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("cannot_research"),
+            Some(BridgeEventKind::CannotResearch)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("can_do_civic"),
+            Some(BridgeEventKind::CanDoCivic)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

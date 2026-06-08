@@ -519,6 +519,37 @@ mod tests {
     }
 
     #[test]
+    fn direct_bridge_event_handlers_can_veto_research() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(BridgeEventKind::CannotResearch, |_client, event| {
+            let blocked = matches!(
+                event,
+                BridgeEvent::CannotResearch {
+                    tech: 12,
+                    trade: false,
+                    ..
+                }
+            );
+            Ok(CallbackControl::rule_value(blocked))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 47,
+            event: BridgeEvent::CannotResearch {
+                player: crate::types::PlayerId(0),
+                tech: 12,
+                trade: false,
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
     fn stop_prevents_later_handlers() {
         let calls = Rc::new(RefCell::new(Vec::new()));
         let mut dispatcher = CallbackDispatcher::new();

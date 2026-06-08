@@ -20,6 +20,11 @@ impl BridgeEvent {
             Self::EndGameTurn { .. } => "end_game_turn",
             Self::BeginPlayerTurn { .. } => "begin_player_turn",
             Self::EndPlayerTurn { .. } => "end_player_turn",
+            Self::IsPlayerResearch { .. } => "is_player_research",
+            Self::CanResearch { .. } => "can_research",
+            Self::CannotResearch { .. } => "cannot_research",
+            Self::CanDoCivic { .. } => "can_do_civic",
+            Self::CannotDoCivic { .. } => "cannot_do_civic",
             Self::FirstContact { .. } => "first_contact",
             Self::CombatResult { .. } => "combat_result",
             Self::ImprovementBuilt { .. } => "improvement_built",
@@ -130,6 +135,42 @@ impl BridgeEvent {
                 Self::EndPlayerTurn {
                     turn: payload.turn,
                     player: PlayerId(payload.player),
+                }
+            }
+            "is_player_research" => {
+                let payload: PlayerPayload = decode(args)?;
+                Self::IsPlayerResearch {
+                    player: PlayerId(payload.player),
+                }
+            }
+            "can_research" => {
+                let payload: PlayerResearchPayload = decode(args)?;
+                Self::CanResearch {
+                    player: PlayerId(payload.player),
+                    tech: payload.tech,
+                    trade: payload.trade,
+                }
+            }
+            "cannot_research" => {
+                let payload: PlayerResearchPayload = decode(args)?;
+                Self::CannotResearch {
+                    player: PlayerId(payload.player),
+                    tech: payload.tech,
+                    trade: payload.trade,
+                }
+            }
+            "can_do_civic" => {
+                let payload: PlayerCivicPayload = decode(args)?;
+                Self::CanDoCivic {
+                    player: PlayerId(payload.player),
+                    civic: payload.civic,
+                }
+            }
+            "cannot_do_civic" => {
+                let payload: PlayerCivicPayload = decode(args)?;
+                Self::CannotDoCivic {
+                    player: PlayerId(payload.player),
+                    civic: payload.civic,
                 }
             }
             "first_contact" => {

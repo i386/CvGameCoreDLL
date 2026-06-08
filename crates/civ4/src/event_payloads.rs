@@ -24,6 +24,20 @@ pub(crate) struct PlayerTurnPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct PlayerResearchPayload {
+    pub(crate) player: i32,
+    pub(crate) tech: i32,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) trade: bool,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct PlayerCivicPayload {
+    pub(crate) player: i32,
+    pub(crate) civic: i32,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct KbdEventPayload {
     pub(crate) evt: i32,
     pub(crate) key: i32,

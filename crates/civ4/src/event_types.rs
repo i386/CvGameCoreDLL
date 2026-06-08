@@ -78,6 +78,27 @@ pub enum BridgeEvent {
         turn: i32,
         player: PlayerId,
     },
+    IsPlayerResearch {
+        player: PlayerId,
+    },
+    CanResearch {
+        player: PlayerId,
+        tech: i32,
+        trade: bool,
+    },
+    CannotResearch {
+        player: PlayerId,
+        tech: i32,
+        trade: bool,
+    },
+    CanDoCivic {
+        player: PlayerId,
+        civic: i32,
+    },
+    CannotDoCivic {
+        player: PlayerId,
+        civic: i32,
+    },
     FirstContact {
         team: TeamId,
         other_team: TeamId,
