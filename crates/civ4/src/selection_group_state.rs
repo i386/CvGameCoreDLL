@@ -9,6 +9,30 @@ pub struct SelectionGroupMissionState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SelectionGroupMissionCheck {
+    pub player: i32,
+    pub group: i32,
+    pub mission: i32,
+    pub data1: i32,
+    pub data2: i32,
+    pub x: i32,
+    pub y: i32,
+    pub test_visible: bool,
+    pub use_cache: bool,
+    pub can_start: bool,
+}
+
+impl SelectionGroupMissionCheck {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+
+    pub fn plot(&self) -> Option<Plot> {
+        (self.x >= 0 && self.y >= 0).then_some(Plot::new(self.x, self.y))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SelectionGroupState {
     pub player: i32,
     pub group: i32,
@@ -111,5 +135,26 @@ mod tests {
         assert_eq!(state.plot(), Plot::new(10, 12));
         assert_eq!(state.head_unit_ref(), Some(UnitRef::new(0, 123)));
         assert_eq!(state.missions[0].data1, 11);
+    }
+
+    #[test]
+    fn decodes_selection_group_mission_check() {
+        let check: SelectionGroupMissionCheck = serde_json::from_value(json!({
+            "player": 0,
+            "group": 9,
+            "mission": 1,
+            "data1": 11,
+            "data2": 12,
+            "x": 11,
+            "y": 12,
+            "test_visible": false,
+            "use_cache": true,
+            "can_start": true
+        }))
+        .unwrap();
+
+        assert_eq!(check.player_id(), PlayerId(0));
+        assert_eq!(check.plot(), Some(Plot::new(11, 12)));
+        assert!(check.can_start);
     }
 }

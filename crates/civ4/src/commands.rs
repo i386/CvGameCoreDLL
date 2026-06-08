@@ -69,6 +69,9 @@ pub struct UnitGroupMission {
     pub flags: i32,
     pub append: bool,
     pub manual: bool,
+    pub plot: Option<Plot>,
+    pub test_visible: bool,
+    pub use_cache: bool,
 }
 
 impl UnitGroupMission {
@@ -80,11 +83,16 @@ impl UnitGroupMission {
             flags: 0,
             append: false,
             manual: false,
+            plot: None,
+            test_visible: false,
+            use_cache: false,
         }
     }
 
     pub fn move_to(plot: Plot) -> Self {
-        Self::new("MISSION_MOVE_TO").with_data(plot.x, plot.y)
+        Self::new("MISSION_MOVE_TO")
+            .with_data(plot.x, plot.y)
+            .at_plot(plot)
     }
 
     pub fn build(build: i32) -> Self {
@@ -117,8 +125,23 @@ impl UnitGroupMission {
         self
     }
 
+    pub fn at_plot(mut self, plot: Plot) -> Self {
+        self.plot = Some(plot);
+        self
+    }
+
+    pub fn test_visible(mut self, test_visible: bool) -> Self {
+        self.test_visible = test_visible;
+        self
+    }
+
+    pub fn use_cache(mut self, use_cache: bool) -> Self {
+        self.use_cache = use_cache;
+        self
+    }
+
     pub(crate) fn into_args(self, unit: UnitRef) -> Value {
-        json!({
+        let mut args = json!({
             "player": unit.player,
             "unit": unit.id,
             "mission": self.mission,
@@ -127,7 +150,14 @@ impl UnitGroupMission {
             "flags": self.flags,
             "append": if self.append { 1 } else { 0 },
             "manual": if self.manual { 1 } else { 0 },
-        })
+            "test_visible": if self.test_visible { 1 } else { 0 },
+            "use_cache": if self.use_cache { 1 } else { 0 },
+        });
+        if let Some(plot) = self.plot {
+            args["x"] = json!(plot.x);
+            args["y"] = json!(plot.y);
+        }
+        args
     }
 }
 
@@ -298,7 +328,11 @@ mod tests {
                 "data2": 12,
                 "flags": 0,
                 "append": 1,
-                "manual": 0
+                "manual": 0,
+                "test_visible": 0,
+                "use_cache": 0,
+                "x": 11,
+                "y": 12
             })
         );
     }

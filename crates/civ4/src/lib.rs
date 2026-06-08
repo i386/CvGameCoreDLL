@@ -37,8 +37,9 @@ pub use state::{
     CityProductionOptions, CityReligionState, CityState, ForceControlState, GameOptionState,
     GameState, KilledUnit, MapState, MultiplayerOptionState, PlayerEconomyState,
     PlayerGoldPerTurnState, PlayerOptions, PlayerState, PlotCultureState, PlotState,
-    PlotVisibilityState, SelectionGroupMissionState, SelectionGroupState, TeamRelationState,
-    TeamState, TeamTechState, UnitDetailState, UnitPromotionState, UnitState,
+    PlotVisibilityState, SelectionGroupMissionCheck, SelectionGroupMissionState,
+    SelectionGroupState, TeamRelationState, TeamState, TeamTechState, UnitDetailState,
+    UnitPromotionState, UnitState,
 };
 pub use types::{
     CityProductionRule, CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot,

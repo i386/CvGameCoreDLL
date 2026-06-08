@@ -1346,6 +1346,23 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeSelectionGroupMissionCheckReply(int iId, CvSelectionGroup* pGroup, int iMission, int iData1, int iData2, CvPlot* pPlot, int iTestVisible, int iUseCache)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pGroup->getOwnerINLINE());
+		json_object_set_number(pResult, "group", pGroup->getID());
+		json_object_set_number(pResult, "mission", iMission);
+		json_object_set_number(pResult, "data1", iData1);
+		json_object_set_number(pResult, "data2", iData2);
+		json_object_set_number(pResult, "x", pPlot != NULL ? pPlot->getX_INLINE() : -1);
+		json_object_set_number(pResult, "y", pPlot != NULL ? pPlot->getY_INLINE() : -1);
+		json_object_set_boolean(pResult, "test_visible", iTestVisible != 0 ? 1 : 0);
+		json_object_set_boolean(pResult, "use_cache", iUseCache != 0 ? 1 : 0);
+		json_object_set_boolean(pResult, "can_start", pGroup->canStartMission(iMission, iData1, iData2, pPlot, iTestVisible != 0, iUseCache != 0) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlotStateReply(int iId, CvPlot* pPlot)
 	{
 		JSON_Object* pResult = NULL;
@@ -2132,6 +2149,56 @@ namespace
 				return makeErrorReply(iId, "bad_group", "unit has no selection group");
 			}
 			return makeSelectionGroupStateReply(iId, pGroup);
+		}
+
+		if (strcmp(szName, "can_unit_group_start_mission") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			int iMission = -1;
+			int iData1 = -1;
+			int iData2 = -1;
+			int iX = -1;
+			int iY = -1;
+			int iTestVisible = 0;
+			int iUseCache = 0;
+			CvUnit* pUnit = NULL;
+			CvSelectionGroup* pGroup = NULL;
+			CvPlot* pPlot = NULL;
+			JSON_Value* pMissionValue = json_object_get_value(pArgs, "mission");
+			JSON_Value* pXValue = json_object_get_value(pArgs, "x");
+			JSON_Value* pYValue = json_object_get_value(pArgs, "y");
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			iMission = getInfoTypeFromValue(pMissionValue);
+			if (pMissionValue == NULL || iMission < 0 || iMission >= GC.getNumMissionInfos())
+			{
+				return makeErrorReply(iId, "bad_mission", "mission is missing or out of range");
+			}
+			pGroup = pUnit->getGroup();
+			if (pGroup == NULL)
+			{
+				return makeErrorReply(iId, "bad_group", "unit has no selection group");
+			}
+			getInt(pArgs, "data1", iData1);
+			getInt(pArgs, "data2", iData2);
+			getInt(pArgs, "test_visible", iTestVisible);
+			getInt(pArgs, "use_cache", iUseCache);
+			if (pXValue != NULL || pYValue != NULL)
+			{
+				if (!getInt(pArgs, "x", iX) || !getInt(pArgs, "y", iY))
+				{
+					return makeErrorReply(iId, "bad_plot", "x and y must both be provided");
+				}
+				pPlot = GC.getMapINLINE().plot(iX, iY);
+				if (pPlot == NULL)
+				{
+					return makeErrorReply(iId, "bad_plot", "plot is out of range");
+				}
+			}
+			return makeSelectionGroupMissionCheckReply(iId, pGroup, iMission, iData1, iData2, pPlot, iTestVisible, iUseCache);
 		}
 
 		if (strcmp(szName, "get_unit_promotion_state") == 0)

@@ -1,5 +1,7 @@
 pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
-pub use crate::selection_group_state::{SelectionGroupMissionState, SelectionGroupState};
+pub use crate::selection_group_state::{
+    SelectionGroupMissionCheck, SelectionGroupMissionState, SelectionGroupState,
+};
 use crate::types::{CityRef, PlayerId, Plot, TeamId};
 pub use crate::unit_state::{KilledUnit, UnitDetailState, UnitPromotionState, UnitState};
 use serde::Deserialize;
