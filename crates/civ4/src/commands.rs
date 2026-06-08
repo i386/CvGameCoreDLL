@@ -61,6 +61,110 @@ pub(crate) struct SpawnUnitResult {
     pub y: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnitCommandName {
+    Promotion,
+    Upgrade,
+    Automate,
+    Wake,
+    Cancel,
+    CancelAll,
+    StopAutomation,
+    Delete,
+    Gift,
+    Load,
+    LoadUnit,
+    Unload,
+    UnloadAll,
+    Hotkey,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum UnitCommandType {
+    Id(i32),
+    Name(UnitCommandName),
+}
+
+impl From<i32> for UnitCommandType {
+    fn from(value: i32) -> Self {
+        Self::Id(value)
+    }
+}
+
+impl From<UnitCommandName> for UnitCommandType {
+    fn from(value: UnitCommandName) -> Self {
+        Self::Name(value)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnitGroupCommand {
+    pub command: UnitCommandType,
+    pub data1: i32,
+    pub data2: i32,
+    pub test_visible: bool,
+    pub use_cache: bool,
+}
+
+impl UnitGroupCommand {
+    pub fn new<C: Into<UnitCommandType>>(command: C) -> Self {
+        Self {
+            command: command.into(),
+            data1: -1,
+            data2: -1,
+            test_visible: false,
+            use_cache: false,
+        }
+    }
+
+    pub fn promote(promotion: i32, leader_unit: i32) -> Self {
+        Self::new(UnitCommandName::Promotion).with_data(promotion, leader_unit)
+    }
+
+    pub fn upgrade(unit_type: i32) -> Self {
+        Self::new(UnitCommandName::Upgrade).with_data1(unit_type)
+    }
+
+    pub fn load_unit(unit: UnitRef) -> Self {
+        Self::new(UnitCommandName::LoadUnit).with_data(unit.player, unit.id)
+    }
+
+    pub fn with_data(mut self, data1: i32, data2: i32) -> Self {
+        self.data1 = data1;
+        self.data2 = data2;
+        self
+    }
+
+    pub fn with_data1(mut self, data1: i32) -> Self {
+        self.data1 = data1;
+        self
+    }
+
+    pub fn test_visible(mut self, test_visible: bool) -> Self {
+        self.test_visible = test_visible;
+        self
+    }
+
+    pub fn use_cache(mut self, use_cache: bool) -> Self {
+        self.use_cache = use_cache;
+        self
+    }
+
+    pub(crate) fn into_args(self, unit: UnitRef) -> Value {
+        json!({
+            "player": unit.player,
+            "unit": unit.id,
+            "command": self.command,
+            "data1": self.data1,
+            "data2": self.data2,
+            "test_visible": if self.test_visible { 1 } else { 0 },
+            "use_cache": if self.use_cache { 1 } else { 0 },
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnitGroupMission {
     pub mission: InfoType,
@@ -308,6 +412,26 @@ mod tests {
                 "pop": 0,
                 "append": 1,
                 "force": 1
+            })
+        );
+    }
+
+    #[test]
+    fn unit_group_command_serializes_to_bridge_args() {
+        let args = UnitGroupCommand::load_unit(UnitRef::new(1, 99))
+            .test_visible(true)
+            .into_args(UnitRef::new(0, 42));
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 0,
+                "unit": 42,
+                "command": "load_unit",
+                "data1": 1,
+                "data2": 99,
+                "test_visible": 1,
+                "use_cache": 0
             })
         );
     }

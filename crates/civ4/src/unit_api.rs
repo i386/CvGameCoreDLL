@@ -1,8 +1,10 @@
 use crate::client::{BridgeClient, Result};
-use crate::commands::{SpawnUnitRequest, SpawnUnitResult, SpawnedUnit, UnitGroupMission};
+use crate::commands::{
+    SpawnUnitRequest, SpawnUnitResult, SpawnedUnit, UnitGroupCommand, UnitGroupMission,
+};
 use crate::state::{
-    KilledUnit, PlayerUnitsResult, SelectionGroupMissionCheck, SelectionGroupState,
-    UnitDetailState, UnitPromotionState, UnitState,
+    KilledUnit, PlayerUnitsResult, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
+    SelectionGroupState, UnitDetailState, UnitPromotionState, UnitState,
 };
 use crate::types::{InfoType, PlayerId, Plot, UnitRef};
 use serde_json::json;
@@ -35,6 +37,14 @@ impl BridgeClient {
         mission: UnitGroupMission,
     ) -> Result<SelectionGroupMissionCheck> {
         self.query("can_unit_group_start_mission", mission.into_args(unit))
+    }
+
+    pub fn can_unit_group_do_command(
+        &mut self,
+        unit: UnitRef,
+        command: UnitGroupCommand,
+    ) -> Result<SelectionGroupCommandCheck> {
+        self.query("can_unit_group_do_command", command.into_args(unit))
     }
 
     pub fn list_player_units<P: Into<PlayerId>>(&mut self, player: P) -> Result<Vec<UnitState>> {

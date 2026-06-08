@@ -483,6 +483,40 @@ namespace
 		return NO_ORDER;
 	}
 
+	int getCommandTypeFromValue(JSON_Value* pValue)
+	{
+		const char* szCommand = NULL;
+		if (pValue == NULL)
+		{
+			return NO_COMMAND;
+		}
+		if (json_value_get_type(pValue) == JSONNumber)
+		{
+			return (int)json_value_get_number(pValue);
+		}
+		if (json_value_get_type(pValue) != JSONString)
+		{
+			return NO_COMMAND;
+		}
+
+		szCommand = json_value_get_string(pValue);
+		if (stricmp(szCommand, "promotion") == 0 || stricmp(szCommand, "COMMAND_PROMOTION") == 0) return COMMAND_PROMOTION;
+		if (stricmp(szCommand, "upgrade") == 0 || stricmp(szCommand, "COMMAND_UPGRADE") == 0) return COMMAND_UPGRADE;
+		if (stricmp(szCommand, "automate") == 0 || stricmp(szCommand, "COMMAND_AUTOMATE") == 0) return COMMAND_AUTOMATE;
+		if (stricmp(szCommand, "wake") == 0 || stricmp(szCommand, "COMMAND_WAKE") == 0) return COMMAND_WAKE;
+		if (stricmp(szCommand, "cancel") == 0 || stricmp(szCommand, "COMMAND_CANCEL") == 0) return COMMAND_CANCEL;
+		if (stricmp(szCommand, "cancel_all") == 0 || stricmp(szCommand, "COMMAND_CANCEL_ALL") == 0) return COMMAND_CANCEL_ALL;
+		if (stricmp(szCommand, "stop_automation") == 0 || stricmp(szCommand, "COMMAND_STOP_AUTOMATION") == 0) return COMMAND_STOP_AUTOMATION;
+		if (stricmp(szCommand, "delete") == 0 || stricmp(szCommand, "COMMAND_DELETE") == 0) return COMMAND_DELETE;
+		if (stricmp(szCommand, "gift") == 0 || stricmp(szCommand, "COMMAND_GIFT") == 0) return COMMAND_GIFT;
+		if (stricmp(szCommand, "load") == 0 || stricmp(szCommand, "COMMAND_LOAD") == 0) return COMMAND_LOAD;
+		if (stricmp(szCommand, "load_unit") == 0 || stricmp(szCommand, "COMMAND_LOAD_UNIT") == 0) return COMMAND_LOAD_UNIT;
+		if (stricmp(szCommand, "unload") == 0 || stricmp(szCommand, "COMMAND_UNLOAD") == 0) return COMMAND_UNLOAD;
+		if (stricmp(szCommand, "unload_all") == 0 || stricmp(szCommand, "COMMAND_UNLOAD_ALL") == 0) return COMMAND_UNLOAD_ALL;
+		if (stricmp(szCommand, "hotkey") == 0 || stricmp(szCommand, "COMMAND_HOTKEY") == 0) return COMMAND_HOTKEY;
+		return NO_COMMAND;
+	}
+
 	int getWarPlanTypeFromValue(JSON_Value* pValue)
 	{
 		const char* szWarPlan = NULL;
@@ -1363,6 +1397,21 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeSelectionGroupCommandCheckReply(int iId, CvSelectionGroup* pGroup, int iCommand, int iData1, int iData2, int iTestVisible, int iUseCache)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pGroup->getOwnerINLINE());
+		json_object_set_number(pResult, "group", pGroup->getID());
+		json_object_set_number(pResult, "command", iCommand);
+		json_object_set_number(pResult, "data1", iData1);
+		json_object_set_number(pResult, "data2", iData2);
+		json_object_set_boolean(pResult, "test_visible", iTestVisible != 0 ? 1 : 0);
+		json_object_set_boolean(pResult, "use_cache", iUseCache != 0 ? 1 : 0);
+		json_object_set_boolean(pResult, "can_do", pGroup->canDoCommand((CommandTypes)iCommand, iData1, iData2, iTestVisible != 0, iUseCache != 0) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlotStateReply(int iId, CvPlot* pPlot)
 	{
 		JSON_Object* pResult = NULL;
@@ -2199,6 +2248,39 @@ namespace
 				}
 			}
 			return makeSelectionGroupMissionCheckReply(iId, pGroup, iMission, iData1, iData2, pPlot, iTestVisible, iUseCache);
+		}
+
+		if (strcmp(szName, "can_unit_group_do_command") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			int iCommand = NO_COMMAND;
+			int iData1 = -1;
+			int iData2 = -1;
+			int iTestVisible = 0;
+			int iUseCache = 0;
+			CvUnit* pUnit = NULL;
+			CvSelectionGroup* pGroup = NULL;
+			JSON_Value* pCommandValue = json_object_get_value(pArgs, "command");
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			iCommand = getCommandTypeFromValue(pCommandValue);
+			if (pCommandValue == NULL || iCommand < 0 || iCommand >= NUM_COMMAND_TYPES)
+			{
+				return makeErrorReply(iId, "bad_command", "command is missing or out of range");
+			}
+			pGroup = pUnit->getGroup();
+			if (pGroup == NULL)
+			{
+				return makeErrorReply(iId, "bad_group", "unit has no selection group");
+			}
+			getInt(pArgs, "data1", iData1);
+			getInt(pArgs, "data2", iData2);
+			getInt(pArgs, "test_visible", iTestVisible);
+			getInt(pArgs, "use_cache", iUseCache);
+			return makeSelectionGroupCommandCheckReply(iId, pGroup, iCommand, iData1, iData2, iTestVisible, iUseCache);
 		}
 
 		if (strcmp(szName, "get_unit_promotion_state") == 0)

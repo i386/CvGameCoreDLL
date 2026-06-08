@@ -125,6 +125,7 @@ get_unit_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"
 get_unit_detail_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"unit_ai":2,"domain":0,"unit_combat":1,"special_unit":-1,"x":10,"y":12,"area":5,"group":9,"in_group":true,"group_head":true,"base_moves":2,"max_moves":4,"moves_left":2,"can_move":true,"has_moved":false,"visibility_range":1,"air_range":0,"nuke_range":-1,"can_build_route":false,"build_type":-1,"work_rate":0,"max_work_rate":0,"can_fight":true,"can_attack":true,"can_defend":true,"fighting":false,"attacking":false,"defending":false,"combat":false,"hurt":false,"dead":false,"max_hit_points":100,"curr_hit_points":100,"base_combat":3,"curr_combat":300,"combat_limit":100,"air_combat_limit":100,"fortify_modifier":0,"experience_needed":2,"attack_xp_value":4,"defense_xp_value":2,"max_xp_value":10,"special_cargo":-1,"domain_cargo":-1,"cargo":0,"cargo_space":0,"cargo_space_available":0,"has_cargo":false,"full":false,"cargo_can_move":true,"automated":false,"waiting":false,"fortifyable":true,"made_interception":false,"promotion_ready":false,"animal":false,"only_defensive":false,"rival_territory":false,"military_happiness":true,"spy":false,"found":false,"golden_age":false,"last_move_turn":41,"game_turn_created":1,"experience_percent":0}
 get_unit_group_state {"player":0,"unit":123} -> {"player":0,"group":9,"team":0,"x":10,"y":12,"area":5,"domain":0,"head_player":0,"head_unit":123,"head_unit_type":0,"activity":0,"automate":-1,"automated":false,"mission_timer":0,"units":1,"cargo":0,"base_moves":1,"can_all_move":true,"can_any_move":true,"has_moved":false,"waiting":false,"full":false,"has_cargo":false,"can_fight":true,"can_defend":true,"has_worker":false,"ready_to_select":true,"ready_to_move":true,"ready_to_auto":false,"mission_queue_length":1,"missions":[{"mission":1,"data1":11,"data2":12}]}
 can_unit_group_start_mission {"player":0,"unit":123,"mission":"MISSION_MOVE_TO","data1":11,"data2":12,"x":11,"y":12} -> {"player":0,"group":9,"mission":1,"data1":11,"data2":12,"x":11,"y":12,"test_visible":false,"use_cache":false,"can_start":true}
+can_unit_group_do_command {"player":0,"unit":123,"command":"load_unit","data1":0,"data2":456} -> {"player":0,"group":9,"command":10,"data1":0,"data2":456,"test_visible":false,"use_cache":false,"can_do":true}
 get_unit_promotion_state {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1"} -> {"player":0,"unit":123,"promotion":1,"has":true}
 list_player_units {"player":0} -> {"player":0,"units":[unit state, ...]}
 get_mod_state -> {"json":"{\"schema_version\":1}"}
@@ -293,6 +294,10 @@ non-zero is true.
 `MISSION_MOVE_TO`. Optional flags `flags`, `append`, and `manual` default to `0`, `0`, and `0`.
 `can_unit_group_start_mission` accepts the same `mission`, `data1`, and `data2` fields, plus
 optional `x`/`y`, `test_visible`, and `use_cache` fields matching Civ4's `canStartMission`.
+`can_unit_group_do_command` accepts `command` as a numeric Civ4 `CommandTypes` value or one of
+`promotion`, `upgrade`, `automate`, `wake`, `cancel`, `cancel_all`, `stop_automation`, `delete`,
+`gift`, `load`, `load_unit`, `unload`, `unload_all`, or `hotkey`, plus optional `data1`, `data2`,
+`test_visible`, and `use_cache` fields matching Civ4's `canDoCommand`.
 
 `set_mod_state` stores an opaque UTF-8 JSON string owned by the external Rust client:
 
@@ -465,7 +470,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_unit_xy`, `set_unit_moves`, `change_unit_moves`, `finish_unit_moves`, `set_unit_level`, `change_unit_level`
 - `set_unit_fortify_turns`, `change_unit_fortify_turns`, `set_unit_made_attack`, `set_unit_base_combat`
 - `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
-- `get_unit_group_state`, `can_unit_group_start_mission`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `UnitGroupMission`, `SelectionGroupState`, `SelectionGroupMissionState`, and `SelectionGroupMissionCheck`
+- `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `UnitGroupMission`, `UnitGroupCommand`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, and `SelectionGroupCommandCheck`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`

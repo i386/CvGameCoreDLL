@@ -33,6 +33,24 @@ impl SelectionGroupMissionCheck {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SelectionGroupCommandCheck {
+    pub player: i32,
+    pub group: i32,
+    pub command: i32,
+    pub data1: i32,
+    pub data2: i32,
+    pub test_visible: bool,
+    pub use_cache: bool,
+    pub can_do: bool,
+}
+
+impl SelectionGroupCommandCheck {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SelectionGroupState {
     pub player: i32,
     pub group: i32,
@@ -156,5 +174,23 @@ mod tests {
         assert_eq!(check.player_id(), PlayerId(0));
         assert_eq!(check.plot(), Some(Plot::new(11, 12)));
         assert!(check.can_start);
+    }
+
+    #[test]
+    fn decodes_selection_group_command_check() {
+        let check: SelectionGroupCommandCheck = serde_json::from_value(json!({
+            "player": 0,
+            "group": 9,
+            "command": 10,
+            "data1": 1,
+            "data2": 99,
+            "test_visible": true,
+            "use_cache": false,
+            "can_do": true
+        }))
+        .unwrap();
+
+        assert_eq!(check.player_id(), PlayerId(0));
+        assert!(check.can_do);
     }
 }
