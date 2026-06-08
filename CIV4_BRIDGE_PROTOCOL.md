@@ -64,7 +64,10 @@ get_player_gold {"player":0} -> {"gold":500}
 get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"human":true,"gold":500,"cities":3,"units":8,"population":12}
 list_players -> {"players":[player state, ...]}
 get_player_options {"player":0} -> {"player":0,"team":0,"state_religion":-1,"current_research":3,"civics":[1,2,3,4,5]}
+get_team_state {"team":0} -> {"team":0,"alive":true,"ever_alive":true,"human":true,"barbarian":false,"minor":false,"leader":0,"secretary":0,"members":1,"cities":3,"population":12,"land":40,"assets":500,"power":120,"defensive_power":100,"at_war_count":0,"has_met_count":2,"defensive_pact_count":0,"vassal_count":0,"vassal":false,"nuke_interception":0,"map_trading":true,"tech_trading":true,"gold_trading":true,"open_borders_trading":true,"defensive_pact_trading":false,"permanent_alliance_trading":false,"vassal_trading":false}
+list_teams -> {"teams":[team state, ...]}
 get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":7,"has":true,"progress":0}
+get_team_relation_state {"team":0,"other_team":1} -> {"team":0,"other_team":1,"has_met":true,"at_war":false,"can_declare_war":true,"can_change_war_peace":true,"permanent_war_peace":false,"open_borders":true,"defensive_pact":false,"force_peace":false,"vassal":false,"master":false,"war_weariness":0,"stolen_visibility_timer":0,"war_plan":-1}
 get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
 get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
@@ -140,6 +143,18 @@ set_player_state_religion {"player":0,"religion":"RELIGION_BUDDHISM"} -> player 
 set_player_research {"player":0,"tech":"TECH_BRONZE_WORKING"} -> player options
 set_team_has_tech {"team":0,"tech":"TECH_BRONZE_WORKING","has":1,"player":0} -> team tech state
 change_team_research_progress {"team":0,"tech":"TECH_BRONZE_WORKING","change":50,"player":0} -> team tech state
+meet_team {"team":0,"other_team":1} -> team relation state
+declare_war {"team":0,"other_team":1,"war_plan":"total"} -> team relation state
+make_peace {"team":0,"other_team":1,"bump_units":1} -> team relation state
+set_team_open_borders {"team":0,"other_team":1,"open":1} -> team relation state
+set_team_defensive_pact {"team":0,"other_team":1,"pact":1} -> team relation state
+set_team_force_peace {"team":0,"other_team":1,"peace":1} -> team relation state
+set_team_permanent_war_peace {"team":0,"other_team":1,"permanent":1} -> team relation state
+set_team_vassal {"team":1,"other_team":0,"vassal":1,"capitulated":0} -> team relation state
+set_team_war_weariness {"team":0,"other_team":1,"value":100} -> team relation state
+change_team_war_weariness {"team":0,"other_team":1,"change":-10} -> team relation state
+set_team_stolen_visibility_timer {"team":0,"other_team":1,"value":2} -> team relation state
+change_team_stolen_visibility_timer {"team":0,"other_team":1,"change":-1} -> team relation state
 ```
 
 `unit_type`, `building_type`, `building`, `building_class`, `project_type`, `process_type`,
@@ -152,6 +167,11 @@ Use religion `-1` with `set_player_state_religion` to clear a player's state rel
 `set_city_religion` and `set_city_corporation` accept optional integer flags `announce` and
 `arrows`; `announce` defaults to `0` so external mod state changes do not emit UI messages unless
 requested.
+`war_plan` accepts `none`, `attacked_recent`, `attacked`, `preparing_limited`,
+`preparing_total`, `limited`, `total`, `dogpile`, the matching Civ4 enum names, or numeric
+`WarPlanTypes` values. The relation commands `set_team_open_borders`,
+`set_team_defensive_pact`, `set_team_force_peace`, and `set_team_permanent_war_peace` accept an
+optional `reciprocal` flag that defaults to `1`.
 Use `-1` with `set_plot_feature`, `set_plot_bonus`, `set_plot_improvement`, `set_plot_route`, or
 `set_plot_owner` to clear that plot value.
 `push_city_order` accepts `order` as `train`, `construct`, `create`, `maintain`, or the matching
@@ -232,6 +252,11 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_player_state`, `get_player_options`, `list_players`, `list_alive_players`, `change_player_gold`
 - `set_player_civic`, `set_player_civic_for_option`, `set_player_state_religion`, `clear_player_state_religion`, `set_player_research`
 - `get_team_tech_state`, `set_team_has_tech`, `grant_team_tech`, `change_team_research_progress`
+- `get_team_state`, `list_teams`, `get_team_relation_state`, `TeamState`, and `TeamRelationState`
+- `meet_team`, `declare_war`, `make_peace`, `WarPlan`
+- `set_team_open_borders`, `set_team_defensive_pact`, `set_team_force_peace`, `set_team_permanent_war_peace`
+- `set_team_vassal`, `set_team_war_weariness`, `change_team_war_weariness`
+- `set_team_stolen_visibility_timer`, `change_team_stolen_visibility_timer`
 - `get_map_state`, `get_plot_state`
 - `get_city_state`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `set_city_production`, `change_city_production`, `set_city_unit_production`, `set_city_building_production`, `set_city_project_production`

@@ -271,6 +271,73 @@ impl TeamTechState {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct TeamState {
+    pub team: i32,
+    pub alive: bool,
+    pub ever_alive: bool,
+    pub human: bool,
+    pub barbarian: bool,
+    pub minor: bool,
+    pub leader: i32,
+    pub secretary: i32,
+    pub members: i32,
+    pub cities: i32,
+    pub population: i32,
+    pub land: i32,
+    pub assets: i32,
+    pub power: i32,
+    pub defensive_power: i32,
+    pub at_war_count: i32,
+    pub has_met_count: i32,
+    pub defensive_pact_count: i32,
+    pub vassal_count: i32,
+    pub vassal: bool,
+    pub nuke_interception: i32,
+    pub map_trading: bool,
+    pub tech_trading: bool,
+    pub gold_trading: bool,
+    pub open_borders_trading: bool,
+    pub defensive_pact_trading: bool,
+    pub permanent_alliance_trading: bool,
+    pub vassal_trading: bool,
+}
+
+impl TeamState {
+    pub fn team_id(&self) -> TeamId {
+        TeamId(self.team)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct TeamRelationState {
+    pub team: i32,
+    pub other_team: i32,
+    pub has_met: bool,
+    pub at_war: bool,
+    pub can_declare_war: bool,
+    pub can_change_war_peace: bool,
+    pub permanent_war_peace: bool,
+    pub open_borders: bool,
+    pub defensive_pact: bool,
+    pub force_peace: bool,
+    pub vassal: bool,
+    pub master: bool,
+    pub war_weariness: i32,
+    pub stolen_visibility_timer: i32,
+    pub war_plan: i32,
+}
+
+impl TeamRelationState {
+    pub fn team_id(&self) -> TeamId {
+        TeamId(self.team)
+    }
+
+    pub fn other_team_id(&self) -> TeamId {
+        TeamId(self.other_team)
+    }
+}
+
 #[derive(Deserialize)]
 pub(crate) struct GameTurnResult {
     pub turn: i32,
@@ -294,6 +361,11 @@ pub(crate) struct PlayerCitiesResult {
 #[derive(Deserialize)]
 pub(crate) struct PlayerUnitsResult {
     pub units: Vec<UnitState>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct TeamsResult {
+    pub teams: Vec<TeamState>,
 }
 
 #[derive(Deserialize)]
@@ -500,6 +572,67 @@ mod tests {
         assert_eq!(tech.tech, 7);
         assert!(tech.has);
         assert_eq!(tech.progress, 42);
+    }
+
+    #[test]
+    fn decodes_team_state_and_relation_state() {
+        let teams: TeamsResult = serde_json::from_value(json!({
+            "teams": [{
+                "team": 0,
+                "alive": true,
+                "ever_alive": true,
+                "human": true,
+                "barbarian": false,
+                "minor": false,
+                "leader": 0,
+                "secretary": 0,
+                "members": 1,
+                "cities": 2,
+                "population": 5,
+                "land": 10,
+                "assets": 100,
+                "power": 50,
+                "defensive_power": 40,
+                "at_war_count": 1,
+                "has_met_count": 3,
+                "defensive_pact_count": 0,
+                "vassal_count": 0,
+                "vassal": false,
+                "nuke_interception": 0,
+                "map_trading": true,
+                "tech_trading": true,
+                "gold_trading": true,
+                "open_borders_trading": true,
+                "defensive_pact_trading": false,
+                "permanent_alliance_trading": false,
+                "vassal_trading": false
+            }]
+        }))
+        .unwrap();
+        assert_eq!(teams.teams[0].team_id(), TeamId(0));
+        assert!(teams.teams[0].alive);
+
+        let relation: TeamRelationState = serde_json::from_value(json!({
+            "team": 0,
+            "other_team": 1,
+            "has_met": true,
+            "at_war": false,
+            "can_declare_war": true,
+            "can_change_war_peace": true,
+            "permanent_war_peace": false,
+            "open_borders": true,
+            "defensive_pact": false,
+            "force_peace": false,
+            "vassal": false,
+            "master": false,
+            "war_weariness": 0,
+            "stolen_visibility_timer": 0,
+            "war_plan": -1
+        }))
+        .unwrap();
+        assert_eq!(relation.team_id(), TeamId(0));
+        assert_eq!(relation.other_team_id(), TeamId(1));
+        assert!(relation.has_met);
     }
 
     #[test]

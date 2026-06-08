@@ -308,6 +308,58 @@ namespace
 		return NO_ORDER;
 	}
 
+	int getWarPlanTypeFromValue(JSON_Value* pValue)
+	{
+		const char* szWarPlan = NULL;
+		if (pValue == NULL)
+		{
+			return NO_WARPLAN;
+		}
+		if (json_value_get_type(pValue) == JSONNumber)
+		{
+			return (int)json_value_get_number(pValue);
+		}
+		if (json_value_get_type(pValue) != JSONString)
+		{
+			return -2;
+		}
+
+		szWarPlan = json_value_get_string(pValue);
+		if (stricmp(szWarPlan, "none") == 0 || stricmp(szWarPlan, "NO_WARPLAN") == 0)
+		{
+			return NO_WARPLAN;
+		}
+		if (stricmp(szWarPlan, "attacked_recent") == 0 || stricmp(szWarPlan, "WARPLAN_ATTACKED_RECENT") == 0)
+		{
+			return WARPLAN_ATTACKED_RECENT;
+		}
+		if (stricmp(szWarPlan, "attacked") == 0 || stricmp(szWarPlan, "WARPLAN_ATTACKED") == 0)
+		{
+			return WARPLAN_ATTACKED;
+		}
+		if (stricmp(szWarPlan, "preparing_limited") == 0 || stricmp(szWarPlan, "WARPLAN_PREPARING_LIMITED") == 0)
+		{
+			return WARPLAN_PREPARING_LIMITED;
+		}
+		if (stricmp(szWarPlan, "preparing_total") == 0 || stricmp(szWarPlan, "WARPLAN_PREPARING_TOTAL") == 0)
+		{
+			return WARPLAN_PREPARING_TOTAL;
+		}
+		if (stricmp(szWarPlan, "limited") == 0 || stricmp(szWarPlan, "WARPLAN_LIMITED") == 0)
+		{
+			return WARPLAN_LIMITED;
+		}
+		if (stricmp(szWarPlan, "total") == 0 || stricmp(szWarPlan, "WARPLAN_TOTAL") == 0)
+		{
+			return WARPLAN_TOTAL;
+		}
+		if (stricmp(szWarPlan, "dogpile") == 0 || stricmp(szWarPlan, "WARPLAN_DOGPILE") == 0)
+		{
+			return WARPLAN_DOGPILE;
+		}
+		return -2;
+	}
+
 	bool validPlayer(int iPlayer)
 	{
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
@@ -316,6 +368,24 @@ namespace
 	bool validTeam(int iTeam)
 	{
 		return (iTeam >= 0 && iTeam < MAX_TEAMS);
+	}
+
+	bool validEverTeam(int iTeam)
+	{
+		return validTeam(iTeam) && GET_TEAM((TeamTypes)iTeam).isEverAlive();
+	}
+
+	bool getTeamRelationArgs(JSON_Object* pArgs, int& iTeam, int& iOtherTeam)
+	{
+		if (!getInt(pArgs, "team", iTeam) || !validEverTeam(iTeam))
+		{
+			return false;
+		}
+		if (!getInt(pArgs, "other_team", iOtherTeam) || !validEverTeam(iOtherTeam))
+		{
+			return false;
+		}
+		return (iTeam != iOtherTeam);
 	}
 
 	bool canMutate()
@@ -649,6 +719,95 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	void setTeamState(JSON_Object* pResult, int iTeam)
+	{
+		CvTeam& kTeam = GET_TEAM((TeamTypes)iTeam);
+		json_object_set_number(pResult, "team", iTeam);
+		json_object_set_boolean(pResult, "alive", kTeam.isAlive() ? 1 : 0);
+		json_object_set_boolean(pResult, "ever_alive", kTeam.isEverAlive() ? 1 : 0);
+		json_object_set_boolean(pResult, "human", kTeam.isHuman() ? 1 : 0);
+		json_object_set_boolean(pResult, "barbarian", kTeam.isBarbarian() ? 1 : 0);
+		json_object_set_boolean(pResult, "minor", kTeam.isMinorCiv() ? 1 : 0);
+		json_object_set_number(pResult, "leader", kTeam.getLeaderID());
+		json_object_set_number(pResult, "secretary", kTeam.getSecretaryID());
+		json_object_set_number(pResult, "members", kTeam.getNumMembers());
+		json_object_set_number(pResult, "cities", kTeam.getNumCities());
+		json_object_set_number(pResult, "population", kTeam.getTotalPopulation());
+		json_object_set_number(pResult, "land", kTeam.getTotalLand());
+		json_object_set_number(pResult, "assets", kTeam.getAssets());
+		json_object_set_number(pResult, "power", kTeam.getPower(true));
+		json_object_set_number(pResult, "defensive_power", kTeam.getDefensivePower());
+		json_object_set_number(pResult, "at_war_count", kTeam.getAtWarCount(false));
+		json_object_set_number(pResult, "has_met_count", kTeam.getHasMetCivCount(false));
+		json_object_set_number(pResult, "defensive_pact_count", kTeam.getDefensivePactCount());
+		json_object_set_number(pResult, "vassal_count", kTeam.getVassalCount());
+		json_object_set_boolean(pResult, "vassal", kTeam.isAVassal() ? 1 : 0);
+		json_object_set_number(pResult, "nuke_interception", kTeam.getNukeInterception());
+		json_object_set_boolean(pResult, "map_trading", kTeam.isMapTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "tech_trading", kTeam.isTechTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "gold_trading", kTeam.isGoldTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "open_borders_trading", kTeam.isOpenBordersTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "defensive_pact_trading", kTeam.isDefensivePactTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "permanent_alliance_trading", kTeam.isPermanentAllianceTrading() ? 1 : 0);
+		json_object_set_boolean(pResult, "vassal_trading", kTeam.isVassalStateTrading() ? 1 : 0);
+	}
+
+	CvString makeTeamStateReply(int iId, int iTeam)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setTeamState(pResult, iTeam);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeTeamsListReply(int iId)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pTeamsValue = json_value_init_array();
+		JSON_Array* pTeams = json_value_get_array(pTeamsValue);
+
+		for (int iTeam = 0; iTeam < MAX_TEAMS; ++iTeam)
+		{
+			CvTeam& kTeam = GET_TEAM((TeamTypes)iTeam);
+			if (!kTeam.isEverAlive())
+			{
+				continue;
+			}
+
+			JSON_Value* pTeamValue = json_value_init_object();
+			JSON_Object* pTeamObject = json_value_get_object(pTeamValue);
+			setTeamState(pTeamObject, iTeam);
+			json_array_append_value(pTeams, pTeamValue);
+		}
+
+		json_object_set_value(pResult, "teams", pTeamsValue);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeTeamRelationStateReply(int iId, int iTeam, int iOtherTeam)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvTeam& kTeam = GET_TEAM((TeamTypes)iTeam);
+		json_object_set_number(pResult, "team", iTeam);
+		json_object_set_number(pResult, "other_team", iOtherTeam);
+		json_object_set_boolean(pResult, "has_met", kTeam.isHasMet((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "at_war", kTeam.isAtWar((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "can_declare_war", kTeam.canDeclareWar((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "can_change_war_peace", kTeam.canChangeWarPeace((TeamTypes)iOtherTeam, true) ? 1 : 0);
+		json_object_set_boolean(pResult, "permanent_war_peace", kTeam.isPermanentWarPeace((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "open_borders", kTeam.isOpenBorders((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "defensive_pact", kTeam.isDefensivePact((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "force_peace", kTeam.isForcePeace((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "vassal", kTeam.isVassal((TeamTypes)iOtherTeam) ? 1 : 0);
+		json_object_set_boolean(pResult, "master", GET_TEAM((TeamTypes)iOtherTeam).isVassal((TeamTypes)iTeam) ? 1 : 0);
+		json_object_set_number(pResult, "war_weariness", kTeam.getWarWeariness((TeamTypes)iOtherTeam));
+		json_object_set_number(pResult, "stolen_visibility_timer", kTeam.getStolenVisibilityTimer((TeamTypes)iOtherTeam));
+		json_object_set_number(pResult, "war_plan", kTeam.AI_getWarPlan((TeamTypes)iOtherTeam));
+		return serializeAndFree(pValue);
+	}
+
 	CvString makeCitiesListReply(int iId, int iPlayer)
 	{
 		JSON_Object* pResult = NULL;
@@ -752,6 +911,32 @@ namespace
 				return makeErrorReply(iId, "bad_tech", "tech is missing or out of range");
 			}
 			return makeTeamTechStateReply(iId, iTeam, iTech);
+		}
+
+		if (strcmp(szName, "get_team_state") == 0)
+		{
+			int iTeam = -1;
+			if (!getInt(pArgs, "team", iTeam) || !validEverTeam(iTeam))
+			{
+				return makeErrorReply(iId, "bad_team", "team is missing, out of range, or has never existed");
+			}
+			return makeTeamStateReply(iId, iTeam);
+		}
+
+		if (strcmp(szName, "list_teams") == 0)
+		{
+			return makeTeamsListReply(iId);
+		}
+
+		if (strcmp(szName, "get_team_relation_state") == 0)
+		{
+			int iTeam = -1;
+			int iOtherTeam = -1;
+			if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+			{
+				return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, out of range, or have never existed");
+			}
+			return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
 		}
 
 		if (strcmp(szName, "get_map_state") == 0)
@@ -2307,6 +2492,268 @@ namespace
 		return makeTeamTechStateReply(iId, iTeam, iTech);
 	}
 
+	CvString handleMeetTeam(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iNewDiplo = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		getInt(pArgs, "new_diplo", iNewDiplo);
+
+		GET_TEAM((TeamTypes)iTeam).meet((TeamTypes)iOtherTeam, iNewDiplo != 0);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleDeclareWar(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iNewDiplo = 0;
+		int iWarPlan = getWarPlanTypeFromValue(json_object_get_value(pArgs, "war_plan"));
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (iWarPlan < NO_WARPLAN || iWarPlan > WARPLAN_DOGPILE)
+		{
+			return makeErrorReply(iId, "bad_war_plan", "war_plan is out of range");
+		}
+		if (!GET_TEAM((TeamTypes)iTeam).canDeclareWar((TeamTypes)iOtherTeam))
+		{
+			return makeErrorReply(iId, "war_rejected", "team cannot declare war on other_team");
+		}
+		getInt(pArgs, "new_diplo", iNewDiplo);
+
+		GET_TEAM((TeamTypes)iTeam).declareWar((TeamTypes)iOtherTeam, iNewDiplo != 0, (WarPlanTypes)iWarPlan);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleMakePeace(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iBumpUnits = 1;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		getInt(pArgs, "bump_units", iBumpUnits);
+
+		GET_TEAM((TeamTypes)iTeam).makePeace((TeamTypes)iOtherTeam, iBumpUnits != 0);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamOpenBorders(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iOpen = 0;
+		int iReciprocal = 1;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "open", iOpen))
+		{
+			return makeErrorReply(iId, "bad_open", "open is missing");
+		}
+		getInt(pArgs, "reciprocal", iReciprocal);
+
+		GET_TEAM((TeamTypes)iTeam).setOpenBorders((TeamTypes)iOtherTeam, iOpen != 0);
+		if (iReciprocal != 0)
+		{
+			GET_TEAM((TeamTypes)iOtherTeam).setOpenBorders((TeamTypes)iTeam, iOpen != 0);
+		}
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamDefensivePact(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iPact = 0;
+		int iReciprocal = 1;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "pact", iPact))
+		{
+			return makeErrorReply(iId, "bad_pact", "pact is missing");
+		}
+		getInt(pArgs, "reciprocal", iReciprocal);
+
+		GET_TEAM((TeamTypes)iTeam).setDefensivePact((TeamTypes)iOtherTeam, iPact != 0);
+		if (iReciprocal != 0)
+		{
+			GET_TEAM((TeamTypes)iOtherTeam).setDefensivePact((TeamTypes)iTeam, iPact != 0);
+		}
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamForcePeace(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iPeace = 0;
+		int iReciprocal = 1;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "peace", iPeace))
+		{
+			return makeErrorReply(iId, "bad_peace", "peace is missing");
+		}
+		getInt(pArgs, "reciprocal", iReciprocal);
+
+		GET_TEAM((TeamTypes)iTeam).setForcePeace((TeamTypes)iOtherTeam, iPeace != 0);
+		if (iReciprocal != 0)
+		{
+			GET_TEAM((TeamTypes)iOtherTeam).setForcePeace((TeamTypes)iTeam, iPeace != 0);
+		}
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamPermanentWarPeace(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iPermanent = 0;
+		int iReciprocal = 1;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "permanent", iPermanent))
+		{
+			return makeErrorReply(iId, "bad_permanent", "permanent is missing");
+		}
+		getInt(pArgs, "reciprocal", iReciprocal);
+
+		GET_TEAM((TeamTypes)iTeam).setPermanentWarPeace((TeamTypes)iOtherTeam, iPermanent != 0);
+		if (iReciprocal != 0)
+		{
+			GET_TEAM((TeamTypes)iOtherTeam).setPermanentWarPeace((TeamTypes)iTeam, iPermanent != 0);
+		}
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamVassal(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iVassal = 0;
+		int iCapitulated = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "vassal", iVassal))
+		{
+			return makeErrorReply(iId, "bad_vassal", "vassal is missing");
+		}
+		if (iVassal != 0 && GET_TEAM((TeamTypes)iOtherTeam).isAVassal())
+		{
+			return makeErrorReply(iId, "vassal_rejected", "other_team is already a vassal");
+		}
+		getInt(pArgs, "capitulated", iCapitulated);
+
+		GET_TEAM((TeamTypes)iTeam).setVassal((TeamTypes)iOtherTeam, iVassal != 0, iCapitulated != 0);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamWarWeariness(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iValue = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).setWarWeariness((TeamTypes)iOtherTeam, iValue);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleChangeTeamWarWeariness(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iChange = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).changeWarWeariness((TeamTypes)iOtherTeam, iChange);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleSetTeamStolenVisibilityTimer(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iValue = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).setStolenVisibilityTimer((TeamTypes)iOtherTeam, iValue);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
+	CvString handleChangeTeamStolenVisibilityTimer(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = -1;
+		int iOtherTeam = -1;
+		int iChange = 0;
+		if (!getTeamRelationArgs(pArgs, iTeam, iOtherTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team and other_team are missing, equal, or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_TEAM((TeamTypes)iTeam).getStolenVisibilityTimer((TeamTypes)iOtherTeam) + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "stolen_visibility_timer cannot be reduced below zero");
+		}
+
+		GET_TEAM((TeamTypes)iTeam).changeStolenVisibilityTimer((TeamTypes)iOtherTeam, iChange);
+		markGameDataDirty();
+		return makeTeamRelationStateReply(iId, iTeam, iOtherTeam);
+	}
+
 	CvString handleCommand(int iId, const char* szName, JSON_Object* pArgs)
 	{
 		if (!canMutate())
@@ -2537,6 +2984,54 @@ namespace
 		if (strcmp(szName, "change_team_research_progress") == 0)
 		{
 			return handleChangeTeamResearchProgress(iId, pArgs);
+		}
+		if (strcmp(szName, "meet_team") == 0)
+		{
+			return handleMeetTeam(iId, pArgs);
+		}
+		if (strcmp(szName, "declare_war") == 0)
+		{
+			return handleDeclareWar(iId, pArgs);
+		}
+		if (strcmp(szName, "make_peace") == 0)
+		{
+			return handleMakePeace(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_open_borders") == 0)
+		{
+			return handleSetTeamOpenBorders(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_defensive_pact") == 0)
+		{
+			return handleSetTeamDefensivePact(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_force_peace") == 0)
+		{
+			return handleSetTeamForcePeace(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_permanent_war_peace") == 0)
+		{
+			return handleSetTeamPermanentWarPeace(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_vassal") == 0)
+		{
+			return handleSetTeamVassal(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_war_weariness") == 0)
+		{
+			return handleSetTeamWarWeariness(iId, pArgs);
+		}
+		if (strcmp(szName, "change_team_war_weariness") == 0)
+		{
+			return handleChangeTeamWarWeariness(iId, pArgs);
+		}
+		if (strcmp(szName, "set_team_stolen_visibility_timer") == 0)
+		{
+			return handleSetTeamStolenVisibilityTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "change_team_stolen_visibility_timer") == 0)
+		{
+			return handleChangeTeamStolenVisibilityTimer(iId, pArgs);
 		}
 
 		return makeErrorReply(iId, "unknown_command", "command name is not supported");

@@ -5,6 +5,7 @@ pub mod commands;
 pub mod events;
 pub mod protocol;
 pub mod state;
+mod team_api;
 pub mod types;
 mod unit_api;
 
@@ -15,7 +16,7 @@ pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, Brid
 pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityReligionState, CityState,
-    KilledUnit, MapState, PlayerOptions, PlayerState, PlotState, TeamTechState, UnitPromotionState,
-    UnitState,
+    KilledUnit, MapState, PlayerOptions, PlayerState, PlotState, TeamRelationState, TeamState,
+    TeamTechState, UnitPromotionState, UnitState,
 };
-pub use types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
+pub use types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan};
