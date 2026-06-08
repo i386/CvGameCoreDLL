@@ -73,6 +73,26 @@ impl MouseEventPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct ModNetMessagePayload {
+    pub(crate) data1: i32,
+    pub(crate) data2: i32,
+    pub(crate) data3: i32,
+    pub(crate) data4: i32,
+    pub(crate) data5: i32,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct UpdatePayload {
+    pub(crate) delta_time: f64,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct WindowActivationPayload {
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) active: bool,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct TeamPairPayload {
     pub(crate) team: i32,
     pub(crate) other_team: i32,

@@ -104,6 +104,9 @@ void CvEventReporter::newPlayer(PlayerTypes ePlayer)
 
 void CvEventReporter::reportModNetMessage(int iData1, int iData2, int iData3, int iData4, int iData5)
 {
+	CvString szArgs;
+	szArgs.Format("{\"data1\":%d,\"data2\":%d,\"data3\":%d,\"data4\":%d,\"data5\":%d}", iData1, iData2, iData3, iData4, iData5);
+	bridgePayload("mod_net_message", szArgs);
 	m_kPythonEventMgr.reportModNetMessage(iData1, iData2, iData3, iData4, iData5);
 }
 
@@ -115,6 +118,12 @@ void CvEventReporter::init()
 
 void CvEventReporter::update(float fDeltaTime)
 {
+	if (GC.getUSE_ON_UPDATE_CALLBACK())
+	{
+		CvString szArgs;
+		szArgs.Format("{\"delta_time\":%f}", fDeltaTime);
+		bridgePayload("update", szArgs);
+	}
 	m_kPythonEventMgr.reportUpdate(fDeltaTime);
 }
 
@@ -786,6 +795,9 @@ void CvEventReporter::preSave()
 
 void CvEventReporter::windowActivation(bool bActive)
 {
+	CvString szArgs;
+	szArgs.Format("{\"active\":%d}", bActive ? 1 : 0);
+	bridgePayload("window_activation", szArgs);
 	m_kPythonEventMgr.reportWindowActivation(bActive);
 }
 

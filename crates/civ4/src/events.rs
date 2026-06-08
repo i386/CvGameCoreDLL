@@ -16,6 +16,9 @@ impl BridgeEvent {
             Self::GameStart => "game_start",
             Self::GameEnd => "game_end",
             Self::PreSave => "pre_save",
+            Self::ModNetMessage { .. } => "mod_net_message",
+            Self::Update { .. } => "update",
+            Self::WindowActivation { .. } => "window_activation",
             Self::BeginGameTurn { .. } => "begin_game_turn",
             Self::EndGameTurn { .. } => "end_game_turn",
             Self::BeginPlayerTurn { .. } => "begin_player_turn",
@@ -120,6 +123,28 @@ impl BridgeEvent {
             "game_start" => Self::GameStart,
             "game_end" => Self::GameEnd,
             "pre_save" => Self::PreSave,
+            "mod_net_message" => {
+                let payload: ModNetMessagePayload = decode(args)?;
+                Self::ModNetMessage {
+                    data1: payload.data1,
+                    data2: payload.data2,
+                    data3: payload.data3,
+                    data4: payload.data4,
+                    data5: payload.data5,
+                }
+            }
+            "update" => {
+                let payload: UpdatePayload = decode(args)?;
+                Self::Update {
+                    delta_time: payload.delta_time,
+                }
+            }
+            "window_activation" => {
+                let payload: WindowActivationPayload = decode(args)?;
+                Self::WindowActivation {
+                    active: payload.active,
+                }
+            }
             "begin_game_turn" => {
                 let payload: TurnPayload = decode(args)?;
                 Self::BeginGameTurn { turn: payload.turn }

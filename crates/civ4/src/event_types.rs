@@ -64,6 +64,19 @@ pub enum BridgeEvent {
     GameStart,
     GameEnd,
     PreSave,
+    ModNetMessage {
+        data1: i32,
+        data2: i32,
+        data3: i32,
+        data4: i32,
+        data5: i32,
+    },
+    Update {
+        delta_time: f64,
+    },
+    WindowActivation {
+        active: bool,
+    },
     BeginGameTurn {
         turn: i32,
     },

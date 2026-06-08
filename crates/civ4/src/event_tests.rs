@@ -129,6 +129,46 @@ fn decodes_input_callback_payloads() {
 }
 
 #[test]
+fn decodes_utility_python_event_payloads() {
+    let event = BridgeEvent::from_name_args(
+        "mod_net_message".to_string(),
+        json!({
+            "data1": 1,
+            "data2": 2,
+            "data3": 3,
+            "data4": 4,
+            "data5": 5
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::ModNetMessage {
+            data1: 1,
+            data2: 2,
+            data3: 3,
+            data4: 4,
+            data5: 5,
+        }
+    );
+    assert_eq!(event.name(), "mod_net_message");
+
+    let event =
+        BridgeEvent::from_name_args("update".to_string(), json!({ "delta_time": 0.25 })).unwrap();
+
+    assert_eq!(event, BridgeEvent::Update { delta_time: 0.25 });
+    assert_eq!(event.name(), "update");
+
+    let event =
+        BridgeEvent::from_name_args("window_activation".to_string(), json!({ "active": 1 }))
+            .unwrap();
+
+    assert_eq!(event, BridgeEvent::WindowActivation { active: true });
+    assert_eq!(event.name(), "window_activation");
+}
+
+#[test]
 fn decodes_city_production_rule_callback_payloads() {
     let can_train = BridgeEvent::from_name_args(
         "can_train".to_string(),
