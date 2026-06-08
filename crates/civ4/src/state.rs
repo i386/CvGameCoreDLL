@@ -125,6 +125,8 @@ pub struct CityState {
     pub production_project: i32,
     pub production_process: i32,
     pub order_queue_length: i32,
+    pub occupation_timer: i32,
+    pub hurry_anger_timer: i32,
 }
 
 impl CityState {
@@ -134,6 +136,65 @@ impl CityState {
 
     pub fn plot(&self) -> Plot {
         Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityBuildingState {
+    pub player: i32,
+    pub city: i32,
+    pub building: i32,
+    pub real: i32,
+    pub free: i32,
+    pub active: bool,
+}
+
+impl CityBuildingState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityReligionState {
+    pub player: i32,
+    pub city: i32,
+    pub religion: i32,
+    pub has: bool,
+}
+
+impl CityReligionState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityCorporationState {
+    pub player: i32,
+    pub city: i32,
+    pub corporation: i32,
+    pub has: bool,
+}
+
+impl CityCorporationState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityBuildingClassChange {
+    pub player: i32,
+    pub city: i32,
+    pub building_class: i32,
+    pub happiness: i32,
+    pub health: i32,
+}
+
+impl CityBuildingClassChange {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
     }
 }
 
@@ -326,7 +387,9 @@ mod tests {
                 "production_building": -1,
                 "production_project": -1,
                 "production_process": -1,
-                "order_queue_length": 1
+                "order_queue_length": 1,
+                "occupation_timer": 0,
+                "hurry_anger_timer": 0
             }]
         }))
         .unwrap();
@@ -358,6 +421,54 @@ mod tests {
         .unwrap();
         assert_eq!(units.units[0].unit_ref(), UnitRef::new(0, 42));
         assert_eq!(units.units[0].promotions, vec![1, 4]);
+    }
+
+    #[test]
+    fn decodes_city_relation_states() {
+        let building: CityBuildingState = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "building": 12,
+            "real": 1,
+            "free": 0,
+            "active": true
+        }))
+        .unwrap();
+        assert_eq!(building.city_ref(), CityRef::new(0, 7));
+        assert_eq!(building.building, 12);
+        assert!(building.active);
+
+        let religion: CityReligionState = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "religion": 2,
+            "has": true
+        }))
+        .unwrap();
+        assert_eq!(religion.city_ref(), CityRef::new(0, 7));
+        assert!(religion.has);
+
+        let corporation: CityCorporationState = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "corporation": 3,
+            "has": false
+        }))
+        .unwrap();
+        assert_eq!(corporation.city_ref(), CityRef::new(0, 7));
+        assert!(!corporation.has);
+
+        let building_class: CityBuildingClassChange = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "building_class": 4,
+            "happiness": 1,
+            "health": -1
+        }))
+        .unwrap();
+        assert_eq!(building_class.city_ref(), CityRef::new(0, 7));
+        assert_eq!(building_class.happiness, 1);
+        assert_eq!(building_class.health, -1);
     }
 
     #[test]

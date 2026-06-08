@@ -450,6 +450,8 @@ namespace
 		json_object_set_number(pResult, "production_project", pCity->getProductionProject());
 		json_object_set_number(pResult, "production_process", pCity->getProductionProcess());
 		json_object_set_number(pResult, "order_queue_length", pCity->getOrderQueueLength());
+		json_object_set_number(pResult, "occupation_timer", pCity->getOccupationTimer());
+		json_object_set_number(pResult, "hurry_anger_timer", pCity->getHurryAngerTimer());
 	}
 
 	CvString makeCityStateReply(int iId, CvCity* pCity)
@@ -457,6 +459,55 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setCityState(pResult, pCity);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCityBuildingStateReply(int iId, CvCity* pCity, int iBuilding)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		int iReal = pCity->getNumRealBuilding((BuildingTypes)iBuilding);
+		int iFree = pCity->getNumFreeBuilding((BuildingTypes)iBuilding);
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "building", iBuilding);
+		json_object_set_number(pResult, "real", iReal);
+		json_object_set_number(pResult, "free", iFree);
+		json_object_set_boolean(pResult, "active", pCity->getNumBuilding((BuildingTypes)iBuilding) > 0 ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCityReligionStateReply(int iId, CvCity* pCity, int iReligion)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "religion", iReligion);
+		json_object_set_boolean(pResult, "has", pCity->isHasReligion((ReligionTypes)iReligion) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCityCorporationStateReply(int iId, CvCity* pCity, int iCorporation)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "corporation", iCorporation);
+		json_object_set_boolean(pResult, "has", pCity->isHasCorporation((CorporationTypes)iCorporation) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCityBuildingClassChangeReply(int iId, CvCity* pCity, int iBuildingClass)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "building_class", iBuildingClass);
+		json_object_set_number(pResult, "happiness", pCity->getBuildingHappyChange((BuildingClassTypes)iBuildingClass));
+		json_object_set_number(pResult, "health", pCity->getBuildingHealthChange((BuildingClassTypes)iBuildingClass));
 		return serializeAndFree(pValue);
 	}
 
@@ -736,6 +787,78 @@ namespace
 				return makeErrorReply(iId, "bad_city", "city is missing or not found");
 			}
 			return makeCityStateReply(iId, pCity);
+		}
+
+		if (strcmp(szName, "get_city_building_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			JSON_Value* pBuildingValue = json_object_get_value(pArgs, "building");
+			int iBuilding = getInfoTypeFromValue(pBuildingValue);
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			if (pBuildingValue == NULL || iBuilding < 0 || iBuilding >= GC.getNumBuildingInfos())
+			{
+				return makeErrorReply(iId, "bad_building", "building is missing or out of range");
+			}
+			return makeCityBuildingStateReply(iId, pCity, iBuilding);
+		}
+
+		if (strcmp(szName, "get_city_religion_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			JSON_Value* pReligionValue = json_object_get_value(pArgs, "religion");
+			int iReligion = getInfoTypeFromValue(pReligionValue);
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			if (pReligionValue == NULL || iReligion < 0 || iReligion >= GC.getNumReligionInfos())
+			{
+				return makeErrorReply(iId, "bad_religion", "religion is missing or out of range");
+			}
+			return makeCityReligionStateReply(iId, pCity, iReligion);
+		}
+
+		if (strcmp(szName, "get_city_corporation_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			JSON_Value* pCorporationValue = json_object_get_value(pArgs, "corporation");
+			int iCorporation = getInfoTypeFromValue(pCorporationValue);
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			if (pCorporationValue == NULL || iCorporation < 0 || iCorporation >= GC.getNumCorporationInfos())
+			{
+				return makeErrorReply(iId, "bad_corporation", "corporation is missing or out of range");
+			}
+			return makeCityCorporationStateReply(iId, pCity, iCorporation);
+		}
+
+		if (strcmp(szName, "get_city_building_class_change") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			JSON_Value* pBuildingClassValue = json_object_get_value(pArgs, "building_class");
+			int iBuildingClass = getInfoTypeFromValue(pBuildingClassValue);
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			if (pBuildingClassValue == NULL || iBuildingClass < 0 || iBuildingClass >= GC.getNumBuildingClassInfos())
+			{
+				return makeErrorReply(iId, "bad_building_class", "building_class is missing or out of range");
+			}
+			return makeCityBuildingClassChangeReply(iId, pCity, iBuildingClass);
 		}
 
 		if (strcmp(szName, "list_player_cities") == 0)
@@ -1119,6 +1242,238 @@ namespace
 		pCity->popOrder(iIndex, iFinish != 0, iChoose != 0);
 		markGameDataDirty();
 		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityOccupationTimer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setOccupationTimer(iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleChangeCityOccupationTimer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iChange = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pCity->getOccupationTimer() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "occupation_timer cannot be reduced below zero");
+		}
+
+		pCity->changeOccupationTimer(iChange);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleChangeCityHurryAngerTimer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iChange = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pCity->getHurryAngerTimer() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "hurry_anger_timer cannot be reduced below zero");
+		}
+
+		pCity->changeHurryAngerTimer(iChange);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityRealBuilding(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		JSON_Value* pBuildingValue = json_object_get_value(pArgs, "building");
+		int iBuilding = getInfoTypeFromValue(pBuildingValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pBuildingValue == NULL || iBuilding < 0 || iBuilding >= GC.getNumBuildingInfos())
+		{
+			return makeErrorReply(iId, "bad_building", "building is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setNumRealBuilding((BuildingTypes)iBuilding, iValue);
+		markGameDataDirty();
+		return makeCityBuildingStateReply(iId, pCity, iBuilding);
+	}
+
+	CvString handleSetCityFreeBuilding(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		JSON_Value* pBuildingValue = json_object_get_value(pArgs, "building");
+		int iBuilding = getInfoTypeFromValue(pBuildingValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pBuildingValue == NULL || iBuilding < 0 || iBuilding >= GC.getNumBuildingInfos())
+		{
+			return makeErrorReply(iId, "bad_building", "building is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setNumFreeBuilding((BuildingTypes)iBuilding, iValue);
+		markGameDataDirty();
+		return makeCityBuildingStateReply(iId, pCity, iBuilding);
+	}
+
+	CvString handleSetCityReligion(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iHas = 0;
+		int iAnnounce = 0;
+		int iArrows = 1;
+		JSON_Value* pReligionValue = json_object_get_value(pArgs, "religion");
+		int iReligion = getInfoTypeFromValue(pReligionValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pReligionValue == NULL || iReligion < 0 || iReligion >= GC.getNumReligionInfos())
+		{
+			return makeErrorReply(iId, "bad_religion", "religion is missing or out of range");
+		}
+		if (!getInt(pArgs, "has", iHas))
+		{
+			return makeErrorReply(iId, "bad_has", "has is missing");
+		}
+		getInt(pArgs, "announce", iAnnounce);
+		getInt(pArgs, "arrows", iArrows);
+
+		pCity->setHasReligion((ReligionTypes)iReligion, iHas != 0, iAnnounce != 0, iArrows != 0);
+		markGameDataDirty();
+		return makeCityReligionStateReply(iId, pCity, iReligion);
+	}
+
+	CvString handleSetCityCorporation(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iHas = 0;
+		int iAnnounce = 0;
+		int iArrows = 1;
+		JSON_Value* pCorporationValue = json_object_get_value(pArgs, "corporation");
+		int iCorporation = getInfoTypeFromValue(pCorporationValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pCorporationValue == NULL || iCorporation < 0 || iCorporation >= GC.getNumCorporationInfos())
+		{
+			return makeErrorReply(iId, "bad_corporation", "corporation is missing or out of range");
+		}
+		if (!getInt(pArgs, "has", iHas))
+		{
+			return makeErrorReply(iId, "bad_has", "has is missing");
+		}
+		getInt(pArgs, "announce", iAnnounce);
+		getInt(pArgs, "arrows", iArrows);
+
+		pCity->setHasCorporation((CorporationTypes)iCorporation, iHas != 0, iAnnounce != 0, iArrows != 0);
+		markGameDataDirty();
+		return makeCityCorporationStateReply(iId, pCity, iCorporation);
+	}
+
+	CvString handleSetCityBuildingHappinessChange(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		JSON_Value* pBuildingClassValue = json_object_get_value(pArgs, "building_class");
+		int iBuildingClass = getInfoTypeFromValue(pBuildingClassValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pBuildingClassValue == NULL || iBuildingClass < 0 || iBuildingClass >= GC.getNumBuildingClassInfos())
+		{
+			return makeErrorReply(iId, "bad_building_class", "building_class is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue))
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing");
+		}
+
+		pCity->setBuildingHappyChange((BuildingClassTypes)iBuildingClass, iValue);
+		markGameDataDirty();
+		return makeCityBuildingClassChangeReply(iId, pCity, iBuildingClass);
+	}
+
+	CvString handleSetCityBuildingHealthChange(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		JSON_Value* pBuildingClassValue = json_object_get_value(pArgs, "building_class");
+		int iBuildingClass = getInfoTypeFromValue(pBuildingClassValue);
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (pBuildingClassValue == NULL || iBuildingClass < 0 || iBuildingClass >= GC.getNumBuildingClassInfos())
+		{
+			return makeErrorReply(iId, "bad_building_class", "building_class is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue))
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing");
+		}
+
+		pCity->setBuildingHealthChange((BuildingClassTypes)iBuildingClass, iValue);
+		markGameDataDirty();
+		return makeCityBuildingClassChangeReply(iId, pCity, iBuildingClass);
 	}
 
 	CvString handleSetPlotOwner(int iId, JSON_Object* pArgs)
@@ -2010,6 +2365,42 @@ namespace
 		if (strcmp(szName, "pop_city_order") == 0)
 		{
 			return handlePopCityOrder(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_occupation_timer") == 0)
+		{
+			return handleSetCityOccupationTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "change_city_occupation_timer") == 0)
+		{
+			return handleChangeCityOccupationTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "change_city_hurry_anger_timer") == 0)
+		{
+			return handleChangeCityHurryAngerTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_real_building") == 0)
+		{
+			return handleSetCityRealBuilding(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_free_building") == 0)
+		{
+			return handleSetCityFreeBuilding(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_religion") == 0)
+		{
+			return handleSetCityReligion(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_corporation") == 0)
+		{
+			return handleSetCityCorporation(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_building_happiness_change") == 0)
+		{
+			return handleSetCityBuildingHappinessChange(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_building_health_change") == 0)
+		{
+			return handleSetCityBuildingHealthChange(iId, pArgs);
 		}
 		if (strcmp(szName, "set_plot_owner") == 0)
 		{

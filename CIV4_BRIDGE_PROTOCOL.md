@@ -67,7 +67,11 @@ get_player_options {"player":0} -> {"player":0,"team":0,"state_religion":-1,"cur
 get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":7,"has":true,"progress":0}
 get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
 get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
-get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1}
+get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
+get_city_building_state {"player":0,"city":3,"building":"BUILDING_GRANARY"} -> {"player":0,"city":3,"building":12,"real":1,"free":0,"active":true}
+get_city_religion_state {"player":0,"city":3,"religion":"RELIGION_BUDDHISM"} -> {"player":0,"city":3,"religion":0,"has":true}
+get_city_corporation_state {"player":0,"city":3,"corporation":"CORPORATION_SID_SUSHI"} -> {"player":0,"city":3,"corporation":0,"has":false}
+get_city_building_class_change {"player":0,"city":3,"building_class":"BUILDINGCLASS_GRANARY"} -> {"player":0,"city":3,"building_class":12,"happiness":0,"health":0}
 list_player_cities {"player":0} -> {"player":0,"cities":[city state, ...]}
 get_unit_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"unit_ai":2,"domain":0,"x":10,"y":12,"damage":0,"experience":2,"level":1,"moves":0,"max_moves":2,"base_combat":3,"cargo":0,"fortify_turns":0,"immobile_timer":0,"made_attack":false,"promotions":[1,4]}
 get_unit_promotion_state {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1"} -> {"player":0,"unit":123,"promotion":1,"has":true}
@@ -93,6 +97,15 @@ set_city_project_production {"player":0,"city":3,"project_type":"PROJECT_APOLLO_
 push_city_order {"player":0,"city":3,"order":"train","data1":"UNIT_WARRIOR","append":1} -> city state
 clear_city_order_queue {"player":0,"city":3} -> city state
 pop_city_order {"player":0,"city":3,"index":0} -> city state
+set_city_occupation_timer {"player":0,"city":3,"value":2} -> city state
+change_city_occupation_timer {"player":0,"city":3,"change":-1} -> city state
+change_city_hurry_anger_timer {"player":0,"city":3,"change":5} -> city state
+set_city_real_building {"player":0,"city":3,"building":"BUILDING_GRANARY","value":1} -> city building state
+set_city_free_building {"player":0,"city":3,"building":"BUILDING_GRANARY","value":1} -> city building state
+set_city_religion {"player":0,"city":3,"religion":"RELIGION_BUDDHISM","has":1} -> city religion state
+set_city_corporation {"player":0,"city":3,"corporation":"CORPORATION_SID_SUSHI","has":1} -> city corporation state
+set_city_building_happiness_change {"player":0,"city":3,"building_class":"BUILDINGCLASS_GRANARY","value":1} -> city building class change
+set_city_building_health_change {"player":0,"city":3,"building_class":"BUILDINGCLASS_GRANARY","value":1} -> city building class change
 set_plot_owner {"x":10,"y":12,"owner":0} -> plot state
 set_plot_terrain {"x":10,"y":12,"terrain":"TERRAIN_GRASS"} -> plot state
 set_plot_feature {"x":10,"y":12,"feature":"FEATURE_FOREST"} -> plot state
@@ -129,12 +142,16 @@ set_team_has_tech {"team":0,"tech":"TECH_BRONZE_WORKING","has":1,"player":0} -> 
 change_team_research_progress {"team":0,"tech":"TECH_BRONZE_WORKING","change":50,"player":0} -> team tech state
 ```
 
-`unit_type`, `building_type`, `project_type`, `process_type`, `terrain`, `feature`, `bonus`,
-`improvement`, `route`, `promotion`, `tech`, `civic`, and `religion` may be either numeric Civ4
-info IDs or XML type names. `unit_ai` for `spawn_unit` may also be numeric or an XML type name.
+`unit_type`, `building_type`, `building`, `building_class`, `project_type`, `process_type`,
+`terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`, `civic`, `religion`,
+and `corporation` may be either numeric Civ4 info IDs or XML type names. `unit_ai` for
+`spawn_unit` may also be numeric or an XML type name.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
 If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
 Use religion `-1` with `set_player_state_religion` to clear a player's state religion.
+`set_city_religion` and `set_city_corporation` accept optional integer flags `announce` and
+`arrows`; `announce` defaults to `0` so external mod state changes do not emit UI messages unless
+requested.
 Use `-1` with `set_plot_feature`, `set_plot_bonus`, `set_plot_improvement`, `set_plot_route`, or
 `set_plot_owner` to clear that plot value.
 `push_city_order` accepts `order` as `train`, `construct`, `create`, `maintain`, or the matching
@@ -219,6 +236,11 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_city_state`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `set_city_production`, `change_city_production`, `set_city_unit_production`, `set_city_building_production`, `set_city_project_production`
 - `push_city_order`, `clear_city_order_queue`, `pop_city_order`, `CityOrder`, and `CityOrderType`
+- `get_city_building_state`, `set_city_real_building`, `set_city_free_building`, and `CityBuildingState`
+- `get_city_religion_state`, `set_city_religion`, `add_city_religion`, `remove_city_religion`, and `CityReligionState`
+- `get_city_corporation_state`, `set_city_corporation`, `add_city_corporation`, `remove_city_corporation`, and `CityCorporationState`
+- `get_city_building_class_change`, `set_city_building_happiness_change`, `set_city_building_health_change`, and `CityBuildingClassChange`
+- `set_city_occupation_timer`, `change_city_occupation_timer`, `change_city_hurry_anger_timer`
 - `set_plot_owner`, `clear_plot_owner`, `set_plot_terrain`, `set_plot_feature`, `clear_plot_feature`, `set_plot_bonus`, `clear_plot_bonus`
 - `set_plot_improvement`, `clear_plot_improvement`, `set_plot_route`, `clear_plot_route`, `set_plot_culture`, `change_plot_culture`, `set_plot_revealed`
 - `get_unit_state`, `get_unit_promotion_state`, `list_player_units`, `list_all_units`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`, `change_unit_experience`
