@@ -6,9 +6,8 @@ use crate::protocol::{
     decode_jsonl, encode_jsonl, BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION,
 };
 use crate::state::{
-    CityState, GameTurnResult, MapState, ModStateResult, PlayerCitiesResult, PlayerGoldResult,
-    PlayerOptions, PlayerState, PlayerUnitsResult, PlayersResult, PlotState, PlotStateResult,
-    SetModStateResult, TeamTechState, UnitState,
+    CityState, GameTurnResult, MapState, ModStateResult, PlayerCitiesResult, PlayerUnitsResult,
+    PlotState, PlotStateResult, SetModStateResult, TeamTechState, UnitState,
 };
 use crate::types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
 use serde::de::DeserializeOwned;
@@ -179,104 +178,6 @@ impl BridgeClient {
         Ok(result.turn)
     }
 
-    pub fn get_player_gold<P: Into<PlayerId>>(&mut self, player: P) -> Result<i32> {
-        let player = player.into();
-        let result: PlayerGoldResult =
-            self.query("get_player_gold", json!({ "player": player.0 }))?;
-        Ok(result.gold)
-    }
-
-    pub fn get_player_state<P: Into<PlayerId>>(&mut self, player: P) -> Result<PlayerState> {
-        let player = player.into();
-        self.query("get_player_state", json!({ "player": player.0 }))
-    }
-
-    pub fn list_players(&mut self) -> Result<Vec<PlayerState>> {
-        let result: PlayersResult = self.query("list_players", json!({}))?;
-        Ok(result.players)
-    }
-
-    pub fn list_alive_players(&mut self) -> Result<Vec<PlayerState>> {
-        Ok(self
-            .list_players()?
-            .into_iter()
-            .filter(|player| player.alive)
-            .collect())
-    }
-
-    pub fn get_player_options<P: Into<PlayerId>>(&mut self, player: P) -> Result<PlayerOptions> {
-        let player = player.into();
-        self.query("get_player_options", json!({ "player": player.0 }))
-    }
-
-    pub fn set_player_civic<P, C>(&mut self, player: P, civic: C) -> Result<PlayerOptions>
-    where
-        P: Into<PlayerId>,
-        C: Into<InfoType>,
-    {
-        let player = player.into();
-        self.command(
-            "set_player_civic",
-            json!({ "player": player.0, "civic": civic.into() }),
-        )
-    }
-
-    pub fn set_player_civic_for_option<P, C>(
-        &mut self,
-        player: P,
-        civic_option: i32,
-        civic: C,
-    ) -> Result<PlayerOptions>
-    where
-        P: Into<PlayerId>,
-        C: Into<InfoType>,
-    {
-        let player = player.into();
-        self.command(
-            "set_player_civic",
-            json!({ "player": player.0, "civic_option": civic_option, "civic": civic.into() }),
-        )
-    }
-
-    pub fn set_player_state_religion<P, R>(
-        &mut self,
-        player: P,
-        religion: R,
-    ) -> Result<PlayerOptions>
-    where
-        P: Into<PlayerId>,
-        R: Into<InfoType>,
-    {
-        let player = player.into();
-        self.command(
-            "set_player_state_religion",
-            json!({ "player": player.0, "religion": religion.into() }),
-        )
-    }
-
-    pub fn clear_player_state_religion<P: Into<PlayerId>>(
-        &mut self,
-        player: P,
-    ) -> Result<PlayerOptions> {
-        let player = player.into();
-        self.command(
-            "set_player_state_religion",
-            json!({ "player": player.0, "religion": -1 }),
-        )
-    }
-
-    pub fn set_player_research<P, T>(&mut self, player: P, tech: T) -> Result<PlayerOptions>
-    where
-        P: Into<PlayerId>,
-        T: Into<InfoType>,
-    {
-        let player = player.into();
-        self.command(
-            "set_player_research",
-            json!({ "player": player.0, "tech": tech.into() }),
-        )
-    }
-
     pub fn get_map_state(&mut self) -> Result<MapState> {
         self.query("get_map_state", json!({}))
     }
@@ -400,27 +301,6 @@ impl BridgeClient {
             args["player"] = json!(player.0);
         }
         self.command("change_team_research_progress", args)
-    }
-
-    pub fn set_player_gold<P: Into<PlayerId>>(&mut self, player: P, value: i32) -> Result<i32> {
-        let player = player.into();
-        let result: PlayerGoldResult = self.command(
-            "set_player_gold",
-            json!({ "player": player.0, "value": value }),
-        )?;
-        Ok(result.gold)
-    }
-
-    pub fn change_player_gold<P: Into<PlayerId>>(
-        &mut self,
-        player: P,
-        change: i32,
-    ) -> Result<PlayerState> {
-        let player = player.into();
-        self.command(
-            "change_player_gold",
-            json!({ "player": player.0, "change": change }),
-        )
     }
 
     pub fn set_city_population(&mut self, city: CityRef, value: i32) -> Result<CityState> {

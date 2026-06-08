@@ -249,7 +249,12 @@ namespace
 		JSON_Value* pValue = json_object_get_value(pObject, szName);
 		if (pValue == NULL || json_value_get_type(pValue) != JSONNumber)
 		{
-			return false;
+			if (pValue == NULL || json_value_get_type(pValue) != JSONBoolean)
+			{
+				return false;
+			}
+			iValue = json_value_get_boolean(pValue) ? 1 : 0;
+			return true;
 		}
 		iValue = (int)json_value_get_number(pValue);
 		return true;
@@ -392,6 +397,42 @@ namespace
 		return -1;
 	}
 
+	int getCommerceTypeFromValue(JSON_Value* pValue)
+	{
+		const char* szCommerce = NULL;
+		if (pValue == NULL)
+		{
+			return -1;
+		}
+		if (json_value_get_type(pValue) == JSONNumber)
+		{
+			return (int)json_value_get_number(pValue);
+		}
+		if (json_value_get_type(pValue) != JSONString)
+		{
+			return -1;
+		}
+
+		szCommerce = json_value_get_string(pValue);
+		if (stricmp(szCommerce, "gold") == 0 || stricmp(szCommerce, "COMMERCE_GOLD") == 0)
+		{
+			return COMMERCE_GOLD;
+		}
+		if (stricmp(szCommerce, "research") == 0 || stricmp(szCommerce, "COMMERCE_RESEARCH") == 0)
+		{
+			return COMMERCE_RESEARCH;
+		}
+		if (stricmp(szCommerce, "culture") == 0 || stricmp(szCommerce, "COMMERCE_CULTURE") == 0)
+		{
+			return COMMERCE_CULTURE;
+		}
+		if (stricmp(szCommerce, "espionage") == 0 || stricmp(szCommerce, "COMMERCE_ESPIONAGE") == 0)
+		{
+			return COMMERCE_ESPIONAGE;
+		}
+		return -1;
+	}
+
 	bool validPlayer(int iPlayer)
 	{
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
@@ -514,13 +555,36 @@ namespace
 		return (pUnit != NULL);
 	}
 
+	bool getPlayerArg(JSON_Object* pArgs, int& iPlayer)
+	{
+		return (getInt(pArgs, "player", iPlayer) && validPlayer(iPlayer));
+	}
+
 	void setPlayerState(JSON_Object* pResult, int iPlayer)
 	{
 		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
 		json_object_set_number(pResult, "player", iPlayer);
 		json_object_set_number(pResult, "team", kPlayer.getTeam());
 		json_object_set_boolean(pResult, "alive", kPlayer.isAlive() ? 1 : 0);
+		json_object_set_boolean(pResult, "ever_alive", kPlayer.isEverAlive() ? 1 : 0);
 		json_object_set_boolean(pResult, "human", kPlayer.isHuman() ? 1 : 0);
+		json_object_set_boolean(pResult, "barbarian", kPlayer.isBarbarian() ? 1 : 0);
+		json_object_set_boolean(pResult, "minor", kPlayer.isMinorCiv() ? 1 : 0);
+		json_object_set_boolean(pResult, "playable", kPlayer.isPlayable() ? 1 : 0);
+		json_object_set_boolean(pResult, "founded_first_city", kPlayer.isFoundedFirstCity() ? 1 : 0);
+		json_object_set_boolean(pResult, "extended_game", kPlayer.isExtendedGame() ? 1 : 0);
+		json_object_set_boolean(pResult, "turn_active", kPlayer.isTurnActive() ? 1 : 0);
+		json_object_set_boolean(pResult, "turn_done", kPlayer.isTurnDone() ? 1 : 0);
+		json_object_set_boolean(pResult, "end_turn", kPlayer.isEndTurn() ? 1 : 0);
+		json_object_set_boolean(pResult, "auto_moves", kPlayer.isAutoMoves() ? 1 : 0);
+		json_object_set_boolean(pResult, "strike", kPlayer.isStrike() ? 1 : 0);
+		json_object_set_number(pResult, "handicap", kPlayer.getHandicapType());
+		json_object_set_number(pResult, "civilization", kPlayer.getCivilizationType());
+		json_object_set_number(pResult, "leader", kPlayer.getLeaderType());
+		json_object_set_number(pResult, "personality", kPlayer.getPersonalityType());
+		json_object_set_number(pResult, "current_era", kPlayer.getCurrentEra());
+		json_object_set_number(pResult, "parent", kPlayer.getParent());
+		json_object_set_number(pResult, "player_color", kPlayer.getPlayerColor());
 		json_object_set_number(pResult, "gold", kPlayer.getGold());
 		json_object_set_number(pResult, "cities", kPlayer.getNumCities());
 		json_object_set_number(pResult, "units", kPlayer.getNumUnits());
@@ -532,6 +596,65 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setPlayerState(pResult, iPlayer);
+		return serializeAndFree(pValue);
+	}
+
+	void setPlayerEconomyState(JSON_Object* pResult, int iPlayer)
+	{
+		JSON_Value* pCommercePercentValue = json_value_init_array();
+		JSON_Value* pCommerceRateValue = json_value_init_array();
+		JSON_Value* pCommerceRateModifierValue = json_value_init_array();
+		JSON_Array* pCommercePercent = json_value_get_array(pCommercePercentValue);
+		JSON_Array* pCommerceRate = json_value_get_array(pCommerceRateValue);
+		JSON_Array* pCommerceRateModifier = json_value_get_array(pCommerceRateModifierValue);
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		int iI;
+
+		for (iI = 0; iI < NUM_COMMERCE_TYPES; ++iI)
+		{
+			json_array_append_number(pCommercePercent, kPlayer.getCommercePercent((CommerceTypes)iI));
+			json_array_append_number(pCommerceRate, kPlayer.getCommerceRate((CommerceTypes)iI));
+			json_array_append_number(pCommerceRateModifier, kPlayer.getCommerceRateModifier((CommerceTypes)iI));
+		}
+
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "gold", kPlayer.getGold());
+		json_object_set_number(pResult, "gold_per_turn", kPlayer.getGoldPerTurn());
+		json_object_set_number(pResult, "advanced_start_points", kPlayer.getAdvancedStartPoints());
+		json_object_set_number(pResult, "golden_age_turns", kPlayer.getGoldenAgeTurns());
+		json_object_set_number(pResult, "golden_age_length", kPlayer.getGoldenAgeLength());
+		json_object_set_boolean(pResult, "golden_age", kPlayer.isGoldenAge() ? 1 : 0);
+		json_object_set_number(pResult, "num_unit_golden_ages", kPlayer.getNumUnitGoldenAges());
+		json_object_set_number(pResult, "units_required_for_golden_age", kPlayer.unitsRequiredForGoldenAge());
+		json_object_set_number(pResult, "units_golden_age_ready", kPlayer.unitsGoldenAgeReady());
+		json_object_set_number(pResult, "anarchy_turns", kPlayer.getAnarchyTurns());
+		json_object_set_boolean(pResult, "anarchy", kPlayer.isAnarchy() ? 1 : 0);
+		json_object_set_number(pResult, "strike_turns", kPlayer.getStrikeTurns());
+		json_object_set_boolean(pResult, "strike", kPlayer.isStrike() ? 1 : 0);
+		json_object_set_number(pResult, "combat_experience", kPlayer.getCombatExperience());
+		json_object_set_number(pResult, "gold_per_unit", kPlayer.getGoldPerUnit());
+		json_object_set_number(pResult, "gold_per_military_unit", kPlayer.getGoldPerMilitaryUnit());
+		json_object_set_number(pResult, "total_culture", kPlayer.countTotalCulture());
+		json_object_set_value(pResult, "commerce_percent", pCommercePercentValue);
+		json_object_set_value(pResult, "commerce_rate", pCommerceRateValue);
+		json_object_set_value(pResult, "commerce_rate_modifier", pCommerceRateModifierValue);
+	}
+
+	CvString makePlayerEconomyStateReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setPlayerEconomyState(pResult, iPlayer);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makePlayerGoldPerTurnStateReply(int iId, int iPlayer, int iOtherPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "other_player", iOtherPlayer);
+		json_object_set_number(pResult, "value", GET_PLAYER((PlayerTypes)iPlayer).getGoldPerTurnByPlayer((PlayerTypes)iOtherPlayer));
 		return serializeAndFree(pValue);
 	}
 
@@ -1008,7 +1131,7 @@ namespace
 		if (strcmp(szName, "get_player_gold") == 0)
 		{
 			int iPlayer = -1;
-			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			if (!getPlayerArg(pArgs, iPlayer))
 			{
 				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 			}
@@ -1020,7 +1143,7 @@ namespace
 		if (strcmp(szName, "get_player_state") == 0)
 		{
 			int iPlayer = -1;
-			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			if (!getPlayerArg(pArgs, iPlayer))
 			{
 				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 			}
@@ -1035,11 +1158,36 @@ namespace
 		if (strcmp(szName, "get_player_options") == 0)
 		{
 			int iPlayer = -1;
-			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			if (!getPlayerArg(pArgs, iPlayer))
 			{
 				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 			}
 			return makePlayerOptionsReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "get_player_economy_state") == 0)
+		{
+			int iPlayer = -1;
+			if (!getPlayerArg(pArgs, iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makePlayerEconomyStateReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "get_player_gold_per_turn_state") == 0)
+		{
+			int iPlayer = -1;
+			int iOtherPlayer = -1;
+			if (!getPlayerArg(pArgs, iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			if (!getInt(pArgs, "other_player", iOtherPlayer) || !validPlayer(iOtherPlayer))
+			{
+				return makeErrorReply(iId, "bad_other_player", "other_player is missing or out of range");
+			}
+			return makePlayerGoldPerTurnStateReply(iId, iPlayer, iOtherPlayer);
 		}
 
 		if (strcmp(szName, "get_team_tech_state") == 0)
@@ -1275,7 +1423,7 @@ namespace
 	{
 		int iPlayer = -1;
 		int iChange = 0;
-		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		if (!getPlayerArg(pArgs, iPlayer))
 		{
 			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 		}
@@ -1287,6 +1435,385 @@ namespace
 		GET_PLAYER((PlayerTypes)iPlayer).changeGold(iChange);
 		markGameDataDirty();
 		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerAlive(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iAlive = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "alive", iAlive))
+		{
+			return makeErrorReply(iId, "bad_alive", "alive is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setAlive(iAlive != 0);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerPlayable(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iPlayable = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "playable", iPlayable))
+		{
+			return makeErrorReply(iId, "bad_playable", "playable is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setPlayable(iPlayable != 0);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerCurrentEra(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iEra = getInfoTypeFromValue(json_object_get_value(pArgs, "era"));
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (iEra < 0 || iEra >= GC.getNumEraInfos())
+		{
+			return makeErrorReply(iId, "bad_era", "era is missing or out of range");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setCurrentEra((EraTypes)iEra);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerPersonality(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iLeader = getInfoTypeFromValue(json_object_get_value(pArgs, "leader"));
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (iLeader < 0 || iLeader >= GC.getNumLeaderHeadInfos())
+		{
+			return makeErrorReply(iId, "bad_leader", "leader is missing or out of range");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setPersonalityType((LeaderHeadTypes)iLeader);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerParent(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iParent = NO_PLAYER;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "parent", iParent) || (iParent != NO_PLAYER && !validPlayer(iParent)))
+		{
+			return makeErrorReply(iId, "bad_parent", "parent is missing or out of range");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setParent((PlayerTypes)iParent);
+		markGameDataDirty();
+		return makePlayerStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerAdvancedStartPoints(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iValue = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < -1)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or less than -1");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setAdvancedStartPoints(iValue);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerAdvancedStartPoints(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getAdvancedStartPoints() + iChange < -1)
+		{
+			return makeErrorReply(iId, "bad_value", "advanced_start_points cannot be reduced below -1");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeAdvancedStartPoints(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerGoldenAgeTurns(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getGoldenAgeTurns() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "golden_age_turns cannot be reduced below zero");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeGoldenAgeTurns(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerNumUnitGoldenAges(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getNumUnitGoldenAges() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "num_unit_golden_ages cannot be reduced below zero");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeNumUnitGoldenAges(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerAnarchyTurns(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getAnarchyTurns() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "anarchy_turns cannot be reduced below zero");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeAnarchyTurns(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerStrikeTurns(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getStrikeTurns() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "strike_turns cannot be reduced below zero");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeStrikeTurns(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerCombatExperience(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iValue = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setCombatExperience(iValue);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerCombatExperience(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getCombatExperience() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "combat_experience cannot be reduced below zero");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeCombatExperience(iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerCommercePercent(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iValue = 0;
+		int iCommerce = getCommerceTypeFromValue(json_object_get_value(pArgs, "commerce"));
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (iCommerce < 0 || iCommerce >= NUM_COMMERCE_TYPES)
+		{
+			return makeErrorReply(iId, "bad_commerce", "commerce is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0 || iValue > 100)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or not between 0 and 100");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).setCommercePercent((CommerceTypes)iCommerce, iValue);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerCommercePercent(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		int iCommerce = getCommerceTypeFromValue(json_object_get_value(pArgs, "commerce"));
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (iCommerce < 0 || iCommerce >= NUM_COMMERCE_TYPES)
+		{
+			return makeErrorReply(iId, "bad_commerce", "commerce is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GET_PLAYER((PlayerTypes)iPlayer).getCommercePercent((CommerceTypes)iCommerce) + iChange < 0 ||
+			GET_PLAYER((PlayerTypes)iPlayer).getCommercePercent((CommerceTypes)iCommerce) + iChange > 100)
+		{
+			return makeErrorReply(iId, "bad_value", "commerce percent cannot be changed outside 0..100");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeCommercePercent((CommerceTypes)iCommerce, iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleChangePlayerCommerceRateModifier(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iChange = 0;
+		int iCommerce = getCommerceTypeFromValue(json_object_get_value(pArgs, "commerce"));
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (iCommerce < 0 || iCommerce >= NUM_COMMERCE_TYPES)
+		{
+			return makeErrorReply(iId, "bad_commerce", "commerce is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeCommerceRateModifier((CommerceTypes)iCommerce, iChange);
+		markGameDataDirty();
+		return makePlayerEconomyStateReply(iId, iPlayer);
+	}
+
+	CvString handleSetPlayerGoldPerTurnByPlayer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iOtherPlayer = -1;
+		int iValue = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "other_player", iOtherPlayer) || !validPlayer(iOtherPlayer))
+		{
+			return makeErrorReply(iId, "bad_other_player", "other_player is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue))
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeGoldPerTurnByPlayer((PlayerTypes)iOtherPlayer,
+			iValue - GET_PLAYER((PlayerTypes)iPlayer).getGoldPerTurnByPlayer((PlayerTypes)iOtherPlayer));
+		markGameDataDirty();
+		return makePlayerGoldPerTurnStateReply(iId, iPlayer, iOtherPlayer);
+	}
+
+	CvString handleChangePlayerGoldPerTurnByPlayer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iOtherPlayer = -1;
+		int iChange = 0;
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "other_player", iOtherPlayer) || !validPlayer(iOtherPlayer))
+		{
+			return makeErrorReply(iId, "bad_other_player", "other_player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		GET_PLAYER((PlayerTypes)iPlayer).changeGoldPerTurnByPlayer((PlayerTypes)iOtherPlayer, iChange);
+		markGameDataDirty();
+		return makePlayerGoldPerTurnStateReply(iId, iPlayer, iOtherPlayer);
 	}
 
 	CvString handleSetCityPopulation(int iId, JSON_Object* pArgs)
@@ -3255,6 +3782,78 @@ namespace
 		if (strcmp(szName, "change_player_gold") == 0)
 		{
 			return handleChangePlayerGold(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_alive") == 0)
+		{
+			return handleSetPlayerAlive(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_playable") == 0)
+		{
+			return handleSetPlayerPlayable(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_current_era") == 0)
+		{
+			return handleSetPlayerCurrentEra(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_personality") == 0)
+		{
+			return handleSetPlayerPersonality(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_parent") == 0)
+		{
+			return handleSetPlayerParent(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_advanced_start_points") == 0)
+		{
+			return handleSetPlayerAdvancedStartPoints(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_advanced_start_points") == 0)
+		{
+			return handleChangePlayerAdvancedStartPoints(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_golden_age_turns") == 0)
+		{
+			return handleChangePlayerGoldenAgeTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_num_unit_golden_ages") == 0)
+		{
+			return handleChangePlayerNumUnitGoldenAges(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_anarchy_turns") == 0)
+		{
+			return handleChangePlayerAnarchyTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_strike_turns") == 0)
+		{
+			return handleChangePlayerStrikeTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_combat_experience") == 0)
+		{
+			return handleSetPlayerCombatExperience(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_combat_experience") == 0)
+		{
+			return handleChangePlayerCombatExperience(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_commerce_percent") == 0)
+		{
+			return handleSetPlayerCommercePercent(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_commerce_percent") == 0)
+		{
+			return handleChangePlayerCommercePercent(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_commerce_rate_modifier") == 0)
+		{
+			return handleChangePlayerCommerceRateModifier(iId, pArgs);
+		}
+		if (strcmp(szName, "set_player_gold_per_turn_by_player") == 0)
+		{
+			return handleSetPlayerGoldPerTurnByPlayer(iId, pArgs);
+		}
+		if (strcmp(szName, "change_player_gold_per_turn_by_player") == 0)
+		{
+			return handleChangePlayerGoldPerTurnByPlayer(iId, pArgs);
 		}
 		if (strcmp(szName, "set_city_population") == 0)
 		{

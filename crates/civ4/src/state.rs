@@ -80,7 +80,25 @@ pub struct PlayerState {
     pub player: i32,
     pub team: i32,
     pub alive: bool,
+    pub ever_alive: bool,
     pub human: bool,
+    pub barbarian: bool,
+    pub minor: bool,
+    pub playable: bool,
+    pub founded_first_city: bool,
+    pub extended_game: bool,
+    pub turn_active: bool,
+    pub turn_done: bool,
+    pub end_turn: bool,
+    pub auto_moves: bool,
+    pub strike: bool,
+    pub handicap: i32,
+    pub civilization: i32,
+    pub leader: i32,
+    pub personality: i32,
+    pub current_era: i32,
+    pub parent: i32,
+    pub player_color: i32,
     pub gold: i32,
     pub cities: i32,
     pub units: i32,
@@ -94,6 +112,58 @@ impl PlayerState {
 
     pub fn team_id(&self) -> TeamId {
         TeamId(self.team)
+    }
+
+    pub fn parent_id(&self) -> Option<PlayerId> {
+        (self.parent >= 0).then_some(PlayerId(self.parent))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlayerEconomyState {
+    pub player: i32,
+    pub gold: i32,
+    pub gold_per_turn: i32,
+    pub advanced_start_points: i32,
+    pub golden_age_turns: i32,
+    pub golden_age_length: i32,
+    pub golden_age: bool,
+    pub num_unit_golden_ages: i32,
+    pub units_required_for_golden_age: i32,
+    pub units_golden_age_ready: i32,
+    pub anarchy_turns: i32,
+    pub anarchy: bool,
+    pub strike_turns: i32,
+    pub strike: bool,
+    pub combat_experience: i32,
+    pub gold_per_unit: i32,
+    pub gold_per_military_unit: i32,
+    pub total_culture: i32,
+    pub commerce_percent: Vec<i32>,
+    pub commerce_rate: Vec<i32>,
+    pub commerce_rate_modifier: Vec<i32>,
+}
+
+impl PlayerEconomyState {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct PlayerGoldPerTurnState {
+    pub player: i32,
+    pub other_player: i32,
+    pub value: i32,
+}
+
+impl PlayerGoldPerTurnState {
+    pub fn player_id(&self) -> PlayerId {
+        PlayerId(self.player)
+    }
+
+    pub fn other_player_id(&self) -> PlayerId {
+        PlayerId(self.other_player)
     }
 }
 
@@ -573,7 +643,25 @@ mod tests {
                 "player": 0,
                 "team": 0,
                 "alive": true,
+                "ever_alive": true,
                 "human": true,
+                "barbarian": false,
+                "minor": false,
+                "playable": true,
+                "founded_first_city": true,
+                "extended_game": false,
+                "turn_active": true,
+                "turn_done": false,
+                "end_turn": false,
+                "auto_moves": false,
+                "strike": false,
+                "handicap": 3,
+                "civilization": 1,
+                "leader": 2,
+                "personality": 2,
+                "current_era": 1,
+                "parent": -1,
+                "player_color": 4,
                 "gold": 50,
                 "cities": 1,
                 "units": 2,
@@ -582,6 +670,43 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(players.players[0].player_id(), PlayerId(0));
+        assert_eq!(players.players[0].parent_id(), None);
+
+        let economy: PlayerEconomyState = serde_json::from_value(json!({
+            "player": 0,
+            "gold": 50,
+            "gold_per_turn": 2,
+            "advanced_start_points": -1,
+            "golden_age_turns": 0,
+            "golden_age_length": 8,
+            "golden_age": false,
+            "num_unit_golden_ages": 1,
+            "units_required_for_golden_age": 3,
+            "units_golden_age_ready": 2,
+            "anarchy_turns": 0,
+            "anarchy": false,
+            "strike_turns": 0,
+            "strike": false,
+            "combat_experience": 4,
+            "gold_per_unit": 1,
+            "gold_per_military_unit": 1,
+            "total_culture": 99,
+            "commerce_percent": [0, 80, 20, 0],
+            "commerce_rate": [4, 12, 2, 0],
+            "commerce_rate_modifier": [0, 25, 0, 0]
+        }))
+        .unwrap();
+        assert_eq!(economy.player_id(), PlayerId(0));
+        assert_eq!(economy.commerce_percent[1], 80);
+
+        let gold_per_turn: PlayerGoldPerTurnState = serde_json::from_value(json!({
+            "player": 0,
+            "other_player": 1,
+            "value": -3
+        }))
+        .unwrap();
+        assert_eq!(gold_per_turn.player_id(), PlayerId(0));
+        assert_eq!(gold_per_turn.other_player_id(), PlayerId(1));
 
         let cities: PlayerCitiesResult = serde_json::from_value(json!({
             "player": 0,

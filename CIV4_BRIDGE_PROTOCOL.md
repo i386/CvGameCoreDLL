@@ -65,9 +65,11 @@ get_game_option_state {"option":"GAMEOPTION_NO_BARBARIANS"} -> {"option":0,"enab
 get_multiplayer_option_state {"option":"MPOPTION_SIMULTANEOUS_TURNS"} -> {"option":0,"enabled":false}
 get_force_control_state {"control":"FORCECONTROL_SPEED"} -> {"control":0,"enabled":false}
 get_player_gold {"player":0} -> {"gold":500}
-get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"human":true,"gold":500,"cities":3,"units":8,"population":12}
+get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"ever_alive":true,"human":true,"barbarian":false,"minor":false,"playable":true,"founded_first_city":true,"extended_game":false,"turn_active":true,"turn_done":false,"end_turn":false,"auto_moves":false,"strike":false,"handicap":3,"civilization":1,"leader":2,"personality":2,"current_era":1,"parent":-1,"player_color":4,"gold":500,"cities":3,"units":8,"population":12}
 list_players -> {"players":[player state, ...]}
 get_player_options {"player":0} -> {"player":0,"team":0,"state_religion":-1,"current_research":3,"civics":[1,2,3,4,5]}
+get_player_economy_state {"player":0} -> {"player":0,"gold":500,"gold_per_turn":10,"advanced_start_points":-1,"golden_age_turns":0,"golden_age_length":8,"golden_age":false,"num_unit_golden_ages":0,"units_required_for_golden_age":2,"units_golden_age_ready":1,"anarchy_turns":0,"anarchy":false,"strike_turns":0,"strike":false,"combat_experience":4,"gold_per_unit":1,"gold_per_military_unit":1,"total_culture":100,"commerce_percent":[0,80,20,0],"commerce_rate":[10,40,5,0],"commerce_rate_modifier":[0,25,0,0]}
+get_player_gold_per_turn_state {"player":0,"other_player":1} -> {"player":0,"other_player":1,"value":-3}
 get_team_state {"team":0} -> {"team":0,"alive":true,"ever_alive":true,"human":true,"barbarian":false,"minor":false,"leader":0,"secretary":0,"members":1,"cities":3,"population":12,"land":40,"assets":500,"power":120,"defensive_power":100,"at_war_count":0,"has_met_count":2,"defensive_pact_count":0,"vassal_count":0,"vassal":false,"nuke_interception":0,"map_trading":true,"tech_trading":true,"gold_trading":true,"open_borders_trading":true,"defensive_pact_trading":false,"permanent_alliance_trading":false,"vassal_trading":false}
 list_teams -> {"teams":[team state, ...]}
 get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":7,"has":true,"progress":0}
@@ -111,6 +113,24 @@ set_multiplayer_option {"option":"MPOPTION_SIMULTANEOUS_TURNS","enabled":0} -> m
 set_force_control {"control":"FORCECONTROL_SPEED","enabled":1} -> force control state
 set_player_gold {"player":0,"value":500} -> {"gold":500}
 change_player_gold {"player":0,"change":50} -> player state
+set_player_alive {"player":0,"alive":true} -> player state
+set_player_playable {"player":0,"playable":true} -> player state
+set_player_current_era {"player":0,"era":"ERA_CLASSICAL"} -> player state
+set_player_personality {"player":0,"leader":"LEADER_GANDHI"} -> player state
+set_player_parent {"player":0,"parent":-1} -> player state
+set_player_advanced_start_points {"player":0,"value":100} -> player economy state
+change_player_advanced_start_points {"player":0,"change":-10} -> player economy state
+change_player_golden_age_turns {"player":0,"change":8} -> player economy state
+change_player_num_unit_golden_ages {"player":0,"change":1} -> player economy state
+change_player_anarchy_turns {"player":0,"change":1} -> player economy state
+change_player_strike_turns {"player":0,"change":1} -> player economy state
+set_player_combat_experience {"player":0,"value":5} -> player economy state
+change_player_combat_experience {"player":0,"change":1} -> player economy state
+set_player_commerce_percent {"player":0,"commerce":"research","value":80} -> player economy state
+change_player_commerce_percent {"player":0,"commerce":"culture","change":10} -> player economy state
+change_player_commerce_rate_modifier {"player":0,"commerce":"research","change":25} -> player economy state
+set_player_gold_per_turn_by_player {"player":0,"other_player":1,"value":-3} -> player gold-per-turn state
+change_player_gold_per_turn_by_player {"player":0,"other_player":1,"change":1} -> player gold-per-turn state
 set_city_population {"player":0,"city":3,"value":6} -> city state
 change_city_population {"player":0,"city":3,"change":1} -> city state
 set_city_culture {"player":0,"city":3,"culture_player":0,"value":100} -> city state
@@ -181,12 +201,15 @@ change_team_stolen_visibility_timer {"team":0,"other_team":1,"change":-1} -> tea
 
 `unit_type`, `building_type`, `building`, `building_class`, `project_type`, `process_type`,
 `terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`, `civic`, `religion`,
-`corporation`, `victory`, game `option`, multiplayer `option`, and force `control` may be either
-numeric Civ4 info IDs or XML type names. `unit_ai` for
+`corporation`, `victory`, `era`, `leader`, game `option`, multiplayer `option`, and force
+`control` may be either numeric Civ4 info IDs or XML type names. `unit_ai` for
 `spawn_unit` may also be numeric or an XML type name.
+`commerce` accepts `gold`, `research`, `culture`, `espionage`, the matching Civ4 enum names, or
+numeric `CommerceTypes` values. Boolean command arguments may be sent as JSON booleans or `0`/`1`.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
 If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
 Use religion `-1` with `set_player_state_religion` to clear a player's state religion.
+Use parent `-1` with `set_player_parent` to clear the parent player.
 `set_city_religion` and `set_city_corporation` accept optional integer flags `announce` and
 `arrows`; `announce` defaults to `0` so external mod state changes do not emit UI messages unless
 requested.
@@ -280,8 +303,13 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `change_game_nukes_exploded`, `set_game_pause_player`, `pause_game_for`, `clear_game_pause`, `set_game_winner`, `clear_game_winner`, `set_game_status`
 - `get_game_option_state`, `set_game_option`, `GameOptionState`, `get_multiplayer_option_state`, `set_multiplayer_option`, `MultiplayerOptionState`
 - `get_force_control_state`, `set_force_control`, `ForceControlState`, `GameState`, and `GameStatus`
-- `get_player_gold`, `set_player_gold`
-- `get_player_state`, `get_player_options`, `list_players`, `list_alive_players`, `change_player_gold`
+- `get_player_gold`, `set_player_gold`, `change_player_gold`
+- `get_player_state`, `get_player_options`, `get_player_economy_state`, `get_player_gold_per_turn_state`, `list_players`, `list_alive_players`
+- `set_player_alive`, `set_player_playable`, `set_player_current_era`, `set_player_personality`, `set_player_parent`
+- `set_player_advanced_start_points`, `change_player_advanced_start_points`, `change_player_golden_age_turns`, `change_player_num_unit_golden_ages`
+- `change_player_anarchy_turns`, `change_player_strike_turns`, `set_player_combat_experience`, `change_player_combat_experience`
+- `set_player_commerce_percent`, `change_player_commerce_percent`, `change_player_commerce_rate_modifier`, `CommerceType`
+- `set_player_gold_per_turn_by_player`, `change_player_gold_per_turn_by_player`, `PlayerEconomyState`, and `PlayerGoldPerTurnState`
 - `set_player_civic`, `set_player_civic_for_option`, `set_player_state_religion`, `clear_player_state_religion`, `set_player_research`
 - `get_team_tech_state`, `set_team_has_tech`, `grant_team_tech`, `change_team_research_progress`
 - `get_team_state`, `list_teams`, `get_team_relation_state`, `TeamState`, and `TeamRelationState`
