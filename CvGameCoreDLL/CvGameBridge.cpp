@@ -1432,6 +1432,21 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeUnitGroupJoinCheckReply(int iId, CvUnit* pUnit, CvUnit* pHeadUnit, CvSelectionGroup* pTargetGroup, int iCanJoin)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pUnit->getOwnerINLINE());
+		json_object_set_number(pResult, "unit", pUnit->getID());
+		json_object_set_number(pResult, "group", pUnit->getGroupID());
+		json_object_set_number(pResult, "head_player", pHeadUnit != NULL ? pHeadUnit->getOwnerINLINE() : -1);
+		json_object_set_number(pResult, "head_unit", pHeadUnit != NULL ? pHeadUnit->getID() : -1);
+		json_object_set_number(pResult, "target_group", pTargetGroup != NULL ? pTargetGroup->getID() : -1);
+		json_object_set_boolean(pResult, "split", pHeadUnit == NULL ? 1 : 0);
+		json_object_set_boolean(pResult, "can_join", iCanJoin != 0 ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlotStateReply(int iId, CvPlot* pPlot)
 	{
 		JSON_Object* pResult = NULL;
@@ -2301,6 +2316,45 @@ namespace
 			getInt(pArgs, "test_visible", iTestVisible);
 			getInt(pArgs, "use_cache", iUseCache);
 			return makeSelectionGroupCommandCheckReply(iId, pGroup, iCommand, iData1, iData2, iTestVisible, iUseCache);
+		}
+
+		if (strcmp(szName, "can_unit_join_group") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			int iHeadPlayer = -1;
+			int iHeadUnit = -1;
+			CvUnit* pUnit = NULL;
+			CvUnit* pHeadUnit = NULL;
+			CvSelectionGroup* pTargetGroup = NULL;
+			JSON_Value* pHeadUnitValue = json_object_get_value(pArgs, "head_unit");
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			if (pHeadUnitValue == NULL)
+			{
+				return makeUnitGroupJoinCheckReply(iId, pUnit, NULL, NULL, 1);
+			}
+			if (!getInt(pArgs, "head_player", iHeadPlayer) || !validPlayer(iHeadPlayer) || !getInt(pArgs, "head_unit", iHeadUnit))
+			{
+				return makeErrorReply(iId, "bad_head_unit", "head_player or head_unit is missing or out of range");
+			}
+			if (iHeadUnit < 0)
+			{
+				return makeUnitGroupJoinCheckReply(iId, pUnit, NULL, NULL, 1);
+			}
+			pHeadUnit = GET_PLAYER((PlayerTypes)iHeadPlayer).getUnit(iHeadUnit);
+			if (pHeadUnit == NULL)
+			{
+				return makeErrorReply(iId, "bad_head_unit", "head unit is not found");
+			}
+			pTargetGroup = pHeadUnit->getGroup();
+			if (pTargetGroup == NULL)
+			{
+				return makeErrorReply(iId, "bad_group", "head unit has no selection group");
+			}
+			return makeUnitGroupJoinCheckReply(iId, pUnit, pHeadUnit, pTargetGroup, pUnit->canJoinGroup(pUnit->plot(), pTargetGroup) ? 1 : 0);
 		}
 
 		if (strcmp(szName, "get_unit_promotion_state") == 0)
@@ -4012,6 +4066,68 @@ namespace
 		return makeUnitCommandResultReply(iId, iPlayer, iGroup, iCommand, iData1, iData2, 1, iExecutingPlayer, iExecutingUnit);
 	}
 
+	CvString handleJoinUnitGroup(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iHeadPlayer = -1;
+		int iHeadUnit = -1;
+		CvUnit* pUnit = NULL;
+		CvUnit* pHeadUnit = NULL;
+		CvSelectionGroup* pTargetGroup = NULL;
+		CvSelectionGroup* pResultGroup = NULL;
+		JSON_Value* pHeadUnitValue = json_object_get_value(pArgs, "head_unit");
+
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+
+		if (pHeadUnitValue != NULL)
+		{
+			if (!getInt(pArgs, "head_player", iHeadPlayer) || !validPlayer(iHeadPlayer) || !getInt(pArgs, "head_unit", iHeadUnit))
+			{
+				return makeErrorReply(iId, "bad_head_unit", "head_player or head_unit is missing or out of range");
+			}
+		}
+
+		if (pHeadUnitValue == NULL || iHeadUnit < 0)
+		{
+			pUnit->joinGroup(NULL);
+			pResultGroup = pUnit->getGroup();
+			if (pResultGroup == NULL)
+			{
+				return makeErrorReply(iId, "bad_group", "unit has no selection group after split");
+			}
+			markGameDataDirty();
+			return makeSelectionGroupStateReply(iId, pResultGroup);
+		}
+
+		pHeadUnit = GET_PLAYER((PlayerTypes)iHeadPlayer).getUnit(iHeadUnit);
+		if (pHeadUnit == NULL)
+		{
+			return makeErrorReply(iId, "bad_head_unit", "head unit is not found");
+		}
+		pTargetGroup = pHeadUnit->getGroup();
+		if (pTargetGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "head unit has no selection group");
+		}
+		if (!pUnit->canJoinGroup(pUnit->plot(), pTargetGroup))
+		{
+			return makeErrorReply(iId, "cannot_join_group", "unit cannot join the target selection group");
+		}
+
+		pUnit->joinGroup(pTargetGroup);
+		pResultGroup = pUnit->getGroup();
+		if (pResultGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "unit has no selection group after join");
+		}
+		markGameDataDirty();
+		return makeSelectionGroupStateReply(iId, pResultGroup);
+	}
+
 	CvString handleKillUnit(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -5137,6 +5253,10 @@ namespace
 		if (strcmp(szName, "do_unit_group_command") == 0)
 		{
 			return handleDoUnitGroupCommand(iId, pArgs);
+		}
+		if (strcmp(szName, "join_unit_group") == 0)
+		{
+			return handleJoinUnitGroup(iId, pArgs);
 		}
 		if (strcmp(szName, "kill_unit") == 0)
 		{

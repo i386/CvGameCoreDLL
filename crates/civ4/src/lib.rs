@@ -26,7 +26,7 @@ pub use city_api::CityProductionOptionsQuery;
 pub use client::{BridgeClient, BridgeError, Result};
 pub use commands::{
     CityOrder, CityOrderType, SpawnUnitRequest, SpawnedUnit, UnitCommandName, UnitCommandType,
-    UnitGroupCommand, UnitGroupMission,
+    UnitGroupCommand, UnitGroupJoin, UnitGroupMission,
 };
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
 pub use metadata::{InfoCount, InfoTypeEntry, InfoTypeState, InfoTypesResult};
@@ -42,7 +42,7 @@ pub use state::{
     PlayerGoldPerTurnState, PlayerOptions, PlayerState, PlotCultureState, PlotState,
     PlotVisibilityState, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
     SelectionGroupMissionState, SelectionGroupState, TeamRelationState, TeamState, TeamTechState,
-    UnitCommandResult, UnitDetailState, UnitPromotionState, UnitState,
+    UnitCommandResult, UnitDetailState, UnitGroupJoinCheck, UnitPromotionState, UnitState,
 };
 pub use types::{
     CityProductionRule, CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot,

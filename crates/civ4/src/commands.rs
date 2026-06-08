@@ -166,6 +166,33 @@ impl UnitGroupCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnitGroupJoin {
+    pub head: Option<UnitRef>,
+}
+
+impl UnitGroupJoin {
+    pub fn split() -> Self {
+        Self { head: None }
+    }
+
+    pub fn join(head: UnitRef) -> Self {
+        Self { head: Some(head) }
+    }
+
+    pub(crate) fn into_args(self, unit: UnitRef) -> Value {
+        let mut args = json!({
+            "player": unit.player,
+            "unit": unit.id,
+        });
+        if let Some(head) = self.head {
+            args["head_player"] = json!(head.player);
+            args["head_unit"] = json!(head.id);
+        }
+        args
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnitGroupMission {
     pub mission: InfoType,
     pub data1: i32,
@@ -432,6 +459,21 @@ mod tests {
                 "data2": 99,
                 "test_visible": 1,
                 "use_cache": 0
+            })
+        );
+    }
+
+    #[test]
+    fn unit_group_join_serializes_to_bridge_args() {
+        let args = UnitGroupJoin::join(UnitRef::new(0, 43)).into_args(UnitRef::new(0, 42));
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 0,
+                "unit": 42,
+                "head_player": 0,
+                "head_unit": 43
             })
         );
     }

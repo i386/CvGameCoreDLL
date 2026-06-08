@@ -82,6 +82,29 @@ impl UnitCommandResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct UnitGroupJoinCheck {
+    pub player: i32,
+    pub unit: i32,
+    pub group: i32,
+    pub head_player: i32,
+    pub head_unit: i32,
+    pub target_group: i32,
+    pub split: bool,
+    pub can_join: bool,
+}
+
+impl UnitGroupJoinCheck {
+    pub fn unit_ref(&self) -> UnitRef {
+        UnitRef::new(self.player, self.unit)
+    }
+
+    pub fn head_unit_ref(&self) -> Option<UnitRef> {
+        (self.head_player >= 0 && self.head_unit >= 0)
+            .then_some(UnitRef::new(self.head_player, self.head_unit))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SelectionGroupState {
     pub player: i32,
     pub group: i32,
@@ -246,5 +269,24 @@ mod tests {
         assert_eq!(result.player_id(), PlayerId(0));
         assert_eq!(result.executing_unit_ref(), Some(UnitRef::new(0, 42)));
         assert_eq!(result.plot(), Some(Plot::new(11, 12)));
+    }
+
+    #[test]
+    fn decodes_unit_group_join_check() {
+        let check: UnitGroupJoinCheck = serde_json::from_value(json!({
+            "player": 0,
+            "unit": 42,
+            "group": 9,
+            "head_player": 0,
+            "head_unit": 43,
+            "target_group": 10,
+            "split": false,
+            "can_join": true
+        }))
+        .unwrap();
+
+        assert_eq!(check.unit_ref(), UnitRef::new(0, 42));
+        assert_eq!(check.head_unit_ref(), Some(UnitRef::new(0, 43)));
+        assert!(check.can_join);
     }
 }
