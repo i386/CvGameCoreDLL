@@ -67,6 +67,10 @@ pub struct BridgeClient {
     queued_events: VecDeque<Message>,
 }
 
+pub struct BridgeCallbackReader {
+    callback_reader: BufReader<File>,
+}
+
 impl BridgeClient {
     pub fn connect_default() -> Result<Self> {
         Self::connect(
@@ -105,6 +109,12 @@ impl BridgeClient {
             callback_reader: BufReader::new(callbacks.try_clone()?),
             callback_writer: callbacks,
             queued_events: VecDeque::new(),
+        })
+    }
+
+    pub fn try_clone_callback_reader(&self) -> Result<BridgeCallbackReader> {
+        Ok(BridgeCallbackReader {
+            callback_reader: BufReader::new(self.callback_reader.get_ref().try_clone()?),
         })
     }
 
@@ -224,12 +234,7 @@ impl BridgeClient {
     }
 
     pub fn next_callback_raw(&mut self) -> Result<Message> {
-        let mut line = String::new();
-        self.callback_reader.read_line(&mut line)?;
-        if line.is_empty() {
-            return Err(BridgeError::Protocol("callback pipe closed".to_string()));
-        }
-        Ok(decode_jsonl(&line)?)
+        read_callback_raw(&mut self.callback_reader)
     }
 
     pub fn next_callback_mirror(&mut self) -> Result<Message> {
@@ -254,23 +259,7 @@ impl BridgeClient {
     }
 
     pub fn next_callback_message(&mut self) -> Result<BridgeCallbackMessage> {
-        match self.next_callback_raw()? {
-            Message::CallbackMirror { seq, name, args } => {
-                Ok(BridgeCallbackMessage::Mirror(BridgeEventMessage {
-                    seq,
-                    event: BridgeEvent::from_name_args(name, args)?,
-                }))
-            }
-            Message::CallbackRequest { id, name, args } => {
-                Ok(BridgeCallbackMessage::Request(BridgeCallbackRequest {
-                    id,
-                    event: BridgeEvent::from_name_args(name, args)?,
-                }))
-            }
-            other => Err(BridgeError::Protocol(format!(
-                "expected callback message, got {other:?}"
-            ))),
-        }
+        decode_callback_message(self.next_callback_raw()?)
     }
 
     pub fn next_callback_request(&mut self) -> Result<BridgeCallbackRequest> {
@@ -386,6 +375,45 @@ impl BridgeClient {
                 other => self.queued_events.push_back(other),
             }
         }
+    }
+}
+
+impl BridgeCallbackReader {
+    pub fn next_callback_raw(&mut self) -> Result<Message> {
+        read_callback_raw(&mut self.callback_reader)
+    }
+
+    pub fn next_callback_message(&mut self) -> Result<BridgeCallbackMessage> {
+        decode_callback_message(self.next_callback_raw()?)
+    }
+}
+
+fn read_callback_raw(callback_reader: &mut BufReader<File>) -> Result<Message> {
+    let mut line = String::new();
+    callback_reader.read_line(&mut line)?;
+    if line.is_empty() {
+        return Err(BridgeError::Protocol("callback pipe closed".to_string()));
+    }
+    Ok(decode_jsonl(&line)?)
+}
+
+fn decode_callback_message(message: Message) -> Result<BridgeCallbackMessage> {
+    match message {
+        Message::CallbackMirror { seq, name, args } => {
+            Ok(BridgeCallbackMessage::Mirror(BridgeEventMessage {
+                seq,
+                event: BridgeEvent::from_name_args(name, args)?,
+            }))
+        }
+        Message::CallbackRequest { id, name, args } => {
+            Ok(BridgeCallbackMessage::Request(BridgeCallbackRequest {
+                id,
+                event: BridgeEvent::from_name_args(name, args)?,
+            }))
+        }
+        other => Err(BridgeError::Protocol(format!(
+            "expected callback message, got {other:?}"
+        ))),
     }
 }
 

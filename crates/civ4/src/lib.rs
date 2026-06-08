@@ -33,7 +33,7 @@ pub use callbacks::{
     RuleCallbackReply,
 };
 pub use city_api::CityProductionOptionsQuery;
-pub use client::{BridgeClient, BridgeError, Result};
+pub use client::{BridgeCallbackReader, BridgeClient, BridgeError, Result};
 pub use commands::{
     CityOrder, CityOrderType, SpawnUnitRequest, SpawnedUnit, UnitCommandName, UnitCommandType,
     UnitGroupCommand, UnitGroupJoin, UnitGroupMission,
