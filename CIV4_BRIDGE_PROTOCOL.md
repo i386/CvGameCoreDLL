@@ -1,6 +1,7 @@
 # Civ4 Bridge Protocol
 
-The bridge is disabled by default. Set `CVGAME_BRIDGE=1` before launching the game to enable it.
+The bridge auto-enables when the mod packages a companion executable at
+`mod.exe` next to the mod's `Assets` directory.
 
 Default pipes:
 
@@ -9,46 +10,21 @@ Default pipes:
 \\.\pipe\CvGameCoreDLL-Callbacks
 ```
 
-Set `CVGAME_BRIDGE_PIPE_PREFIX=Name` to use:
-
-```text
-\\.\pipe\Name-Control
-\\.\pipe\Name-Callbacks
-```
-
 Each message is one JSON object followed by `\n`.
 
 ## Companion Autolaunch
 
-Set `CVGAME_BRIDGE_AUTOLAUNCH=1` with `CVGAME_BRIDGE=1` to let the DLL launch a
-Rust companion process after it creates the bridge pipes. This ports the old
-companion launch hook onto the new bridge direction: the DLL owns the named pipe
-server, launches the companion, and the companion connects back as a bridge
-client.
+When `CvGameCoreDLL.dll` finds `..\mod.exe`, the DLL creates the bridge pipes
+and launches that executable. The DLL owns the named pipe server, launches the
+companion, and the companion connects back as a bridge client.
 
 Executable discovery order:
 
 ```text
-%CVGAME_BRIDGE_COMPANION_EXE%
-CvGameCoreDLL.dll directory\CvGameBridgeCompanion.exe
-CvGameCoreDLL.dll directory\AgesBeyondCompanion.exe
-CvGameCoreDLL.dll directory\..\Companion\CvGameBridgeCompanion.exe
-CvGameCoreDLL.dll directory\..\Companion\AgesBeyondCompanion.exe
-CvGameCoreDLL.dll directory\..\CvGameBridgeCompanion.exe
-CvGameCoreDLL.dll directory\..\AgesBeyondCompanion.exe
+CvGameCoreDLL.dll directory\..\mod.exe
 ```
 
-Optional knobs:
-
-```text
-CVGAME_BRIDGE_COMPANION_EXE=C:\path\to\Companion.exe
-CVGAME_BRIDGE_COMPANION_ARGS=--some --companion --flags
-```
-
-The launched process inherits the game environment. Rust companions should use
-`BridgeClient::connect_from_env_with_handshake()` so they respect
-`CVGAME_BRIDGE_PIPE_PREFIX`, `CVGAME_BRIDGE_CONTROL_PIPE`, and
-`CVGAME_BRIDGE_CALLBACK_PIPE`.
+Rust companions should connect with `BridgeClient::connect_default_with_handshake()`.
 
 Rust clients should perform the hello handshake before registering gameplay behavior:
 
@@ -56,7 +32,7 @@ Rust clients should perform the hello handshake before registering gameplay beha
 use civ4::{BridgeCapability, BridgeClient, Result};
 
 fn connect() -> Result<BridgeClient> {
-    let (client, _hello) = BridgeClient::connect_from_env_requiring(&[
+    let (client, _hello) = BridgeClient::connect_default_requiring(&[
         BridgeCapability::Events,
         BridgeCapability::Queries,
         BridgeCapability::Commands,
@@ -324,8 +300,7 @@ Keyboard, mouse input, and selected Python game-rule hooks are sent as blocking
 before the timeout, the DLL uses `result.consume` as the callback return value and skips Python.
 For game-rule hooks, it uses `result.value` as the hook return value and skips Python. If there is
 no reply, the callback pipe is disconnected, or the reply times out, the DLL falls back to the
-normal Python callback. Set `CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS` to override the default 50ms
-timeout.
+normal Python callback. The timeout is 50ms.
 
 ```json
 {"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}}
@@ -419,7 +394,7 @@ use civ4::{
     CityProductionItem, CityProductionRule,
 };
 
-let (mut client, _hello) = BridgeClient::connect_from_env_with_handshake()?;
+let (mut client, _hello) = BridgeClient::connect_default_with_handshake()?;
 let mut callbacks = CallbackDispatcher::new();
 
 callbacks.on_bridge_event(BridgeEventKind::BeginPlayerTurn, |client, event| {
@@ -447,9 +422,7 @@ callbacks.run_until_stopped(&mut client)?;
 
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
-- `connect_from_env_with_handshake`, `connect_default_with_handshake`,
-  `connect_with_prefix_and_handshake`, `connect_from_env_requiring`,
-  `connect_default_requiring`, `connect_with_prefix_requiring`, `handshake`,
+- `connect_default_with_handshake`, `connect_default_requiring`, `handshake`,
   `handshake_requiring`, `BridgeHello`, and `BridgeCapability`
 - `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
 - `get_info_count`, `get_info_type`, `resolve_info_id`, `list_info_types`, `InfoKind`, `InfoTypeState`, and `InfoTypeEntry`

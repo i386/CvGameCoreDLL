@@ -67,11 +67,12 @@ cargo build --workspace --all-targets
 
 ## Running the bridge companion
 
-The DLL bridge is disabled by default. Set `CVGAME_BRIDGE=1` before launching
-the game to create the control and callback named pipes. Set
-`CVGAME_BRIDGE_AUTOLAUNCH=1` as well to let the DLL launch a companion process
-after the pipes are created. See `CIV4_BRIDGE_PROTOCOL.md` for executable
-discovery, pipe environment variables, and the Rust `BridgeClient` handshake.
+The DLL bridge is enabled when the DLL finds `mod.exe` next to the mod's
+`Assets` directory. For a mod DLL at `Ages Beyond\Assets\CvGameCoreDLL.dll`,
+the companion must be installed at `Ages Beyond\mod.exe`. The DLL creates the
+fixed control and callback named pipes, launches `mod.exe`, and expects the
+companion to connect with the default Rust `BridgeClient` handshake. See
+`CIV4_BRIDGE_PROTOCOL.md` for the launch layout and protocol details.
 
 ## Installing the DLL
 

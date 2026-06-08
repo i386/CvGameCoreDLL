@@ -10,7 +10,6 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::VecDeque;
-use std::env;
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, BufReader, Write};
@@ -69,25 +68,6 @@ pub struct BridgeClient {
 }
 
 impl BridgeClient {
-    pub fn connect_from_env() -> Result<Self> {
-        let (control_pipe, callback_pipe) = pipe_names_from_env();
-        Self::connect(control_pipe, callback_pipe)
-    }
-
-    pub fn connect_from_env_with_handshake() -> Result<(Self, BridgeHello)> {
-        let mut client = Self::connect_from_env()?;
-        let hello = client.handshake()?;
-        Ok((client, hello))
-    }
-
-    pub fn connect_from_env_requiring(
-        required: &[BridgeCapability],
-    ) -> Result<(Self, BridgeHello)> {
-        let mut client = Self::connect_from_env()?;
-        let hello = client.handshake_requiring(required)?;
-        Ok((client, hello))
-    }
-
     pub fn connect_default() -> Result<Self> {
         Self::connect(
             r"\\.\pipe\CvGameCoreDLL-Control",
@@ -103,28 +83,6 @@ impl BridgeClient {
 
     pub fn connect_default_requiring(required: &[BridgeCapability]) -> Result<(Self, BridgeHello)> {
         let mut client = Self::connect_default()?;
-        let hello = client.handshake_requiring(required)?;
-        Ok((client, hello))
-    }
-
-    pub fn connect_with_prefix(prefix: &str) -> Result<Self> {
-        Self::connect(
-            format!(r"\\.\pipe\{prefix}-Control"),
-            format!(r"\\.\pipe\{prefix}-Callbacks"),
-        )
-    }
-
-    pub fn connect_with_prefix_and_handshake(prefix: &str) -> Result<(Self, BridgeHello)> {
-        let mut client = Self::connect_with_prefix(prefix)?;
-        let hello = client.handshake()?;
-        Ok((client, hello))
-    }
-
-    pub fn connect_with_prefix_requiring(
-        prefix: &str,
-        required: &[BridgeCapability],
-    ) -> Result<(Self, BridgeHello)> {
-        let mut client = Self::connect_with_prefix(prefix)?;
         let hello = client.handshake_requiring(required)?;
         Ok((client, hello))
     }
@@ -419,40 +377,6 @@ impl BridgeClient {
     }
 }
 
-fn pipe_names_from_env() -> (String, String) {
-    pipe_names_from_values(
-        env::var("CVGAME_BRIDGE_PIPE_PREFIX").ok().as_deref(),
-        env::var("CVGAME_BRIDGE_CONTROL_PIPE").ok().as_deref(),
-        env::var("CVGAME_BRIDGE_CALLBACK_PIPE").ok().as_deref(),
-    )
-}
-
-fn pipe_names_from_values(
-    prefix: Option<&str>,
-    control_pipe: Option<&str>,
-    callback_pipe: Option<&str>,
-) -> (String, String) {
-    if let Some(prefix) = prefix.map(str::trim).filter(|value| !value.is_empty()) {
-        return (
-            format!(r"\\.\pipe\{prefix}-Control"),
-            format!(r"\\.\pipe\{prefix}-Callbacks"),
-        );
-    }
-
-    (
-        control_pipe
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or(r"\\.\pipe\CvGameCoreDLL-Control")
-            .to_string(),
-        callback_pipe
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or(r"\\.\pipe\CvGameCoreDLL-Callbacks")
-            .to_string(),
-    )
-}
-
 fn decode_reply<T: DeserializeOwned>(reply: BridgeReply) -> Result<T> {
     if !reply.ok {
         if let Some(error) = reply.error {
@@ -483,38 +407,6 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[test]
-    fn pipe_names_from_values_prefers_prefix() {
-        let (control, callbacks) = pipe_names_from_values(
-            Some("AgesBeyond"),
-            Some(r"\\.\pipe\Ignored-Control"),
-            Some(r"\\.\pipe\Ignored-Callbacks"),
-        );
-
-        assert_eq!(control, r"\\.\pipe\AgesBeyond-Control");
-        assert_eq!(callbacks, r"\\.\pipe\AgesBeyond-Callbacks");
-    }
-
-    #[test]
-    fn pipe_names_from_values_accepts_explicit_pipe_names() {
-        let (control, callbacks) = pipe_names_from_values(
-            None,
-            Some(r"\\.\pipe\Custom-Control"),
-            Some(r"\\.\pipe\Custom-Callbacks"),
-        );
-
-        assert_eq!(control, r"\\.\pipe\Custom-Control");
-        assert_eq!(callbacks, r"\\.\pipe\Custom-Callbacks");
-    }
-
-    #[test]
-    fn pipe_names_from_values_falls_back_to_defaults() {
-        let (control, callbacks) = pipe_names_from_values(Some(" "), Some(""), None);
-
-        assert_eq!(control, r"\\.\pipe\CvGameCoreDLL-Control");
-        assert_eq!(callbacks, r"\\.\pipe\CvGameCoreDLL-Callbacks");
-    }
 
     #[test]
     fn writes_typed_input_callback_reply() {

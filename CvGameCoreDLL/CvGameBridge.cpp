@@ -34,25 +34,6 @@ namespace
 	void pollPipe(BridgePipe& kPipe, bool bControl);
 	void stopCompanionProcess();
 
-	void setStringFromEnv(CvString& szValue, const char* szEnvName, const char* szDefault)
-	{
-		char szBuffer[512];
-		DWORD dwLength = GetEnvironmentVariableA(szEnvName, szBuffer, sizeof(szBuffer));
-		szValue = (dwLength > 0 && dwLength < sizeof(szBuffer)) ? szBuffer : szDefault;
-	}
-
-	bool isEnvTruthy(const char* szEnvName)
-	{
-		char szBuffer[32];
-		DWORD dwLength = GetEnvironmentVariableA(szEnvName, szBuffer, sizeof(szBuffer));
-		return (dwLength > 0 && stricmp(szBuffer, "0") != 0 && stricmp(szBuffer, "false") != 0);
-	}
-
-	bool isEnvEnabled()
-	{
-		return isEnvTruthy("CVGAME_BRIDGE");
-	}
-
 	CvString getParentDirectory(const CvString& szPath)
 	{
 		size_t iSlash = szPath.find_last_of("\\/");
@@ -126,35 +107,16 @@ namespace
 
 	bool findCompanionExe(CvString& szExePath)
 	{
-		setStringFromEnv(szExePath, "CVGAME_BRIDGE_COMPANION_EXE", "");
-		if (!szExePath.empty())
-		{
-			return fileExists(szExePath);
-		}
-
 		CvString szDllDir;
 		if (!getDllDirectory(szDllDir))
 		{
 			return false;
 		}
 
-		CvString aszCandidates[] =
+		szExePath = szDllDir + "\\..\\mod.exe";
+		if (fileExists(szExePath))
 		{
-			szDllDir + "\\CvGameBridgeCompanion.exe",
-			szDllDir + "\\AgesBeyondCompanion.exe",
-			szDllDir + "\\..\\Companion\\CvGameBridgeCompanion.exe",
-			szDllDir + "\\..\\Companion\\AgesBeyondCompanion.exe",
-			szDllDir + "\\..\\CvGameBridgeCompanion.exe",
-			szDllDir + "\\..\\AgesBeyondCompanion.exe"
-		};
-
-		for (int iI = 0; iI < 6; ++iI)
-		{
-			if (fileExists(aszCandidates[iI]))
-			{
-				szExePath = aszCandidates[iI];
-				return true;
-			}
+			return true;
 		}
 
 		return false;
@@ -162,7 +124,7 @@ namespace
 
 	void startCompanionProcess()
 	{
-		if (!isEnvTruthy("CVGAME_BRIDGE_AUTOLAUNCH") || g_kCompanionProcessInfo.hProcess != NULL)
+		if (g_kCompanionProcessInfo.hProcess != NULL)
 		{
 			return;
 		}
@@ -175,13 +137,6 @@ namespace
 		}
 
 		CvString szCommandLine = quoteCommandArgument(szExePath);
-		CvString szExtraArgs;
-		setStringFromEnv(szExtraArgs, "CVGAME_BRIDGE_COMPANION_ARGS", "");
-		if (!szExtraArgs.empty())
-		{
-			szCommandLine += " ";
-			szCommandLine += szExtraArgs;
-		}
 
 		STARTUPINFOA kStartupInfo;
 		ZeroMemory(&kStartupInfo, sizeof(kStartupInfo));
@@ -240,16 +195,6 @@ namespace
 
 	DWORD getCallbackTimeoutMs()
 	{
-		char szBuffer[32];
-		DWORD dwLength = GetEnvironmentVariableA("CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS", szBuffer, sizeof(szBuffer));
-		if (dwLength > 0 && dwLength < sizeof(szBuffer))
-		{
-			int iValue = atoi(szBuffer);
-			if (iValue > 0)
-			{
-				return (DWORD)iValue;
-			}
-		}
 		return DEFAULT_CALLBACK_TIMEOUT_MS;
 	}
 
@@ -5787,24 +5732,15 @@ void CvGameBridge::init()
 		return;
 	}
 
-	g_bEnabled = isEnvEnabled();
+	CvString szCompanionExe;
+	g_bEnabled = findCompanionExe(szCompanionExe);
 	if (!g_bEnabled)
 	{
 		return;
 	}
 
-	CvString szPrefix;
-	setStringFromEnv(szPrefix, "CVGAME_BRIDGE_PIPE_PREFIX", "");
-	if (!szPrefix.empty())
-	{
-		g_kControlPipe.szName.Format("\\\\.\\pipe\\%s-Control", szPrefix.GetCString());
-		g_kCallbackPipe.szName.Format("\\\\.\\pipe\\%s-Callbacks", szPrefix.GetCString());
-	}
-	else
-	{
-		setStringFromEnv(g_kControlPipe.szName, "CVGAME_BRIDGE_CONTROL_PIPE", DEFAULT_CONTROL_PIPE_NAME);
-		setStringFromEnv(g_kCallbackPipe.szName, "CVGAME_BRIDGE_CALLBACK_PIPE", DEFAULT_CALLBACK_PIPE_NAME);
-	}
+	g_kControlPipe.szName = DEFAULT_CONTROL_PIPE_NAME;
+	g_kCallbackPipe.szName = DEFAULT_CALLBACK_PIPE_NAME;
 
 	ensurePipe(g_kControlPipe);
 	ensurePipe(g_kCallbackPipe);
