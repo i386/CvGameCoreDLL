@@ -7,6 +7,8 @@
 
 namespace
 {
+	static const unsigned int PRESAVE_CALLBACK_TIMEOUT_MS = 5000;
+
 	void bridgeSignal(const char* szName)
 	{
 		CvGameBridge::sendEvent(szName);
@@ -776,7 +778,9 @@ void CvEventReporter::vassalState(TeamTypes eMaster, TeamTypes eVassal, bool bVa
 
 void CvEventReporter::preSave()
 {
-	bridgeSignal("pre_save");
+	CvGameBridge::sendEvent("pre_save");
+	bool bConsumed = false;
+	CvGameBridge::requestCallbackConsumeTimeout("pre_save", NULL, PRESAVE_CALLBACK_TIMEOUT_MS, bConsumed);
 	m_kPythonEventMgr.preSave();
 }
 

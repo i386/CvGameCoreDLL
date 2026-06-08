@@ -148,6 +148,15 @@ impl CallbackDispatcher {
         })
     }
 
+    pub fn on_pre_save<F>(&mut self, mut handler: F) -> &mut Self
+    where
+        F: FnMut(&mut BridgeClient) -> Result<CallbackControl> + 'static,
+    {
+        self.on_bridge_event(BridgeEventKind::PreSave, move |client, _event| {
+            handler(client)
+        })
+    }
+
     pub fn dispatch_next(&mut self, client: &mut BridgeClient) -> Result<CallbackDispatch> {
         let callback = client.next_callback_message()?;
         self.dispatch_callback(client, callback)
@@ -717,6 +726,32 @@ mod tests {
 
         assert_eq!(dispatch.handlers_run, 1);
         assert!(dispatch.reply_sent);
+    }
+
+    #[test]
+    fn pre_save_request_runs_side_effect_handler_and_replies() {
+        let calls = Rc::new(RefCell::new(0));
+        let mut dispatcher = CallbackDispatcher::new();
+        {
+            let calls = calls.clone();
+            dispatcher.on_pre_save(move |_client| {
+                *calls.borrow_mut() += 1;
+                Ok(CallbackControl::Stop)
+            });
+        }
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 44,
+            event: BridgeEvent::PreSave,
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.stopped);
+        assert!(dispatch.reply_sent);
+        assert_eq!(*calls.borrow(), 1);
     }
 
     #[test]

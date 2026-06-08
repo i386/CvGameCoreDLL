@@ -5708,10 +5708,9 @@ namespace
 		return writeLine(g_kCallbackPipe, serializeAndFree(pValue));
 	}
 
-	bool waitForConsumeReply(int iId, bool& bConsumed)
+	bool waitForConsumeReply(int iId, DWORD dwTimeout, bool& bConsumed)
 	{
 		DWORD dwStarted = GetTickCount();
-		DWORD dwTimeout = getCallbackTimeoutMs();
 
 		for (;;)
 		{
@@ -5850,6 +5849,11 @@ void CvGameBridge::sendCallbackMirror(const char* szName, const char* szArgsJson
 
 bool CvGameBridge::requestCallbackConsume(const char* szName, const char* szArgsJson, bool& bConsumed)
 {
+	return requestCallbackConsumeTimeout(szName, szArgsJson, getCallbackTimeoutMs(), bConsumed);
+}
+
+bool CvGameBridge::requestCallbackConsumeTimeout(const char* szName, const char* szArgsJson, unsigned int uiTimeoutMs, bool& bConsumed)
+{
 	if (!g_bEnabled || !g_kCallbackPipe.bConnected)
 	{
 		return false;
@@ -5861,7 +5865,7 @@ bool CvGameBridge::requestCallbackConsume(const char* szName, const char* szArgs
 		return false;
 	}
 
-	if (!waitForConsumeReply(iId, bConsumed))
+	if (!waitForConsumeReply(iId, (DWORD)uiTimeoutMs, bConsumed))
 	{
 		return false;
 	}
