@@ -275,6 +275,26 @@ impl CityDetailState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityProductionOptions {
+    pub player: i32,
+    pub city: i32,
+    pub continue_current: bool,
+    pub test_visible: bool,
+    pub ignore_cost: bool,
+    pub ignore_upgrades: bool,
+    pub units: Vec<i32>,
+    pub buildings: Vec<i32>,
+    pub projects: Vec<i32>,
+    pub processes: Vec<i32>,
+}
+
+impl CityProductionOptions {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CityBuildingState {
     pub player: i32,
     pub city: i32,
@@ -681,6 +701,24 @@ mod tests {
         assert_eq!(city_detail.plot(), Plot::new(10, 11));
         assert_eq!(city_detail.yield_rate[0], 11);
         assert_eq!(city_detail.commerce_rate_times100[1], 1400);
+
+        let production_options: CityProductionOptions = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "continue_current": true,
+            "test_visible": false,
+            "ignore_cost": false,
+            "ignore_upgrades": true,
+            "units": [1, 2],
+            "buildings": [3],
+            "projects": [4],
+            "processes": [5, 6]
+        }))
+        .unwrap();
+        assert_eq!(production_options.city_ref(), CityRef::new(0, 7));
+        assert!(production_options.continue_current);
+        assert_eq!(production_options.units, vec![1, 2]);
+        assert_eq!(production_options.processes, vec![5, 6]);
 
         let units: PlayerUnitsResult = serde_json::from_value(json!({
             "player": 0,

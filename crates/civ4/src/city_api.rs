@@ -2,10 +2,55 @@ use crate::client::{BridgeClient, Result};
 use crate::commands::CityOrder;
 use crate::state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
-    CityReligionState, CityState, PlayerCitiesResult,
+    CityProductionOptions, CityReligionState, CityState, PlayerCitiesResult,
 };
 use crate::types::{CityRef, InfoType, PlayerId};
 use serde_json::{json, Value};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct CityProductionOptionsQuery {
+    pub continue_current: bool,
+    pub test_visible: bool,
+    pub ignore_cost: bool,
+    pub ignore_upgrades: bool,
+}
+
+impl CityProductionOptionsQuery {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn continue_current(mut self, continue_current: bool) -> Self {
+        self.continue_current = continue_current;
+        self
+    }
+
+    pub fn test_visible(mut self, test_visible: bool) -> Self {
+        self.test_visible = test_visible;
+        self
+    }
+
+    pub fn ignore_cost(mut self, ignore_cost: bool) -> Self {
+        self.ignore_cost = ignore_cost;
+        self
+    }
+
+    pub fn ignore_upgrades(mut self, ignore_upgrades: bool) -> Self {
+        self.ignore_upgrades = ignore_upgrades;
+        self
+    }
+
+    fn into_args(self, city: CityRef) -> Value {
+        json!({
+            "player": city.player,
+            "city": city.id,
+            "continue_current": self.continue_current,
+            "test_visible": self.test_visible,
+            "ignore_cost": self.ignore_cost,
+            "ignore_upgrades": self.ignore_upgrades
+        })
+    }
+}
 
 impl BridgeClient {
     pub fn get_city_state(&mut self, city: CityRef) -> Result<CityState> {
@@ -20,6 +65,18 @@ impl BridgeClient {
             "get_city_detail_state",
             json!({ "player": city.player, "city": city.id }),
         )
+    }
+
+    pub fn get_city_production_options(&mut self, city: CityRef) -> Result<CityProductionOptions> {
+        self.get_city_production_options_with(city, CityProductionOptionsQuery::default())
+    }
+
+    pub fn get_city_production_options_with(
+        &mut self,
+        city: CityRef,
+        options: CityProductionOptionsQuery,
+    ) -> Result<CityProductionOptions> {
+        self.query("get_city_production_options", options.into_args(city))
     }
 
     pub fn list_player_cities<P: Into<PlayerId>>(&mut self, player: P) -> Result<Vec<CityState>> {
@@ -415,4 +472,31 @@ fn city_flag_args(city: CityRef, key: &str, info: InfoType, has: bool, announce:
     });
     args[key] = json!(info);
     args
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn city_production_options_query_serializes_flags() {
+        let args = CityProductionOptionsQuery::new()
+            .continue_current(true)
+            .test_visible(true)
+            .ignore_cost(false)
+            .ignore_upgrades(true)
+            .into_args(CityRef::new(1, 9));
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 1,
+                "city": 9,
+                "continue_current": true,
+                "test_visible": true,
+                "ignore_cost": false,
+                "ignore_upgrades": true
+            })
+        );
+    }
 }

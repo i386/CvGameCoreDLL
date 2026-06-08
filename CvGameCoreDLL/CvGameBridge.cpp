@@ -1049,6 +1049,66 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeCityProductionOptionsReply(int iId, CvCity* pCity, int iContinueCurrent, int iTestVisible, int iIgnoreCost, int iIgnoreUpgrades)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pUnitsValue = json_value_init_array();
+		JSON_Array* pUnits = json_value_get_array(pUnitsValue);
+		JSON_Value* pBuildingsValue = json_value_init_array();
+		JSON_Array* pBuildings = json_value_get_array(pBuildingsValue);
+		JSON_Value* pProjectsValue = json_value_init_array();
+		JSON_Array* pProjects = json_value_get_array(pProjectsValue);
+		JSON_Value* pProcessesValue = json_value_init_array();
+		JSON_Array* pProcesses = json_value_get_array(pProcessesValue);
+
+		bool bContinueCurrent = (iContinueCurrent != 0);
+		bool bTestVisible = (iTestVisible != 0);
+		bool bIgnoreCost = (iIgnoreCost != 0);
+		bool bIgnoreUpgrades = (iIgnoreUpgrades != 0);
+
+		for (int iUnit = 0; iUnit < GC.getNumUnitInfos(); ++iUnit)
+		{
+			if (pCity->canTrain((UnitTypes)iUnit, bContinueCurrent, bTestVisible, bIgnoreCost, bIgnoreUpgrades))
+			{
+				json_array_append_number(pUnits, iUnit);
+			}
+		}
+		for (int iBuilding = 0; iBuilding < GC.getNumBuildingInfos(); ++iBuilding)
+		{
+			if (pCity->canConstruct((BuildingTypes)iBuilding, bContinueCurrent, bTestVisible, bIgnoreCost))
+			{
+				json_array_append_number(pBuildings, iBuilding);
+			}
+		}
+		for (int iProject = 0; iProject < GC.getNumProjectInfos(); ++iProject)
+		{
+			if (pCity->canCreate((ProjectTypes)iProject, bContinueCurrent, bTestVisible))
+			{
+				json_array_append_number(pProjects, iProject);
+			}
+		}
+		for (int iProcess = 0; iProcess < GC.getNumProcessInfos(); ++iProcess)
+		{
+			if (pCity->canMaintain((ProcessTypes)iProcess, bContinueCurrent))
+			{
+				json_array_append_number(pProcesses, iProcess);
+			}
+		}
+
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_boolean(pResult, "continue_current", bContinueCurrent ? 1 : 0);
+		json_object_set_boolean(pResult, "test_visible", bTestVisible ? 1 : 0);
+		json_object_set_boolean(pResult, "ignore_cost", bIgnoreCost ? 1 : 0);
+		json_object_set_boolean(pResult, "ignore_upgrades", bIgnoreUpgrades ? 1 : 0);
+		json_object_set_value(pResult, "units", pUnitsValue);
+		json_object_set_value(pResult, "buildings", pBuildingsValue);
+		json_object_set_value(pResult, "projects", pProjectsValue);
+		json_object_set_value(pResult, "processes", pProcessesValue);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makeCityBuildingStateReply(int iId, CvCity* pCity, int iBuilding)
 	{
 		JSON_Object* pResult = NULL;
@@ -1869,6 +1929,26 @@ namespace
 				return makeErrorReply(iId, "bad_city", "city is missing or not found");
 			}
 			return makeCityDetailStateReply(iId, pCity);
+		}
+
+		if (strcmp(szName, "get_city_production_options") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			int iContinueCurrent = 0;
+			int iTestVisible = 0;
+			int iIgnoreCost = 0;
+			int iIgnoreUpgrades = 0;
+			CvCity* pCity = NULL;
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			getInt(pArgs, "continue_current", iContinueCurrent);
+			getInt(pArgs, "test_visible", iTestVisible);
+			getInt(pArgs, "ignore_cost", iIgnoreCost);
+			getInt(pArgs, "ignore_upgrades", iIgnoreUpgrades);
+			return makeCityProductionOptionsReply(iId, pCity, iContinueCurrent, iTestVisible, iIgnoreCost, iIgnoreUpgrades);
 		}
 
 		if (strcmp(szName, "get_city_building_state") == 0)

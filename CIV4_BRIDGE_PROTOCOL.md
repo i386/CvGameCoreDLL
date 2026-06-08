@@ -115,6 +115,7 @@ get_plot_culture_state {"x":10,"y":12,"player":0} -> {"x":10,"y":12,"player":0,"
 get_plot_visibility_state {"x":10,"y":12,"team":0} -> {"x":10,"y":12,"team":0,"debug":false,"visible":true,"revealed":true,"revealed_owner":0,"revealed_team":0,"revealed_improvement":2,"revealed_route":1}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
 get_city_detail_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"production":true,"food_production":false,"disorder":false,"occupation":false,"we_love_the_king_day":false,"food":12,"food_kept":4,"growth_threshold":26,"food_consumption":8,"food_difference":3,"happy_level":7,"unhappy_level":5,"angry_population":0,"good_health":6,"bad_health":4,"health_rate":0,"unhealthy_population":0,"maintenance":3,"distance_maintenance":1,"num_cities_maintenance":2,"colony_maintenance":0,"corporation_maintenance":0,"production_left":12,"current_production_difference":5,"defense_damage":0,"total_defense":40,"defense_modifier":40,"yield_rate":[11,8,12],"commerce_rate":[6,14,2,0],"commerce_rate_times100":[600,1400,200,0]}
+get_city_production_options {"player":0,"city":3,"continue_current":0,"test_visible":0,"ignore_cost":0,"ignore_upgrades":0} -> {"player":0,"city":3,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false,"units":[0,1],"buildings":[12],"projects":[],"processes":[2]}
 get_city_building_state {"player":0,"city":3,"building":"BUILDING_GRANARY"} -> {"player":0,"city":3,"building":12,"real":1,"free":0,"active":true}
 get_city_religion_state {"player":0,"city":3,"religion":"RELIGION_BUDDHISM"} -> {"player":0,"city":3,"religion":0,"has":true}
 get_city_corporation_state {"player":0,"city":3,"corporation":"CORPORATION_SID_SUSHI"} -> {"player":0,"city":3,"corporation":0,"has":false}
@@ -258,6 +259,9 @@ Use parent `-1` with `set_player_parent` to clear the parent player.
 `set_city_religion` and `set_city_corporation` accept optional integer flags `announce` and
 `arrows`; `announce` defaults to `0` so external mod state changes do not emit UI messages unless
 requested.
+`get_city_production_options` uses Civ4's `canTrain`, `canConstruct`, `canCreate`, and
+`canMaintain` checks. Optional boolean flags default to `false`; `ignore_upgrades` only affects
+unit training checks.
 `war_plan` accepts `none`, `attacked_recent`, `attacked`, `preparing_limited`,
 `preparing_total`, `limited`, `total`, `dogpile`, the matching Civ4 enum names, or numeric
 `WarPlanTypes` values. The relation commands `set_team_open_borders`,
