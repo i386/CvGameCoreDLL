@@ -136,6 +136,12 @@ pub enum BridgeEvent {
     PlotPicked {
         plot: Plot,
     },
+    CanBuild {
+        plot: Plot,
+        build: i32,
+        player: PlayerId,
+        test_visible: bool,
+    },
     NukeExplosion {
         plot: Plot,
         unit: Option<UnitRef>,

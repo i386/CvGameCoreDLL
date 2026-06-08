@@ -33,6 +33,7 @@ impl BridgeEvent {
             Self::PlotRevealed { .. } => "plot_revealed",
             Self::PlotFeatureRemoved { .. } => "plot_feature_removed",
             Self::PlotPicked { .. } => "plot_picked",
+            Self::CanBuild { .. } => "can_build",
             Self::NukeExplosion { .. } => "nuke_explosion",
             Self::GotoPlotSet { .. } => "goto_plot_set",
             Self::CityBuilt { .. } => "city_built",
@@ -232,6 +233,15 @@ impl BridgeEvent {
                 let payload: PlotPayload = decode(args)?;
                 Self::PlotPicked {
                     plot: payload.plot(),
+                }
+            }
+            "can_build" => {
+                let payload: PlotBuildPayload = decode(args)?;
+                Self::CanBuild {
+                    plot: payload.plot(),
+                    build: payload.build,
+                    player: PlayerId(payload.player),
+                    test_visible: payload.test_visible,
                 }
             }
             "nuke_explosion" => {

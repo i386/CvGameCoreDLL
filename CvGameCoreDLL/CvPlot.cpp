@@ -25,9 +25,30 @@
 #include "CyArgsList.h"
 #include "CvDLLPythonIFaceBase.h"
 #include "CvEventReporter.h"
+#include "CvGameBridge.h"
 
 #define STANDARD_MINIMAP_ALPHA		(0.6f)
 
+namespace
+{
+	const char* bridgeBoolString(bool bValue)
+	{
+		return bValue ? "true" : "false";
+	}
+
+	CvString makeBridgeCanBuildArgs(const CvPlot* pPlot, BuildTypes eBuild, PlayerTypes ePlayer, bool bTestVisible)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"x\":%d,\"y\":%d,\"build\":%d,\"player\":%d,\"test_visible\":%s}",
+			pPlot->getX_INLINE(),
+			pPlot->getY_INLINE(),
+			eBuild,
+			ePlayer,
+			bridgeBoolString(bTestVisible));
+		return szArgs;
+	}
+}
 
 // Public Functions...
 
@@ -2197,20 +2218,36 @@ bool CvPlot::canBuild(BuildTypes eBuild, PlayerTypes ePlayer, bool bTestVisible)
 
 	if(GC.getUSE_CAN_BUILD_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getX_INLINE());
-		argsList.add(getY_INLINE());
-		argsList.add((int)eBuild);
-		argsList.add((int)ePlayer);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canBuild", argsList.makeFunctionArgs(), &lResult);
-		if (lResult >= 1)
+		int iBridgeResult = -1;
+		CvString szBridgeArgs = makeBridgeCanBuildArgs(this, eBuild, ePlayer, bTestVisible);
+		if (CvGameBridge::requestCallbackInt("can_build", szBridgeArgs.GetCString(), iBridgeResult))
 		{
-			return true;
+			if (iBridgeResult >= 1)
+			{
+				return true;
+			}
+			else if (iBridgeResult == 0)
+			{
+				return false;
+			}
 		}
-		else if (lResult == 0)
+		else
 		{
-			return false;
+			CyArgsList argsList;
+			argsList.add(getX_INLINE());
+			argsList.add(getY_INLINE());
+			argsList.add((int)eBuild);
+			argsList.add((int)ePlayer);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canBuild", argsList.makeFunctionArgs(), &lResult);
+			if (lResult >= 1)
+			{
+				return true;
+			}
+			else if (lResult == 0)
+			{
+				return false;
+			}
 		}
 	}
 

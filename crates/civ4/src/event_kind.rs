@@ -27,6 +27,7 @@ pub enum BridgeEventKind {
     PlotRevealed,
     PlotFeatureRemoved,
     PlotPicked,
+    CanBuild,
     NukeExplosion,
     GotoPlotSet,
     CityBuilt,
@@ -107,6 +108,7 @@ impl BridgeEventKind {
             Self::PlotRevealed => "plot_revealed",
             Self::PlotFeatureRemoved => "plot_feature_removed",
             Self::PlotPicked => "plot_picked",
+            Self::CanBuild => "can_build",
             Self::NukeExplosion => "nuke_explosion",
             Self::GotoPlotSet => "goto_plot_set",
             Self::CityBuilt => "city_built",
@@ -187,6 +189,7 @@ impl BridgeEventKind {
             "plot_revealed" => Self::PlotRevealed,
             "plot_feature_removed" => Self::PlotFeatureRemoved,
             "plot_picked" => Self::PlotPicked,
+            "can_build" => Self::CanBuild,
             "nuke_explosion" => Self::NukeExplosion,
             "goto_plot_set" => Self::GotoPlotSet,
             "city_built" => Self::CityBuilt,
@@ -288,6 +291,10 @@ mod tests {
         assert_eq!(
             BridgeEventKind::from_name("can_do_civic"),
             Some(BridgeEventKind::CanDoCivic)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("can_build"),
+            Some(BridgeEventKind::CanBuild)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

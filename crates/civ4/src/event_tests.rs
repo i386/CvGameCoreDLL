@@ -320,6 +320,32 @@ fn decodes_player_civic_callback_payloads() {
 }
 
 #[test]
+fn decodes_can_build_callback_payload() {
+    let event = BridgeEvent::from_name_args(
+        "can_build".to_string(),
+        json!({
+            "player": 1,
+            "x": 20,
+            "y": 21,
+            "build": 8,
+            "test_visible": 1
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::CanBuild {
+            plot: Plot::new(20, 21),
+            build: 8,
+            player: PlayerId(1),
+            test_visible: true,
+        }
+    );
+    assert_eq!(event.name(), "can_build");
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();
