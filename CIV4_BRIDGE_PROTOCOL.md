@@ -413,12 +413,12 @@ as control-pipe query and command replies.
 The Rust `CallbackDispatcher` runs handlers over typed callback messages. Handlers receive
 `&mut BridgeClient`, so they can query and command game state while reacting to callbacks. When a
 blocking `callback_request` is dispatched, the dispatcher writes a success reply automatically; a
-handler can return `CallbackControl::Respond(value)` or `RespondAndStop(value)` to set the reply
-result.
+handler can return `CallbackControl::consume(...)` for input callbacks,
+`CallbackControl::rule_value(...)` for game-rule callbacks, or `CallbackControl::Respond(value)` /
+`RespondAndStop(value)` for custom reply payloads.
 
 ```rust
 use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
-use serde_json::json;
 
 let (mut client, _hello) = BridgeClient::connect_from_env_with_handshake()?;
 let mut callbacks = CallbackDispatcher::new();
@@ -434,7 +434,12 @@ callbacks.on_name("begin_player_turn", |client, event| {
 });
 
 callbacks.on_name("kbd_event", |_client, _event| {
-    Ok(CallbackControl::Respond(json!({ "consume": false })))
+    Ok(CallbackControl::consume(false))
+});
+
+callbacks.on_name("cannot_train", |_client, event| {
+    let veto = matches!(event.event(), BridgeEvent::CityProductionRule { item, .. } if *item == 1);
+    Ok(CallbackControl::rule_value(veto))
 });
 
 callbacks.on_name("pre_save", |_client, _event| Ok(CallbackControl::Stop));
@@ -490,4 +495,4 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
-- `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`
+- `CallbackDispatcher`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, and `RuleCallbackReply`

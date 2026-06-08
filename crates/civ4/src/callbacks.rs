@@ -1,5 +1,6 @@
 use crate::client::{BridgeClient, Result};
 use crate::events::{BridgeCallbackMessage, BridgeEventMessage};
+use serde::Serialize;
 use serde_json::{json, Value};
 
 pub type CallbackHandler =
@@ -11,6 +12,54 @@ pub enum CallbackControl {
     Stop,
     Respond(Value),
     RespondAndStop(Value),
+}
+
+impl CallbackControl {
+    pub fn consume(consume: bool) -> Self {
+        Self::Respond(InputCallbackReply::new(consume).into_value())
+    }
+
+    pub fn consume_and_stop(consume: bool) -> Self {
+        Self::RespondAndStop(InputCallbackReply::new(consume).into_value())
+    }
+
+    pub fn rule_value(value: bool) -> Self {
+        Self::Respond(RuleCallbackReply::new(value).into_value())
+    }
+
+    pub fn rule_value_and_stop(value: bool) -> Self {
+        Self::RespondAndStop(RuleCallbackReply::new(value).into_value())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct InputCallbackReply {
+    pub consume: bool,
+}
+
+impl InputCallbackReply {
+    pub fn new(consume: bool) -> Self {
+        Self { consume }
+    }
+
+    pub fn into_value(self) -> Value {
+        serde_json::to_value(self).expect("input callback reply serializes")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct RuleCallbackReply {
+    pub value: bool,
+}
+
+impl RuleCallbackReply {
+    pub fn new(value: bool) -> Self {
+        Self { value }
+    }
+
+    pub fn into_value(self) -> Value {
+        serde_json::to_value(self).expect("rule callback reply serializes")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -159,6 +208,38 @@ mod tests {
     use crate::types::PlayerId;
     use std::cell::RefCell;
     use std::rc::Rc;
+
+    #[test]
+    fn typed_callback_replies_match_protocol_fields() {
+        assert_eq!(
+            InputCallbackReply::new(true).into_value(),
+            json!({ "consume": true })
+        );
+        assert_eq!(
+            RuleCallbackReply::new(false).into_value(),
+            json!({ "value": false })
+        );
+    }
+
+    #[test]
+    fn callback_control_builds_typed_replies() {
+        assert_eq!(
+            CallbackControl::consume(false),
+            CallbackControl::Respond(json!({ "consume": false }))
+        );
+        assert_eq!(
+            CallbackControl::consume_and_stop(true),
+            CallbackControl::RespondAndStop(json!({ "consume": true }))
+        );
+        assert_eq!(
+            CallbackControl::rule_value(true),
+            CallbackControl::Respond(json!({ "value": true }))
+        );
+        assert_eq!(
+            CallbackControl::rule_value_and_stop(false),
+            CallbackControl::RespondAndStop(json!({ "value": false }))
+        );
+    }
 
     #[test]
     fn dispatches_matching_handlers_in_order() {
