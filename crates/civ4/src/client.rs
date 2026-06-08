@@ -87,6 +87,10 @@ impl BridgeClient {
         Ok((client, hello))
     }
 
+    pub fn connect_default_for_gameplay() -> Result<(Self, BridgeHello)> {
+        Self::connect_default_requiring(BridgeCapability::FULL_GAMEPLAY)
+    }
+
     pub fn connect<P: AsRef<Path>, Q: AsRef<Path>>(
         control_pipe: P,
         callback_pipe: Q,
@@ -133,6 +137,10 @@ impl BridgeClient {
             )));
         }
         Ok(hello)
+    }
+
+    pub fn handshake_for_gameplay(&mut self) -> Result<BridgeHello> {
+        self.handshake_requiring(BridgeCapability::FULL_GAMEPLAY)
     }
 
     pub fn next_hello(&mut self) -> Result<BridgeHello> {
@@ -446,6 +454,20 @@ mod tests {
             .unwrap();
 
         assert!(hello.has_bridge_capability(BridgeCapability::Commands));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
+    #[test]
+    fn handshake_for_gameplay_requires_full_gameplay_capabilities() {
+        let (mut client, control_path, callback_path) = temp_file_client_with_control(
+            "capabilities-gameplay",
+            r#"{"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","commands","callbacks","callback_requests","mod_state"]}"#,
+        );
+
+        let hello = client.handshake_for_gameplay().unwrap();
+
+        assert!(hello.has_bridge_capability(BridgeCapability::ModState));
         let _ = fs::remove_file(control_path);
         let _ = fs::remove_file(callback_path);
     }

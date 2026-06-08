@@ -14,6 +14,15 @@ pub enum BridgeCapability {
 }
 
 impl BridgeCapability {
+    pub const FULL_GAMEPLAY: &'static [Self] = &[
+        Self::Events,
+        Self::Queries,
+        Self::Commands,
+        Self::Callbacks,
+        Self::CallbackRequests,
+        Self::ModState,
+    ];
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Events => "events",
@@ -295,6 +304,20 @@ mod tests {
                 BridgeCapability::Events,
                 BridgeCapability::Queries,
                 BridgeCapability::CallbackRequests
+            ]
+        );
+        assert_eq!(
+            BridgeCapability::FULL_GAMEPLAY
+                .iter()
+                .map(|capability| capability.name())
+                .collect::<Vec<_>>(),
+            vec![
+                "events",
+                "queries",
+                "commands",
+                "callbacks",
+                "callback_requests",
+                "mod_state"
             ]
         );
     }

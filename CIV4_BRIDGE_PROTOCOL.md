@@ -24,22 +24,15 @@ Executable discovery order:
 CvGameCoreDLL.dll directory\..\mod.exe
 ```
 
-Rust companions should connect with `BridgeClient::connect_default_with_handshake()`.
+Rust companions should connect with `BridgeClient::connect_default_for_gameplay()`.
 
 Rust clients should perform the hello handshake before registering gameplay behavior:
 
 ```rust
-use civ4::{BridgeCapability, BridgeClient, Result};
+use civ4::{BridgeClient, Result};
 
 fn connect() -> Result<BridgeClient> {
-    let (client, _hello) = BridgeClient::connect_default_requiring(&[
-        BridgeCapability::Events,
-        BridgeCapability::Queries,
-        BridgeCapability::Commands,
-        BridgeCapability::Callbacks,
-        BridgeCapability::CallbackRequests,
-        BridgeCapability::ModState,
-    ])?;
+    let (client, _hello) = BridgeClient::connect_default_for_gameplay()?;
     Ok(client)
 }
 ```
@@ -394,7 +387,7 @@ use civ4::{
     CityProductionItem, CityProductionRule,
 };
 
-let (mut client, _hello) = BridgeClient::connect_default_with_handshake()?;
+let (mut client, _hello) = BridgeClient::connect_default_for_gameplay()?;
 let mut callbacks = CallbackDispatcher::new();
 
 callbacks.on_bridge_event(BridgeEventKind::BeginPlayerTurn, |client, event| {
@@ -422,8 +415,9 @@ callbacks.run_until_stopped(&mut client)?;
 
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
-- `connect_default_with_handshake`, `connect_default_requiring`, `handshake`,
-  `handshake_requiring`, `BridgeHello`, and `BridgeCapability`
+- `connect_default_with_handshake`, `connect_default_requiring`,
+  `connect_default_for_gameplay`, `handshake`, `handshake_requiring`,
+  `handshake_for_gameplay`, `BridgeHello`, and `BridgeCapability`
 - `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
 - `get_info_count`, `get_info_type`, `resolve_info_id`, `list_info_types`, `InfoKind`, `InfoTypeState`, and `InfoTypeEntry`
 - `set_game_start_turn`, `set_game_start_year`, `set_game_estimate_end_turn`, `set_game_target_score`
