@@ -415,7 +415,9 @@ The Rust `CallbackDispatcher` runs handlers over typed callback messages. Handle
 blocking `callback_request` is dispatched, the dispatcher writes a success reply automatically; a
 handler can return `CallbackControl::consume(...)` for input callbacks,
 `CallbackControl::rule_value(...)` for game-rule callbacks, or `CallbackControl::Respond(value)` /
-`RespondAndStop(value)` for custom reply payloads.
+`RespondAndStop(value)` for custom reply payloads. Manual callback loops can use
+`BridgeClient::write_input_callback_reply(...)` and `write_rule_callback_reply(...)` with a
+`callback_request` id.
 
 ```rust
 use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
@@ -494,5 +496,5 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`
-- `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
+- `next_bridge_event`, `next_callback_event`, `next_callback_message`, `next_callback_request`, `write_input_callback_reply`, and `write_rule_callback_reply`
 - `CallbackDispatcher`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, and `RuleCallbackReply`

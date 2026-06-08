@@ -1,3 +1,4 @@
+use crate::callbacks::{InputCallbackReply, RuleCallbackReply};
 use crate::events::{
     BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage,
 };
@@ -288,6 +289,14 @@ impl BridgeClient {
         self.write_callback_reply(BridgeReply::success(id, serde_json::to_value(result)?))
     }
 
+    pub fn write_input_callback_reply(&mut self, id: u64, consume: bool) -> Result<()> {
+        self.write_callback_success(id, &InputCallbackReply::new(consume))
+    }
+
+    pub fn write_rule_callback_reply(&mut self, id: u64, value: bool) -> Result<()> {
+        self.write_callback_success(id, &RuleCallbackReply::new(value))
+    }
+
     pub fn write_callback_error(
         &mut self,
         id: u64,
@@ -432,6 +441,10 @@ fn open_pipe<P: AsRef<Path>>(path: P) -> io::Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
     fn pipe_names_from_values_prefers_prefix() {
@@ -463,5 +476,64 @@ mod tests {
 
         assert_eq!(control, r"\\.\pipe\CvGameCoreDLL-Control");
         assert_eq!(callbacks, r"\\.\pipe\CvGameCoreDLL-Callbacks");
+    }
+
+    #[test]
+    fn writes_typed_input_callback_reply() {
+        let (mut client, control_path, callback_path) = temp_file_client("input");
+
+        client.write_input_callback_reply(7, true).unwrap();
+
+        assert_callback_reply(&callback_path, 7, json!({ "consume": true }));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
+    #[test]
+    fn writes_typed_rule_callback_reply() {
+        let (mut client, control_path, callback_path) = temp_file_client("rule");
+
+        client.write_rule_callback_reply(8, false).unwrap();
+
+        assert_callback_reply(&callback_path, 8, json!({ "value": false }));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
+    fn temp_file_client(test_name: &str) -> (BridgeClient, PathBuf, PathBuf) {
+        let unique = format!(
+            "civ4-client-{test_name}-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let control_path = std::env::temp_dir().join(format!("{unique}-control.jsonl"));
+        let callback_path = std::env::temp_dir().join(format!("{unique}-callback.jsonl"));
+
+        fs::write(&control_path, b"").unwrap();
+        fs::write(&callback_path, b"").unwrap();
+
+        let client = BridgeClient::connect(&control_path, &callback_path).unwrap();
+        (client, control_path, callback_path)
+    }
+
+    fn assert_callback_reply(path: &PathBuf, id: u64, expected_result: serde_json::Value) {
+        let line = fs::read_to_string(path).unwrap();
+        match decode_jsonl(&line).unwrap() {
+            Message::Reply {
+                id: reply_id,
+                ok,
+                result,
+                error,
+            } => {
+                assert_eq!(reply_id, id);
+                assert!(ok);
+                assert_eq!(result, Some(expected_result));
+                assert!(error.is_none());
+            }
+            other => panic!("expected reply, got {other:?}"),
+        }
     }
 }
