@@ -93,6 +93,9 @@ fn connect() -> Result<BridgeClient> {
 ```text
 get_game_turn -> {"turn":42}
 get_game_state -> {"turn":42,"year":1000,"elapsed_turns":40,"start_turn":0,"start_year":-4000,"estimate_end_turn":500,"max_turns":460,"max_city_elimination":0,"advanced_start_points":0,"target_score":0,"active_player":0,"active_team":0,"pause_player":-1,"paused":false,"winner":-1,"victory":-1,"game_state":0,"start_era":0,"current_era":1,"calendar":0,"game_speed":2,"handicap":3,"num_cities":12,"num_civ_cities":11,"total_population":42,"num_human_players":1,"num_deals":2,"nukes_exploded":0,"ai_auto_play":0,"network_multiplayer":false,"game_multiplayer":false,"team_game":false,"debug_mode":false,"final_initialized":true}
+get_info_count {"kind":"unit"} -> {"kind":"unit","count":128}
+get_info_type {"kind":"unit","value":"UNIT_WARRIOR"} -> {"kind":"unit","id":1,"type":"UNIT_WARRIOR"}
+list_info_types {"kind":"tech"} -> {"kind":"tech","types":[{"id":0,"type":"TECH_AGRICULTURE"},{"id":1,"type":"TECH_MINING"}]}
 get_game_option_state {"option":"GAMEOPTION_NO_BARBARIANS"} -> {"option":0,"enabled":false}
 get_multiplayer_option_state {"option":"MPOPTION_SIMULTANEOUS_TURNS"} -> {"option":0,"enabled":false}
 get_force_control_state {"control":"FORCECONTROL_SPEED"} -> {"control":0,"enabled":false}
@@ -236,6 +239,12 @@ change_team_stolen_visibility_timer {"team":0,"other_team":1,"change":-1} -> tea
 `corporation`, `victory`, `era`, `leader`, game `option`, multiplayer `option`, and force
 `control` may be either numeric Civ4 info IDs or XML type names. `unit_ai` for
 `spawn_unit` may also be numeric or an XML type name.
+Info metadata queries accept `kind` values: `unit`, `unit_ai`, `building`, `building_class`,
+`project`, `process`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`,
+`civic`, `civic_option`, `religion`, `corporation`, `victory`, `game_option`,
+`multiplayer_option`, `force_control`, `era`, `leader`, `civilization`, `handicap`, `game_speed`,
+`hurry`, `build`, `goody`, `mission`, `espionage_mission`, `specialist`, `unit_class`,
+`unit_combat`, `player_option`, `commerce`, and `yield`.
 `commerce` accepts `gold`, `research`, `culture`, `espionage`, the matching Civ4 enum names, or
 numeric `CommerceTypes` values. Boolean command arguments may be sent as JSON booleans or `0`/`1`.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
@@ -374,6 +383,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `connect_from_env_with_handshake`, `connect_default_with_handshake`,
   `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
 - `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
+- `get_info_count`, `get_info_type`, `resolve_info_id`, `list_info_types`, `InfoKind`, `InfoTypeState`, and `InfoTypeEntry`
 - `set_game_start_turn`, `set_game_start_year`, `set_game_estimate_end_turn`, `set_game_target_score`
 - `set_game_max_city_elimination`, `set_game_advanced_start_points`, `set_game_ai_auto_play`, `change_game_ai_auto_play`
 - `change_game_nukes_exploded`, `set_game_pause_player`, `pause_game_for`, `clear_game_pause`, `set_game_winner`, `clear_game_winner`, `set_game_status`

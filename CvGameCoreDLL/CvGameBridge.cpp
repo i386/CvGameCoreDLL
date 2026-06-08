@@ -603,6 +603,140 @@ namespace
 		return -1;
 	}
 
+	const char* getCanonicalInfoKind(const char* szKind)
+	{
+		if (szKind == NULL)
+		{
+			return NULL;
+		}
+		if (stricmp(szKind, "unit") == 0) return "unit";
+		if (stricmp(szKind, "unit_ai") == 0) return "unit_ai";
+		if (stricmp(szKind, "building") == 0) return "building";
+		if (stricmp(szKind, "building_class") == 0) return "building_class";
+		if (stricmp(szKind, "project") == 0) return "project";
+		if (stricmp(szKind, "process") == 0) return "process";
+		if (stricmp(szKind, "terrain") == 0) return "terrain";
+		if (stricmp(szKind, "feature") == 0) return "feature";
+		if (stricmp(szKind, "bonus") == 0) return "bonus";
+		if (stricmp(szKind, "improvement") == 0) return "improvement";
+		if (stricmp(szKind, "route") == 0) return "route";
+		if (stricmp(szKind, "promotion") == 0) return "promotion";
+		if (stricmp(szKind, "tech") == 0) return "tech";
+		if (stricmp(szKind, "civic") == 0) return "civic";
+		if (stricmp(szKind, "civic_option") == 0) return "civic_option";
+		if (stricmp(szKind, "religion") == 0) return "religion";
+		if (stricmp(szKind, "corporation") == 0) return "corporation";
+		if (stricmp(szKind, "victory") == 0) return "victory";
+		if (stricmp(szKind, "game_option") == 0) return "game_option";
+		if (stricmp(szKind, "multiplayer_option") == 0 || stricmp(szKind, "mp_option") == 0) return "multiplayer_option";
+		if (stricmp(szKind, "force_control") == 0) return "force_control";
+		if (stricmp(szKind, "era") == 0) return "era";
+		if (stricmp(szKind, "leader") == 0 || stricmp(szKind, "leader_head") == 0) return "leader";
+		if (stricmp(szKind, "civilization") == 0) return "civilization";
+		if (stricmp(szKind, "handicap") == 0) return "handicap";
+		if (stricmp(szKind, "game_speed") == 0) return "game_speed";
+		if (stricmp(szKind, "hurry") == 0) return "hurry";
+		if (stricmp(szKind, "build") == 0) return "build";
+		if (stricmp(szKind, "goody") == 0) return "goody";
+		if (stricmp(szKind, "mission") == 0) return "mission";
+		if (stricmp(szKind, "espionage_mission") == 0) return "espionage_mission";
+		if (stricmp(szKind, "specialist") == 0) return "specialist";
+		if (stricmp(szKind, "unit_class") == 0) return "unit_class";
+		if (stricmp(szKind, "unit_combat") == 0) return "unit_combat";
+		if (stricmp(szKind, "player_option") == 0) return "player_option";
+		if (stricmp(szKind, "commerce") == 0) return "commerce";
+		if (stricmp(szKind, "yield") == 0) return "yield";
+		return NULL;
+	}
+
+	int getInfoCountForKind(const char* szKind)
+	{
+		if (strcmp(szKind, "unit") == 0) return GC.getNumUnitInfos();
+		if (strcmp(szKind, "unit_ai") == 0) return (int)GC.getUnitAIInfo().size();
+		if (strcmp(szKind, "building") == 0) return GC.getNumBuildingInfos();
+		if (strcmp(szKind, "building_class") == 0) return GC.getNumBuildingClassInfos();
+		if (strcmp(szKind, "project") == 0) return GC.getNumProjectInfos();
+		if (strcmp(szKind, "process") == 0) return GC.getNumProcessInfos();
+		if (strcmp(szKind, "terrain") == 0) return GC.getNumTerrainInfos();
+		if (strcmp(szKind, "feature") == 0) return GC.getNumFeatureInfos();
+		if (strcmp(szKind, "bonus") == 0) return GC.getNumBonusInfos();
+		if (strcmp(szKind, "improvement") == 0) return GC.getNumImprovementInfos();
+		if (strcmp(szKind, "route") == 0) return GC.getNumRouteInfos();
+		if (strcmp(szKind, "promotion") == 0) return GC.getNumPromotionInfos();
+		if (strcmp(szKind, "tech") == 0) return GC.getNumTechInfos();
+		if (strcmp(szKind, "civic") == 0) return GC.getNumCivicInfos();
+		if (strcmp(szKind, "civic_option") == 0) return GC.getNumCivicOptionInfos();
+		if (strcmp(szKind, "religion") == 0) return GC.getNumReligionInfos();
+		if (strcmp(szKind, "corporation") == 0) return GC.getNumCorporationInfos();
+		if (strcmp(szKind, "victory") == 0) return GC.getNumVictoryInfos();
+		if (strcmp(szKind, "game_option") == 0) return GC.getNumGameOptionInfos();
+		if (strcmp(szKind, "multiplayer_option") == 0) return GC.getNumMPOptionInfos();
+		if (strcmp(szKind, "force_control") == 0) return GC.getNumForceControlInfos();
+		if (strcmp(szKind, "era") == 0) return GC.getNumEraInfos();
+		if (strcmp(szKind, "leader") == 0) return GC.getNumLeaderHeadInfos();
+		if (strcmp(szKind, "civilization") == 0) return GC.getNumCivilizationInfos();
+		if (strcmp(szKind, "handicap") == 0) return GC.getNumHandicapInfos();
+		if (strcmp(szKind, "game_speed") == 0) return GC.getNumGameSpeedInfos();
+		if (strcmp(szKind, "hurry") == 0) return GC.getNumHurryInfos();
+		if (strcmp(szKind, "build") == 0) return GC.getNumBuildInfos();
+		if (strcmp(szKind, "goody") == 0) return GC.getNumGoodyInfos();
+		if (strcmp(szKind, "mission") == 0) return GC.getNumMissionInfos();
+		if (strcmp(szKind, "espionage_mission") == 0) return GC.getNumEspionageMissionInfos();
+		if (strcmp(szKind, "specialist") == 0) return GC.getNumSpecialistInfos();
+		if (strcmp(szKind, "unit_class") == 0) return GC.getNumUnitClassInfos();
+		if (strcmp(szKind, "unit_combat") == 0) return GC.getNumUnitCombatInfos();
+		if (strcmp(szKind, "player_option") == 0) return GC.getNumPlayerOptionInfos();
+		if (strcmp(szKind, "commerce") == 0) return GC.getNUM_COMMERCE_TYPES();
+		if (strcmp(szKind, "yield") == 0) return GC.getNUM_YIELD_TYPES();
+		return -1;
+	}
+
+	const CvInfoBase* getInfoBaseForKind(const char* szKind, int iId)
+	{
+		if (iId < 0 || iId >= getInfoCountForKind(szKind))
+		{
+			return NULL;
+		}
+		if (strcmp(szKind, "unit") == 0) return &GC.getUnitInfo((UnitTypes)iId);
+		if (strcmp(szKind, "unit_ai") == 0) return &GC.getUnitAIInfo((UnitAITypes)iId);
+		if (strcmp(szKind, "building") == 0) return &GC.getBuildingInfo((BuildingTypes)iId);
+		if (strcmp(szKind, "building_class") == 0) return &GC.getBuildingClassInfo((BuildingClassTypes)iId);
+		if (strcmp(szKind, "project") == 0) return &GC.getProjectInfo((ProjectTypes)iId);
+		if (strcmp(szKind, "process") == 0) return &GC.getProcessInfo((ProcessTypes)iId);
+		if (strcmp(szKind, "terrain") == 0) return &GC.getTerrainInfo((TerrainTypes)iId);
+		if (strcmp(szKind, "feature") == 0) return &GC.getFeatureInfo((FeatureTypes)iId);
+		if (strcmp(szKind, "bonus") == 0) return &GC.getBonusInfo((BonusTypes)iId);
+		if (strcmp(szKind, "improvement") == 0) return &GC.getImprovementInfo((ImprovementTypes)iId);
+		if (strcmp(szKind, "route") == 0) return &GC.getRouteInfo((RouteTypes)iId);
+		if (strcmp(szKind, "promotion") == 0) return &GC.getPromotionInfo((PromotionTypes)iId);
+		if (strcmp(szKind, "tech") == 0) return &GC.getTechInfo((TechTypes)iId);
+		if (strcmp(szKind, "civic") == 0) return &GC.getCivicInfo((CivicTypes)iId);
+		if (strcmp(szKind, "civic_option") == 0) return &GC.getCivicOptionInfo((CivicOptionTypes)iId);
+		if (strcmp(szKind, "religion") == 0) return &GC.getReligionInfo((ReligionTypes)iId);
+		if (strcmp(szKind, "corporation") == 0) return &GC.getCorporationInfo((CorporationTypes)iId);
+		if (strcmp(szKind, "victory") == 0) return &GC.getVictoryInfo((VictoryTypes)iId);
+		if (strcmp(szKind, "game_option") == 0) return &GC.getGameOptionInfo((GameOptionTypes)iId);
+		if (strcmp(szKind, "multiplayer_option") == 0) return &GC.getMPOptionInfo((MultiplayerOptionTypes)iId);
+		if (strcmp(szKind, "force_control") == 0) return &GC.getForceControlInfo((ForceControlTypes)iId);
+		if (strcmp(szKind, "era") == 0) return &GC.getEraInfo((EraTypes)iId);
+		if (strcmp(szKind, "leader") == 0) return &GC.getLeaderHeadInfo((LeaderHeadTypes)iId);
+		if (strcmp(szKind, "civilization") == 0) return &GC.getCivilizationInfo((CivilizationTypes)iId);
+		if (strcmp(szKind, "handicap") == 0) return &GC.getHandicapInfo((HandicapTypes)iId);
+		if (strcmp(szKind, "game_speed") == 0) return &GC.getGameSpeedInfo((GameSpeedTypes)iId);
+		if (strcmp(szKind, "hurry") == 0) return &GC.getHurryInfo((HurryTypes)iId);
+		if (strcmp(szKind, "build") == 0) return &GC.getBuildInfo((BuildTypes)iId);
+		if (strcmp(szKind, "goody") == 0) return &GC.getGoodyInfo((GoodyTypes)iId);
+		if (strcmp(szKind, "mission") == 0) return &GC.getMissionInfo((MissionTypes)iId);
+		if (strcmp(szKind, "espionage_mission") == 0) return &GC.getEspionageMissionInfo((EspionageMissionTypes)iId);
+		if (strcmp(szKind, "specialist") == 0) return &GC.getSpecialistInfo((SpecialistTypes)iId);
+		if (strcmp(szKind, "unit_class") == 0) return &GC.getUnitClassInfo((UnitClassTypes)iId);
+		if (strcmp(szKind, "unit_combat") == 0) return &GC.getUnitCombatInfo((UnitCombatTypes)iId);
+		if (strcmp(szKind, "player_option") == 0) return &GC.getPlayerOptionInfo((PlayerOptionTypes)iId);
+		if (strcmp(szKind, "commerce") == 0) return &GC.getCommerceInfo((CommerceTypes)iId);
+		if (strcmp(szKind, "yield") == 0) return &GC.getYieldInfo((YieldTypes)iId);
+		return NULL;
+	}
+
 	bool validPlayer(int iPlayer)
 	{
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
@@ -1251,6 +1385,49 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeInfoCountReply(int iId, const char* szKind)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_string(pResult, "kind", szKind);
+		json_object_set_number(pResult, "count", getInfoCountForKind(szKind));
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeInfoTypeReply(int iId, const char* szKind, int iInfo)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		const CvInfoBase* pInfo = getInfoBaseForKind(szKind, iInfo);
+		json_object_set_string(pResult, "kind", szKind);
+		json_object_set_number(pResult, "id", iInfo);
+		json_object_set_string(pResult, "type", pInfo != NULL && pInfo->getType() != NULL ? pInfo->getType() : "");
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeInfoTypesListReply(int iId, const char* szKind)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pTypesValue = json_value_init_array();
+		JSON_Array* pTypes = json_value_get_array(pTypesValue);
+		int iCount = getInfoCountForKind(szKind);
+
+		for (int iI = 0; iI < iCount; ++iI)
+		{
+			const CvInfoBase* pInfo = getInfoBaseForKind(szKind, iI);
+			JSON_Value* pTypeValue = json_value_init_object();
+			JSON_Object* pType = json_value_get_object(pTypeValue);
+			json_object_set_number(pType, "id", iI);
+			json_object_set_string(pType, "type", pInfo != NULL && pInfo->getType() != NULL ? pInfo->getType() : "");
+			json_array_append_value(pTypes, pTypeValue);
+		}
+
+		json_object_set_string(pResult, "kind", szKind);
+		json_object_set_value(pResult, "types", pTypesValue);
+		return serializeAndFree(pValue);
+	}
+
 	CvString handleQuery(int iId, const char* szName, JSON_Object* pArgs)
 	{
 		if (strcmp(szName, "get_game_turn") == 0)
@@ -1263,6 +1440,51 @@ namespace
 		if (strcmp(szName, "get_game_state") == 0)
 		{
 			return makeGameStateReply(iId);
+		}
+
+		if (strcmp(szName, "get_info_count") == 0)
+		{
+			const char* szKind = getCanonicalInfoKind(json_object_get_string(pArgs, "kind"));
+			if (szKind == NULL)
+			{
+				return makeErrorReply(iId, "bad_kind", "kind is missing or unsupported");
+			}
+			return makeInfoCountReply(iId, szKind);
+		}
+
+		if (strcmp(szName, "get_info_type") == 0)
+		{
+			const char* szKind = getCanonicalInfoKind(json_object_get_string(pArgs, "kind"));
+			JSON_Value* pInfoValue = json_object_get_value(pArgs, "value");
+			int iInfo = -1;
+			if (pInfoValue == NULL)
+			{
+				pInfoValue = json_object_get_value(pArgs, "type");
+			}
+			if (pInfoValue == NULL)
+			{
+				pInfoValue = json_object_get_value(pArgs, "id");
+			}
+			if (szKind == NULL)
+			{
+				return makeErrorReply(iId, "bad_kind", "kind is missing or unsupported");
+			}
+			iInfo = getInfoTypeFromValue(pInfoValue);
+			if (pInfoValue == NULL || iInfo < 0 || iInfo >= getInfoCountForKind(szKind))
+			{
+				return makeErrorReply(iId, "bad_info", "value is missing or out of range for kind");
+			}
+			return makeInfoTypeReply(iId, szKind, iInfo);
+		}
+
+		if (strcmp(szName, "list_info_types") == 0)
+		{
+			const char* szKind = getCanonicalInfoKind(json_object_get_string(pArgs, "kind"));
+			if (szKind == NULL)
+			{
+				return makeErrorReply(iId, "bad_kind", "kind is missing or unsupported");
+			}
+			return makeInfoTypesListReply(iId, szKind);
 		}
 
 		if (strcmp(szName, "get_game_option_state") == 0)

@@ -7,6 +7,8 @@ mod event_payloads;
 mod event_tests;
 pub mod events;
 mod game_api;
+mod info_api;
+pub mod metadata;
 mod player_api;
 pub mod protocol;
 pub mod state;
@@ -18,6 +20,7 @@ pub use callbacks::{CallbackControl, CallbackDispatch, CallbackDispatcher};
 pub use client::{BridgeClient, BridgeError, Result};
 pub use commands::{CityOrder, CityOrderType, SpawnUnitRequest, SpawnedUnit};
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
+pub use metadata::{InfoCount, InfoTypeEntry, InfoTypeState, InfoTypesResult};
 pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityReligionState, CityState,
@@ -26,5 +29,5 @@ pub use state::{
     TeamRelationState, TeamState, TeamTechState, UnitPromotionState, UnitState,
 };
 pub use types::{
-    CityRef, CommerceType, GameStatus, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan,
+    CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan,
 };
