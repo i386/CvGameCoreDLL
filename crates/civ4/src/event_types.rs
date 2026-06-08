@@ -77,6 +77,9 @@ pub enum BridgeEvent {
     WindowActivation {
         active: bool,
     },
+    Chat {
+        text: String,
+    },
     BeginGameTurn {
         turn: i32,
     },

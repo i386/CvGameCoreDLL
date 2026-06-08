@@ -20,6 +20,52 @@ namespace
 		CvGameBridge::sendEvent(szName, szArgs.GetCString());
 		CvGameBridge::sendCallbackMirror(szName, szArgs.GetCString());
 	}
+
+	CvString jsonEscape(const CvString& szValue)
+	{
+		CvString szEscaped;
+		for (int iI = 0; iI < (int)szValue.length(); ++iI)
+		{
+			unsigned char ch = (unsigned char)szValue[iI];
+			switch (ch)
+			{
+			case '"':
+				szEscaped += "\\\"";
+				break;
+			case '\\':
+				szEscaped += "\\\\";
+				break;
+			case '\b':
+				szEscaped += "\\b";
+				break;
+			case '\f':
+				szEscaped += "\\f";
+				break;
+			case '\n':
+				szEscaped += "\\n";
+				break;
+			case '\r':
+				szEscaped += "\\r";
+				break;
+			case '\t':
+				szEscaped += "\\t";
+				break;
+			default:
+				if (ch < 32)
+				{
+					char szHex[8];
+					sprintf(szHex, "\\u%04x", ch);
+					szEscaped += szHex;
+				}
+				else
+				{
+					szEscaped += (char)ch;
+				}
+				break;
+			}
+		}
+		return szEscaped;
+	}
 }
 
 //
@@ -753,6 +799,11 @@ void CvEventReporter::playerGoldTrade(PlayerTypes eFromPlayer, PlayerTypes eToPl
 
 void CvEventReporter::chat(CvWString szString)
 {
+	CvString szText(szString);
+	CvString szArgs = "{\"text\":\"";
+	szArgs += jsonEscape(szText);
+	szArgs += "\"}";
+	bridgePayload("chat", szArgs);
 	m_kPythonEventMgr.reportChat(szString);
 }
 

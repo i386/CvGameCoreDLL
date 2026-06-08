@@ -19,6 +19,7 @@ impl BridgeEvent {
             Self::ModNetMessage { .. } => "mod_net_message",
             Self::Update { .. } => "update",
             Self::WindowActivation { .. } => "window_activation",
+            Self::Chat { .. } => "chat",
             Self::BeginGameTurn { .. } => "begin_game_turn",
             Self::EndGameTurn { .. } => "end_game_turn",
             Self::BeginPlayerTurn { .. } => "begin_player_turn",
@@ -144,6 +145,10 @@ impl BridgeEvent {
                 Self::WindowActivation {
                     active: payload.active,
                 }
+            }
+            "chat" => {
+                let payload: ChatPayload = decode(args)?;
+                Self::Chat { text: payload.text }
             }
             "begin_game_turn" => {
                 let payload: TurnPayload = decode(args)?;

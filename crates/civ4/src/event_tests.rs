@@ -166,6 +166,20 @@ fn decodes_utility_python_event_payloads() {
 
     assert_eq!(event, BridgeEvent::WindowActivation { active: true });
     assert_eq!(event.name(), "window_activation");
+
+    let event = BridgeEvent::from_name_args(
+        "chat".to_string(),
+        json!({ "text": "hello \"bridge\"\nnext" }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::Chat {
+            text: "hello \"bridge\"\nnext".to_string(),
+        }
+    );
+    assert_eq!(event.name(), "chat");
 }
 
 #[test]

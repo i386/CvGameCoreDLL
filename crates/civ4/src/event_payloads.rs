@@ -93,6 +93,11 @@ pub(crate) struct WindowActivationPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct ChatPayload {
+    pub(crate) text: String,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct TeamPairPayload {
     pub(crate) team: i32,
     pub(crate) other_team: i32,
