@@ -60,6 +60,10 @@ fn connect() -> Result<BridgeClient> {
 
 ```text
 get_game_turn -> {"turn":42}
+get_game_state -> {"turn":42,"year":1000,"elapsed_turns":40,"start_turn":0,"start_year":-4000,"estimate_end_turn":500,"max_turns":460,"max_city_elimination":0,"advanced_start_points":0,"target_score":0,"active_player":0,"active_team":0,"pause_player":-1,"paused":false,"winner":-1,"victory":-1,"game_state":0,"start_era":0,"current_era":1,"calendar":0,"game_speed":2,"handicap":3,"num_cities":12,"num_civ_cities":11,"total_population":42,"num_human_players":1,"num_deals":2,"nukes_exploded":0,"ai_auto_play":0,"network_multiplayer":false,"game_multiplayer":false,"team_game":false,"debug_mode":false,"final_initialized":true}
+get_game_option_state {"option":"GAMEOPTION_NO_BARBARIANS"} -> {"option":0,"enabled":false}
+get_multiplayer_option_state {"option":"MPOPTION_SIMULTANEOUS_TURNS"} -> {"option":0,"enabled":false}
+get_force_control_state {"control":"FORCECONTROL_SPEED"} -> {"control":0,"enabled":false}
 get_player_gold {"player":0} -> {"gold":500}
 get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"human":true,"gold":500,"cities":3,"units":8,"population":12}
 list_players -> {"players":[player state, ...]}
@@ -87,6 +91,24 @@ get_mod_state -> {"json":"{\"schema_version\":1}"}
 Commands are rejected in multiplayer in this first version.
 
 ```text
+set_game_turn {"value":42} -> game state
+set_game_max_turns {"value":500} -> game state
+change_game_max_turns {"change":10} -> game state
+set_game_start_turn {"value":0} -> game state
+set_game_start_year {"value":-4000} -> game state
+set_game_estimate_end_turn {"value":500} -> game state
+set_game_target_score {"value":0} -> game state
+set_game_max_city_elimination {"value":0} -> game state
+set_game_advanced_start_points {"value":0} -> game state
+set_game_ai_auto_play {"value":0} -> game state
+change_game_ai_auto_play {"change":-1} -> game state
+change_game_nukes_exploded {"change":1} -> game state
+set_game_pause_player {"player":0} -> game state
+set_game_winner {"team":0,"victory":"VICTORY_CONQUEST"} -> game state
+set_game_state {"value":"extended"} -> game state
+set_game_option {"option":"GAMEOPTION_NO_BARBARIANS","enabled":1} -> game option state
+set_multiplayer_option {"option":"MPOPTION_SIMULTANEOUS_TURNS","enabled":0} -> multiplayer option state
+set_force_control {"control":"FORCECONTROL_SPEED","enabled":1} -> force control state
 set_player_gold {"player":0,"value":500} -> {"gold":500}
 change_player_gold {"player":0,"change":50} -> player state
 set_city_population {"player":0,"city":3,"value":6} -> city state
@@ -159,7 +181,8 @@ change_team_stolen_visibility_timer {"team":0,"other_team":1,"change":-1} -> tea
 
 `unit_type`, `building_type`, `building`, `building_class`, `project_type`, `process_type`,
 `terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`, `civic`, `religion`,
-and `corporation` may be either numeric Civ4 info IDs or XML type names. `unit_ai` for
+`corporation`, `victory`, game `option`, multiplayer `option`, and force `control` may be either
+numeric Civ4 info IDs or XML type names. `unit_ai` for
 `spawn_unit` may also be numeric or an XML type name.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
 If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
@@ -172,6 +195,9 @@ requested.
 `WarPlanTypes` values. The relation commands `set_team_open_borders`,
 `set_team_defensive_pact`, `set_team_force_peace`, and `set_team_permanent_war_peace` accept an
 optional `reciprocal` flag that defaults to `1`.
+`set_game_state` accepts `on`, `over`, `extended`, the matching Civ4 enum names, or numeric
+`GameStateTypes` values. Use `{"team":-1,"victory":-1}` with `set_game_winner` to clear the winner.
+Use `{"player":-1}` with `set_game_pause_player` to unpause.
 Use `-1` with `set_plot_feature`, `set_plot_bonus`, `set_plot_improvement`, `set_plot_route`, or
 `set_plot_owner` to clear that plot value.
 `push_city_order` accepts `order` as `train`, `construct`, `create`, `maintain`, or the matching
@@ -248,7 +274,13 @@ callbacks.run_until_stopped(&mut client)?;
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
 - `connect_default_with_handshake`, `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
-- `get_game_turn`, `get_player_gold`, `set_player_gold`
+- `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
+- `set_game_start_turn`, `set_game_start_year`, `set_game_estimate_end_turn`, `set_game_target_score`
+- `set_game_max_city_elimination`, `set_game_advanced_start_points`, `set_game_ai_auto_play`, `change_game_ai_auto_play`
+- `change_game_nukes_exploded`, `set_game_pause_player`, `pause_game_for`, `clear_game_pause`, `set_game_winner`, `clear_game_winner`, `set_game_status`
+- `get_game_option_state`, `set_game_option`, `GameOptionState`, `get_multiplayer_option_state`, `set_multiplayer_option`, `MultiplayerOptionState`
+- `get_force_control_state`, `set_force_control`, `ForceControlState`, `GameState`, and `GameStatus`
+- `get_player_gold`, `set_player_gold`
 - `get_player_state`, `get_player_options`, `list_players`, `list_alive_players`, `change_player_gold`
 - `set_player_civic`, `set_player_civic_for_option`, `set_player_state_religion`, `clear_player_state_religion`, `set_player_research`
 - `get_team_tech_state`, `set_team_has_tech`, `grant_team_tech`, `change_team_research_progress`

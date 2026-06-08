@@ -2,6 +2,80 @@ use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GameState {
+    pub turn: i32,
+    pub year: i32,
+    pub elapsed_turns: i32,
+    pub start_turn: i32,
+    pub start_year: i32,
+    pub estimate_end_turn: i32,
+    pub max_turns: i32,
+    pub max_city_elimination: i32,
+    pub advanced_start_points: i32,
+    pub target_score: i32,
+    pub active_player: i32,
+    pub active_team: i32,
+    pub pause_player: i32,
+    pub paused: bool,
+    pub winner: i32,
+    pub victory: i32,
+    pub game_state: i32,
+    pub start_era: i32,
+    pub current_era: i32,
+    pub calendar: i32,
+    pub game_speed: i32,
+    pub handicap: i32,
+    pub num_cities: i32,
+    pub num_civ_cities: i32,
+    pub total_population: i32,
+    pub num_human_players: i32,
+    pub num_deals: i32,
+    pub nukes_exploded: i32,
+    pub ai_auto_play: i32,
+    pub network_multiplayer: bool,
+    pub game_multiplayer: bool,
+    pub team_game: bool,
+    pub debug_mode: bool,
+    pub final_initialized: bool,
+}
+
+impl GameState {
+    pub fn active_player_id(&self) -> Option<PlayerId> {
+        (self.active_player >= 0).then_some(PlayerId(self.active_player))
+    }
+
+    pub fn active_team_id(&self) -> Option<TeamId> {
+        (self.active_team >= 0).then_some(TeamId(self.active_team))
+    }
+
+    pub fn pause_player_id(&self) -> Option<PlayerId> {
+        (self.pause_player >= 0).then_some(PlayerId(self.pause_player))
+    }
+
+    pub fn winner_team_id(&self) -> Option<TeamId> {
+        (self.winner >= 0).then_some(TeamId(self.winner))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GameOptionState {
+    pub option: i32,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct MultiplayerOptionState {
+    pub option: i32,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ForceControlState {
+    pub control: i32,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct PlayerState {
     pub player: i32,
     pub team: i32,
@@ -424,6 +498,72 @@ mod tests {
         let decoded: TestState = serde_json::from_str(&json_state).unwrap();
 
         assert_eq!(decoded, state);
+    }
+
+    #[test]
+    fn decodes_game_state_and_options() {
+        let state: GameState = serde_json::from_value(json!({
+            "turn": 42,
+            "year": 1000,
+            "elapsed_turns": 40,
+            "start_turn": 0,
+            "start_year": -4000,
+            "estimate_end_turn": 500,
+            "max_turns": 460,
+            "max_city_elimination": 0,
+            "advanced_start_points": 0,
+            "target_score": 0,
+            "active_player": 0,
+            "active_team": 0,
+            "pause_player": -1,
+            "paused": false,
+            "winner": -1,
+            "victory": -1,
+            "game_state": 0,
+            "start_era": 0,
+            "current_era": 1,
+            "calendar": 0,
+            "game_speed": 2,
+            "handicap": 3,
+            "num_cities": 12,
+            "num_civ_cities": 11,
+            "total_population": 42,
+            "num_human_players": 1,
+            "num_deals": 2,
+            "nukes_exploded": 0,
+            "ai_auto_play": 0,
+            "network_multiplayer": false,
+            "game_multiplayer": false,
+            "team_game": false,
+            "debug_mode": false,
+            "final_initialized": true
+        }))
+        .unwrap();
+        assert_eq!(state.active_player_id(), Some(PlayerId(0)));
+        assert_eq!(state.active_team_id(), Some(TeamId(0)));
+        assert_eq!(state.pause_player_id(), None);
+        assert_eq!(state.winner_team_id(), None);
+
+        let option: GameOptionState = serde_json::from_value(json!({
+            "option": 1,
+            "enabled": true
+        }))
+        .unwrap();
+        assert!(option.enabled);
+
+        let mp_option: MultiplayerOptionState = serde_json::from_value(json!({
+            "option": 2,
+            "enabled": false
+        }))
+        .unwrap();
+        assert!(!mp_option.enabled);
+
+        let force_control: ForceControlState = serde_json::from_value(json!({
+            "control": 3,
+            "enabled": true
+        }))
+        .unwrap();
+        assert!(force_control.enabled);
     }
 
     #[test]

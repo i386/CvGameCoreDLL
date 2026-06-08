@@ -97,3 +97,11 @@ pub enum WarPlan {
     Total,
     Dogpile,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GameStatus {
+    On,
+    Over,
+    Extended,
+}

@@ -360,6 +360,38 @@ namespace
 		return -2;
 	}
 
+	int getGameStateTypeFromValue(JSON_Value* pValue)
+	{
+		const char* szGameState = NULL;
+		if (pValue == NULL)
+		{
+			return -1;
+		}
+		if (json_value_get_type(pValue) == JSONNumber)
+		{
+			return (int)json_value_get_number(pValue);
+		}
+		if (json_value_get_type(pValue) != JSONString)
+		{
+			return -1;
+		}
+
+		szGameState = json_value_get_string(pValue);
+		if (stricmp(szGameState, "on") == 0 || stricmp(szGameState, "GAMESTATE_ON") == 0)
+		{
+			return GAMESTATE_ON;
+		}
+		if (stricmp(szGameState, "over") == 0 || stricmp(szGameState, "GAMESTATE_OVER") == 0)
+		{
+			return GAMESTATE_OVER;
+		}
+		if (stricmp(szGameState, "extended") == 0 || stricmp(szGameState, "GAMESTATE_EXTENDED") == 0)
+		{
+			return GAMESTATE_EXTENDED;
+		}
+		return -1;
+	}
+
 	bool validPlayer(int iPlayer)
 	{
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
@@ -719,6 +751,80 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	void setBridgeGameState(JSON_Object* pResult)
+	{
+		CvGame& kGame = GC.getGameINLINE();
+		json_object_set_number(pResult, "turn", kGame.getGameTurn());
+		json_object_set_number(pResult, "year", kGame.getGameTurnYear());
+		json_object_set_number(pResult, "elapsed_turns", kGame.getElapsedGameTurns());
+		json_object_set_number(pResult, "start_turn", kGame.getStartTurn());
+		json_object_set_number(pResult, "start_year", kGame.getStartYear());
+		json_object_set_number(pResult, "estimate_end_turn", kGame.getEstimateEndTurn());
+		json_object_set_number(pResult, "max_turns", kGame.getMaxTurns());
+		json_object_set_number(pResult, "max_city_elimination", kGame.getMaxCityElimination());
+		json_object_set_number(pResult, "advanced_start_points", kGame.getNumAdvancedStartPoints());
+		json_object_set_number(pResult, "target_score", kGame.getTargetScore());
+		json_object_set_number(pResult, "active_player", kGame.getActivePlayer());
+		json_object_set_number(pResult, "active_team", kGame.getActiveTeam());
+		json_object_set_number(pResult, "pause_player", kGame.getPausePlayer());
+		json_object_set_boolean(pResult, "paused", kGame.isPaused() ? 1 : 0);
+		json_object_set_number(pResult, "winner", kGame.getWinner());
+		json_object_set_number(pResult, "victory", kGame.getVictory());
+		json_object_set_number(pResult, "game_state", kGame.getGameState());
+		json_object_set_number(pResult, "start_era", kGame.getStartEra());
+		json_object_set_number(pResult, "current_era", kGame.getCurrentEra());
+		json_object_set_number(pResult, "calendar", kGame.getCalendar());
+		json_object_set_number(pResult, "game_speed", kGame.getGameSpeedType());
+		json_object_set_number(pResult, "handicap", kGame.getHandicapType());
+		json_object_set_number(pResult, "num_cities", kGame.getNumCities());
+		json_object_set_number(pResult, "num_civ_cities", kGame.getNumCivCities());
+		json_object_set_number(pResult, "total_population", kGame.getTotalPopulation());
+		json_object_set_number(pResult, "num_human_players", kGame.getNumHumanPlayers());
+		json_object_set_number(pResult, "num_deals", kGame.getNumDeals());
+		json_object_set_number(pResult, "nukes_exploded", kGame.getNukesExploded());
+		json_object_set_number(pResult, "ai_auto_play", kGame.getAIAutoPlay());
+		json_object_set_boolean(pResult, "network_multiplayer", kGame.isNetworkMultiPlayer() ? 1 : 0);
+		json_object_set_boolean(pResult, "game_multiplayer", kGame.isGameMultiPlayer() ? 1 : 0);
+		json_object_set_boolean(pResult, "team_game", kGame.isTeamGame() ? 1 : 0);
+		json_object_set_boolean(pResult, "debug_mode", kGame.isDebugMode() ? 1 : 0);
+		json_object_set_boolean(pResult, "final_initialized", kGame.isFinalInitialized() ? 1 : 0);
+	}
+
+	CvString makeGameStateReply(int iId)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setBridgeGameState(pResult);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeGameOptionStateReply(int iId, int iOption)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "option", iOption);
+		json_object_set_boolean(pResult, "enabled", GC.getGameINLINE().isOption((GameOptionTypes)iOption) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeMultiplayerOptionStateReply(int iId, int iOption)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "option", iOption);
+		json_object_set_boolean(pResult, "enabled", GC.getGameINLINE().isMPOption((MultiplayerOptionTypes)iOption) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeForceControlStateReply(int iId, int iControl)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "control", iControl);
+		json_object_set_boolean(pResult, "enabled", GC.getGameINLINE().isForcedControl((ForceControlTypes)iControl) ? 1 : 0);
+		return serializeAndFree(pValue);
+	}
+
 	void setTeamState(JSON_Object* pResult, int iTeam)
 	{
 		CvTeam& kTeam = GET_TEAM((TeamTypes)iTeam);
@@ -859,6 +965,44 @@ namespace
 			CvString szReply;
 			setReplyResultInt(szReply, iId, "turn", GC.getGameINLINE().getGameTurn());
 			return szReply;
+		}
+
+		if (strcmp(szName, "get_game_state") == 0)
+		{
+			return makeGameStateReply(iId);
+		}
+
+		if (strcmp(szName, "get_game_option_state") == 0)
+		{
+			JSON_Value* pOptionValue = json_object_get_value(pArgs, "option");
+			int iOption = getInfoTypeFromValue(pOptionValue);
+			if (pOptionValue == NULL || iOption < 0 || iOption >= GC.getNumGameOptionInfos())
+			{
+				return makeErrorReply(iId, "bad_option", "option is missing or out of range");
+			}
+			return makeGameOptionStateReply(iId, iOption);
+		}
+
+		if (strcmp(szName, "get_multiplayer_option_state") == 0)
+		{
+			JSON_Value* pOptionValue = json_object_get_value(pArgs, "option");
+			int iOption = getInfoTypeFromValue(pOptionValue);
+			if (pOptionValue == NULL || iOption < 0 || iOption >= GC.getNumMPOptionInfos())
+			{
+				return makeErrorReply(iId, "bad_option", "option is missing or out of range");
+			}
+			return makeMultiplayerOptionStateReply(iId, iOption);
+		}
+
+		if (strcmp(szName, "get_force_control_state") == 0)
+		{
+			JSON_Value* pControlValue = json_object_get_value(pArgs, "control");
+			int iControl = getInfoTypeFromValue(pControlValue);
+			if (pControlValue == NULL || iControl < 0 || iControl >= GC.getNumForceControlInfos())
+			{
+				return makeErrorReply(iId, "bad_control", "control is missing or out of range");
+			}
+			return makeForceControlStateReply(iId, iControl);
 		}
 
 		if (strcmp(szName, "get_player_gold") == 0)
@@ -2335,6 +2479,277 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString handleSetGameTurn(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setGameTurn(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameMaxTurns(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setMaxTurns(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleChangeGameMaxTurns(int iId, JSON_Object* pArgs)
+	{
+		int iChange = 0;
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GC.getGameINLINE().getMaxTurns() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "max_turns cannot be reduced below zero");
+		}
+
+		GC.getGameINLINE().changeMaxTurns(iChange);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameStartTurn(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setStartTurn(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameStartYear(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue))
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing");
+		}
+
+		GC.getGameINLINE().setStartYear(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameEstimateEndTurn(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setEstimateEndTurn(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameTargetScore(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setTargetScore(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameMaxCityElimination(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setMaxCityElimination(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameAdvancedStartPoints(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setNumAdvancedStartPoints(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameAIAutoPlay(int iId, JSON_Object* pArgs)
+	{
+		int iValue = 0;
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		GC.getGameINLINE().setAIAutoPlay(iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleChangeGameAIAutoPlay(int iId, JSON_Object* pArgs)
+	{
+		int iChange = 0;
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		GC.getGameINLINE().changeAIAutoPlay(iChange);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleChangeGameNukesExploded(int iId, JSON_Object* pArgs)
+	{
+		int iChange = 0;
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (GC.getGameINLINE().getNukesExploded() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "nukes_exploded cannot be reduced below zero");
+		}
+
+		GC.getGameINLINE().changeNukesExploded(iChange);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGamePausePlayer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = NO_PLAYER;
+		if (!getInt(pArgs, "player", iPlayer) || (iPlayer != NO_PLAYER && !validPlayer(iPlayer)))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+
+		GC.getGameINLINE().setPausePlayer((PlayerTypes)iPlayer);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameWinner(int iId, JSON_Object* pArgs)
+	{
+		int iTeam = NO_TEAM;
+		JSON_Value* pVictoryValue = json_object_get_value(pArgs, "victory");
+		int iVictory = getInfoTypeFromValue(pVictoryValue);
+		getInt(pArgs, "team", iTeam);
+		if (iTeam != NO_TEAM && !validEverTeam(iTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team is out of range or has never existed");
+		}
+		if (pVictoryValue == NULL || iVictory < NO_VICTORY || iVictory >= GC.getNumVictoryInfos())
+		{
+			return makeErrorReply(iId, "bad_victory", "victory is missing or out of range");
+		}
+		if ((iTeam == NO_TEAM) != (iVictory == NO_VICTORY))
+		{
+			return makeErrorReply(iId, "bad_winner", "team and victory must both be set or both be cleared");
+		}
+
+		GC.getGameINLINE().setWinner((TeamTypes)iTeam, (VictoryTypes)iVictory);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameState(int iId, JSON_Object* pArgs)
+	{
+		int iValue = getGameStateTypeFromValue(json_object_get_value(pArgs, "value"));
+		if (iValue < GAMESTATE_ON || iValue > GAMESTATE_EXTENDED)
+		{
+			return makeErrorReply(iId, "bad_state", "value is missing or out of range");
+		}
+
+		GC.getGameINLINE().setGameState((GameStateTypes)iValue);
+		markGameDataDirty();
+		return makeGameStateReply(iId);
+	}
+
+	CvString handleSetGameOption(int iId, JSON_Object* pArgs)
+	{
+		int iEnabled = 0;
+		JSON_Value* pOptionValue = json_object_get_value(pArgs, "option");
+		int iOption = getInfoTypeFromValue(pOptionValue);
+		if (pOptionValue == NULL || iOption < 0 || iOption >= GC.getNumGameOptionInfos())
+		{
+			return makeErrorReply(iId, "bad_option", "option is missing or out of range");
+		}
+		if (!getInt(pArgs, "enabled", iEnabled))
+		{
+			return makeErrorReply(iId, "bad_enabled", "enabled is missing");
+		}
+
+		GC.getGameINLINE().setOption((GameOptionTypes)iOption, iEnabled != 0);
+		markGameDataDirty();
+		return makeGameOptionStateReply(iId, iOption);
+	}
+
+	CvString handleSetMultiplayerOption(int iId, JSON_Object* pArgs)
+	{
+		int iEnabled = 0;
+		JSON_Value* pOptionValue = json_object_get_value(pArgs, "option");
+		int iOption = getInfoTypeFromValue(pOptionValue);
+		if (pOptionValue == NULL || iOption < 0 || iOption >= GC.getNumMPOptionInfos())
+		{
+			return makeErrorReply(iId, "bad_option", "option is missing or out of range");
+		}
+		if (!getInt(pArgs, "enabled", iEnabled))
+		{
+			return makeErrorReply(iId, "bad_enabled", "enabled is missing");
+		}
+
+		GC.getGameINLINE().setMPOption((MultiplayerOptionTypes)iOption, iEnabled != 0);
+		markGameDataDirty();
+		return makeMultiplayerOptionStateReply(iId, iOption);
+	}
+
+	CvString handleSetForceControl(int iId, JSON_Object* pArgs)
+	{
+		int iEnabled = 0;
+		JSON_Value* pControlValue = json_object_get_value(pArgs, "control");
+		int iControl = getInfoTypeFromValue(pControlValue);
+		if (pControlValue == NULL || iControl < 0 || iControl >= GC.getNumForceControlInfos())
+		{
+			return makeErrorReply(iId, "bad_control", "control is missing or out of range");
+		}
+		if (!getInt(pArgs, "enabled", iEnabled))
+		{
+			return makeErrorReply(iId, "bad_enabled", "enabled is missing");
+		}
+
+		GC.getGameINLINE().setForceControl((ForceControlTypes)iControl, iEnabled != 0);
+		markGameDataDirty();
+		return makeForceControlStateReply(iId, iControl);
+	}
+
 	CvString handleSetModState(int iId, JSON_Object* pArgs)
 	{
 		const char* szJson = json_object_get_string(pArgs, "json");
@@ -2761,6 +3176,78 @@ namespace
 			return makeErrorReply(iId, "multiplayer_read_only", "commands are disabled in multiplayer");
 		}
 
+		if (strcmp(szName, "set_game_turn") == 0)
+		{
+			return handleSetGameTurn(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_max_turns") == 0)
+		{
+			return handleSetGameMaxTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "change_game_max_turns") == 0)
+		{
+			return handleChangeGameMaxTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_start_turn") == 0)
+		{
+			return handleSetGameStartTurn(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_start_year") == 0)
+		{
+			return handleSetGameStartYear(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_estimate_end_turn") == 0)
+		{
+			return handleSetGameEstimateEndTurn(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_target_score") == 0)
+		{
+			return handleSetGameTargetScore(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_max_city_elimination") == 0)
+		{
+			return handleSetGameMaxCityElimination(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_advanced_start_points") == 0)
+		{
+			return handleSetGameAdvancedStartPoints(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_ai_auto_play") == 0)
+		{
+			return handleSetGameAIAutoPlay(iId, pArgs);
+		}
+		if (strcmp(szName, "change_game_ai_auto_play") == 0)
+		{
+			return handleChangeGameAIAutoPlay(iId, pArgs);
+		}
+		if (strcmp(szName, "change_game_nukes_exploded") == 0)
+		{
+			return handleChangeGameNukesExploded(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_pause_player") == 0)
+		{
+			return handleSetGamePausePlayer(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_winner") == 0)
+		{
+			return handleSetGameWinner(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_state") == 0)
+		{
+			return handleSetGameState(iId, pArgs);
+		}
+		if (strcmp(szName, "set_game_option") == 0)
+		{
+			return handleSetGameOption(iId, pArgs);
+		}
+		if (strcmp(szName, "set_multiplayer_option") == 0)
+		{
+			return handleSetMultiplayerOption(iId, pArgs);
+		}
+		if (strcmp(szName, "set_force_control") == 0)
+		{
+			return handleSetForceControl(iId, pArgs);
+		}
 		if (strcmp(szName, "set_player_gold") == 0)
 		{
 			return handleSetPlayerGold(iId, pArgs);
