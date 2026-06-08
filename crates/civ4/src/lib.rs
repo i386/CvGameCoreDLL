@@ -2,6 +2,7 @@ pub mod callbacks;
 mod city_api;
 pub mod client;
 pub mod commands;
+mod event_kind;
 mod event_payloads;
 #[cfg(test)]
 mod event_tests;
@@ -32,6 +33,7 @@ pub use commands::{
     CityOrder, CityOrderType, SpawnUnitRequest, SpawnedUnit, UnitCommandName, UnitCommandType,
     UnitGroupCommand, UnitGroupJoin, UnitGroupMission,
 };
+pub use event_kind::BridgeEventKind;
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
 pub use metadata::{InfoCount, InfoTypeEntry, InfoTypeState, InfoTypesResult};
 pub use plot_api::{

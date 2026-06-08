@@ -420,12 +420,15 @@ handler can return `CallbackControl::consume(...)` for input callbacks,
 `callback_request` id.
 
 ```rust
-use civ4::{BridgeClient, BridgeEvent, CallbackControl, CallbackDispatcher};
+use civ4::{
+    BridgeClient, BridgeEvent, BridgeEventKind, CallbackControl, CallbackDispatcher,
+    CityProductionRule,
+};
 
 let (mut client, _hello) = BridgeClient::connect_from_env_with_handshake()?;
 let mut callbacks = CallbackDispatcher::new();
 
-callbacks.on_name("begin_player_turn", |client, event| {
+callbacks.on_event(BridgeEventKind::BeginPlayerTurn, |client, event| {
     if let BridgeEvent::BeginPlayerTurn { player, .. } = event.event() {
         let state = client.get_player_state(*player)?;
         if state.gold < 100 {
@@ -435,16 +438,16 @@ callbacks.on_name("begin_player_turn", |client, event| {
     Ok(CallbackControl::Continue)
 });
 
-callbacks.on_name("kbd_event", |_client, _event| {
+callbacks.on_event(BridgeEventKind::KbdEvent, |_client, _event| {
     Ok(CallbackControl::consume(false))
 });
 
-callbacks.on_name("cannot_train", |_client, event| {
+callbacks.on_event(BridgeEventKind::CityProductionRule(CityProductionRule::CannotTrain), |_client, event| {
     let veto = matches!(event.event(), BridgeEvent::CityProductionRule { item, .. } if *item == 1);
     Ok(CallbackControl::rule_value(veto))
 });
 
-callbacks.on_name("pre_save", |_client, _event| Ok(CallbackControl::Stop));
+callbacks.on_event(BridgeEventKind::PreSave, |_client, _event| Ok(CallbackControl::Stop));
 callbacks.run_until_stopped(&mut client)?;
 ```
 
@@ -495,6 +498,6 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `can_unit_join_group`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `do_unit_group_command`, `join_unit_group`, `split_unit_group`, `UnitGroupMission`, `UnitGroupCommand`, `UnitGroupJoin`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, `SelectionGroupCommandCheck`, `UnitCommandResult`, and `UnitGroupJoinCheck`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
-- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`
+- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `BridgeEventKind` and `CityProductionRule`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, `next_callback_request`, `write_input_callback_reply`, and `write_rule_callback_reply`
 - `CallbackDispatcher`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, and `RuleCallbackReply`
