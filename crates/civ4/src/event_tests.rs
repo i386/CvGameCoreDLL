@@ -409,6 +409,27 @@ fn decodes_city_found_value_callback_payload() {
 }
 
 #[test]
+fn decodes_can_declare_war_callback_payload() {
+    let event = BridgeEvent::from_name_args(
+        "can_declare_war".to_string(),
+        json!({
+            "team": 1,
+            "other_team": 2
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::CanDeclareWar {
+            team: TeamId(1),
+            other_team: TeamId(2),
+        }
+    );
+    assert_eq!(event.name(), "can_declare_war");
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

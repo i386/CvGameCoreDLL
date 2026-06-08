@@ -23,6 +23,7 @@ pub enum BridgeEventKind {
     CanFoundCitiesOnWater,
     CityFoundValue,
     FirstContact,
+    CanDeclareWar,
     CombatResult,
     ImprovementBuilt,
     ImprovementDestroyed,
@@ -107,6 +108,7 @@ impl BridgeEventKind {
             Self::CanFoundCitiesOnWater => "can_found_cities_on_water",
             Self::CityFoundValue => "get_city_found_value",
             Self::FirstContact => "first_contact",
+            Self::CanDeclareWar => "can_declare_war",
             Self::CombatResult => "combat_result",
             Self::ImprovementBuilt => "improvement_built",
             Self::ImprovementDestroyed => "improvement_destroyed",
@@ -191,6 +193,7 @@ impl BridgeEventKind {
             "can_found_cities_on_water" => Self::CanFoundCitiesOnWater,
             "get_city_found_value" => Self::CityFoundValue,
             "first_contact" => Self::FirstContact,
+            "can_declare_war" => Self::CanDeclareWar,
             "combat_result" => Self::CombatResult,
             "improvement_built" => Self::ImprovementBuilt,
             "improvement_destroyed" => Self::ImprovementDestroyed,
@@ -312,6 +315,10 @@ mod tests {
         assert_eq!(
             BridgeEventKind::from_name("get_city_found_value"),
             Some(BridgeEventKind::CityFoundValue)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("can_declare_war"),
+            Some(BridgeEventKind::CanDeclareWar)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

@@ -117,6 +117,10 @@ pub enum BridgeEvent {
         team: TeamId,
         other_team: TeamId,
     },
+    CanDeclareWar {
+        team: TeamId,
+        other_team: TeamId,
+    },
     CombatResult {
         winner: UnitRef,
         winner_unit_type: i32,

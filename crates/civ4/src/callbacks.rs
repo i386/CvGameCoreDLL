@@ -640,6 +640,35 @@ mod tests {
     }
 
     #[test]
+    fn direct_bridge_event_handlers_can_control_war_declarations() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(BridgeEventKind::CanDeclareWar, |_client, event| {
+            let allowed = !matches!(
+                event,
+                BridgeEvent::CanDeclareWar {
+                    team: crate::types::TeamId(1),
+                    other_team: crate::types::TeamId(2),
+                }
+            );
+            Ok(CallbackControl::rule_value(allowed))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 51,
+            event: BridgeEvent::CanDeclareWar {
+                team: crate::types::TeamId(1),
+                other_team: crate::types::TeamId(2),
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
     fn stop_prevents_later_handlers() {
         let calls = Rc::new(RefCell::new(Vec::new()));
         let mut dispatcher = CallbackDispatcher::new();

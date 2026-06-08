@@ -29,6 +29,7 @@ impl BridgeEvent {
             Self::CanFoundCitiesOnWater { .. } => "can_found_cities_on_water",
             Self::CityFoundValue { .. } => "get_city_found_value",
             Self::FirstContact { .. } => "first_contact",
+            Self::CanDeclareWar { .. } => "can_declare_war",
             Self::CombatResult { .. } => "combat_result",
             Self::ImprovementBuilt { .. } => "improvement_built",
             Self::ImprovementDestroyed { .. } => "improvement_destroyed",
@@ -203,6 +204,13 @@ impl BridgeEvent {
             "first_contact" => {
                 let payload: TeamPairPayload = decode(args)?;
                 Self::FirstContact {
+                    team: TeamId(payload.team),
+                    other_team: TeamId(payload.other_team),
+                }
+            }
+            "can_declare_war" => {
+                let payload: TeamPairPayload = decode(args)?;
+                Self::CanDeclareWar {
                     team: TeamId(payload.team),
                     other_team: TeamId(payload.other_team),
                 }

@@ -330,6 +330,7 @@ can_build {"x":10,"y":12,"build":4,"player":0,"test_visible":false}
 cannot_found_city {"player":0,"x":10,"y":12,"test_visible":false}
 can_found_cities_on_water {"player":0,"x":10,"y":12,"test_visible":false}
 get_city_found_value {"player":0,"x":10,"y":12}
+can_declare_war {"team":0,"other_team":1}
 ```
 
 Reply with `{"value":true}` to make the corresponding hook return true. Reply with
@@ -342,7 +343,8 @@ production cost. Reply with `{"value":1}` to `can_build` to force allow, `{"valu
 or a negative value to continue normal DLL checks. Reply with `{"value":true}` to
 `cannot_found_city` to veto founding, or to `can_found_cities_on_water` to allow water founding.
 Reply with a non-negative `{"value":240}` score to `get_city_found_value`, or `{"value":-1}` to
-continue normal AI scoring.
+continue normal AI scoring. Reply with `{"value":true}` to `can_declare_war` to allow war after
+normal DLL checks, or `{"value":false}` to deny it.
 
 Callback mirror payloads cover most of `CvEventReporter`. Object references are serialized as
 stable game IDs and coordinates:
@@ -481,6 +483,6 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `can_unit_join_group`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `do_unit_group_command`, `join_unit_group`, `split_unit_group`, `UnitGroupMission`, `UnitGroupCommand`, `UnitGroupJoin`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, `SelectionGroupCommandCheck`, `UnitCommandResult`, and `UnitGroupJoinCheck`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
-- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads, city production rule callback requests, `get_building_cost_mod`, `unit_cannot_move_into`, player research callbacks, civic callbacks, `can_build`, city founding callbacks, and `get_city_found_value`, plus `BridgeEventKind`, `CityProductionRule`, and `CityProductionItem`
+- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads, city production rule callback requests, `get_building_cost_mod`, `unit_cannot_move_into`, player research callbacks, civic callbacks, `can_build`, city founding callbacks, `get_city_found_value`, and `can_declare_war`, plus `BridgeEventKind`, `CityProductionRule`, and `CityProductionItem`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, `next_callback_request`, `write_input_callback_reply`, `write_rule_callback_reply`, and `write_int_callback_reply`
 - `CallbackDispatcher`, `on_event`, `on_bridge_event`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, `RuleCallbackReply`, and `IntCallbackReply`

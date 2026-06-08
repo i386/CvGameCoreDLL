@@ -21,6 +21,20 @@
 #include "CvDLLPythonIFaceBase.h"
 #include "CyArgsList.h"
 #include "FProfiler.h"
+#include "CvGameBridge.h"
+
+namespace
+{
+	CvString makeBridgeTeamPairArgs(const CvTeam* pTeam, TeamTypes eOtherTeam)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"team\":%d,\"other_team\":%d}",
+			pTeam->getID(),
+			eOtherTeam);
+		return szArgs;
+	}
+}
 
 // Public Functions...
 
@@ -1069,15 +1083,27 @@ bool CvTeam::canDeclareWar(TeamTypes eTeam) const
 
 	if(GC.getUSE_CAN_DECLARE_WAR_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getID());	// Team ID
-		argsList.add(eTeam);	// pass in city class
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canDeclareWar", argsList.makeFunctionArgs(), &lResult);
-
-		if (lResult == 0)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeTeamPairArgs(this, eTeam);
+		if (CvGameBridge::requestCallbackBool("can_declare_war", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (!bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add(getID());	// Team ID
+			argsList.add(eTeam);	// pass in city class
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canDeclareWar", argsList.makeFunctionArgs(), &lResult);
+
+			if (lResult == 0)
+			{
+				return false;
+			}
 		}
 	}
 
