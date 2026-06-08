@@ -23,6 +23,7 @@ pub mod state;
 mod team_api;
 pub mod types;
 mod unit_api;
+mod unit_event_payloads;
 mod unit_state;
 
 pub use callbacks::{
