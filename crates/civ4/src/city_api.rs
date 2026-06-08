@@ -1,8 +1,8 @@
 use crate::client::{BridgeClient, Result};
 use crate::commands::CityOrder;
 use crate::state::{
-    CityBuildingClassChange, CityBuildingState, CityCorporationState, CityReligionState, CityState,
-    PlayerCitiesResult,
+    CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
+    CityReligionState, CityState, PlayerCitiesResult,
 };
 use crate::types::{CityRef, InfoType, PlayerId};
 use serde_json::{json, Value};
@@ -11,6 +11,13 @@ impl BridgeClient {
     pub fn get_city_state(&mut self, city: CityRef) -> Result<CityState> {
         self.query(
             "get_city_state",
+            json!({ "player": city.player, "city": city.id }),
+        )
+    }
+
+    pub fn get_city_detail_state(&mut self, city: CityRef) -> Result<CityDetailState> {
+        self.query(
+            "get_city_detail_state",
             json!({ "player": city.player, "city": city.id }),
         )
     }

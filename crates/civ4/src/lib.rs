@@ -30,11 +30,11 @@ pub use plot_api::{
 };
 pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use state::{
-    CityBuildingClassChange, CityBuildingState, CityCorporationState, CityReligionState, CityState,
-    ForceControlState, GameOptionState, GameState, KilledUnit, MapState, MultiplayerOptionState,
-    PlayerEconomyState, PlayerGoldPerTurnState, PlayerOptions, PlayerState, PlotCultureState,
-    PlotState, PlotVisibilityState, TeamRelationState, TeamState, TeamTechState,
-    UnitPromotionState, UnitState,
+    CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
+    CityReligionState, CityState, ForceControlState, GameOptionState, GameState, KilledUnit,
+    MapState, MultiplayerOptionState, PlayerEconomyState, PlayerGoldPerTurnState, PlayerOptions,
+    PlayerState, PlotCultureState, PlotState, PlotVisibilityState, TeamRelationState, TeamState,
+    TeamTechState, UnitPromotionState, UnitState,
 };
 pub use types::{
     CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan,

@@ -991,6 +991,64 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeCityDetailStateReply(int iId, CvCity* pCity)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pYieldValue = json_value_init_array();
+		JSON_Array* pYields = json_value_get_array(pYieldValue);
+		JSON_Value* pCommerceValue = json_value_init_array();
+		JSON_Array* pCommerce = json_value_get_array(pCommerceValue);
+		JSON_Value* pCommerceTimes100Value = json_value_init_array();
+		JSON_Array* pCommerceTimes100 = json_value_get_array(pCommerceTimes100Value);
+
+		for (int iYield = 0; iYield < GC.getNUM_YIELD_TYPES(); ++iYield)
+		{
+			json_array_append_number(pYields, pCity->getYieldRate((YieldTypes)iYield));
+		}
+		for (int iCommerce = 0; iCommerce < GC.getNUM_COMMERCE_TYPES(); ++iCommerce)
+		{
+			json_array_append_number(pCommerce, pCity->getCommerceRate((CommerceTypes)iCommerce));
+			json_array_append_number(pCommerceTimes100, pCity->getCommerceRateTimes100((CommerceTypes)iCommerce));
+		}
+
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "x", pCity->getX_INLINE());
+		json_object_set_number(pResult, "y", pCity->getY_INLINE());
+		json_object_set_boolean(pResult, "production", pCity->isProduction() ? 1 : 0);
+		json_object_set_boolean(pResult, "food_production", pCity->isFoodProduction() ? 1 : 0);
+		json_object_set_boolean(pResult, "disorder", pCity->isDisorder() ? 1 : 0);
+		json_object_set_boolean(pResult, "occupation", pCity->isOccupation() ? 1 : 0);
+		json_object_set_boolean(pResult, "we_love_the_king_day", pCity->isWeLoveTheKingDay() ? 1 : 0);
+		json_object_set_number(pResult, "food", pCity->getFood());
+		json_object_set_number(pResult, "food_kept", pCity->getFoodKept());
+		json_object_set_number(pResult, "growth_threshold", pCity->growthThreshold());
+		json_object_set_number(pResult, "food_consumption", pCity->foodConsumption(false, 0));
+		json_object_set_number(pResult, "food_difference", pCity->foodDifference(true));
+		json_object_set_number(pResult, "happy_level", pCity->happyLevel());
+		json_object_set_number(pResult, "unhappy_level", pCity->unhappyLevel(0));
+		json_object_set_number(pResult, "angry_population", pCity->angryPopulation(0));
+		json_object_set_number(pResult, "good_health", pCity->goodHealth());
+		json_object_set_number(pResult, "bad_health", pCity->badHealth(false, 0));
+		json_object_set_number(pResult, "health_rate", pCity->healthRate(false, 0));
+		json_object_set_number(pResult, "unhealthy_population", pCity->unhealthyPopulation(false, 0));
+		json_object_set_number(pResult, "maintenance", pCity->getMaintenance());
+		json_object_set_number(pResult, "distance_maintenance", pCity->calculateDistanceMaintenance());
+		json_object_set_number(pResult, "num_cities_maintenance", pCity->calculateNumCitiesMaintenance());
+		json_object_set_number(pResult, "colony_maintenance", pCity->calculateColonyMaintenance());
+		json_object_set_number(pResult, "corporation_maintenance", pCity->calculateCorporationMaintenance());
+		json_object_set_number(pResult, "production_left", pCity->productionLeft());
+		json_object_set_number(pResult, "current_production_difference", pCity->getCurrentProductionDifference(false, true));
+		json_object_set_number(pResult, "defense_damage", pCity->getDefenseDamage());
+		json_object_set_number(pResult, "total_defense", pCity->getTotalDefense(false));
+		json_object_set_number(pResult, "defense_modifier", pCity->getDefenseModifier(false));
+		json_object_set_value(pResult, "yield_rate", pYieldValue);
+		json_object_set_value(pResult, "commerce_rate", pCommerceValue);
+		json_object_set_value(pResult, "commerce_rate_times100", pCommerceTimes100Value);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makeCityBuildingStateReply(int iId, CvCity* pCity, int iBuilding)
 	{
 		JSON_Object* pResult = NULL;
@@ -1723,6 +1781,18 @@ namespace
 				return makeErrorReply(iId, "bad_city", "city is missing or not found");
 			}
 			return makeCityStateReply(iId, pCity);
+		}
+
+		if (strcmp(szName, "get_city_detail_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			return makeCityDetailStateReply(iId, pCity);
 		}
 
 		if (strcmp(szName, "get_city_building_state") == 0)

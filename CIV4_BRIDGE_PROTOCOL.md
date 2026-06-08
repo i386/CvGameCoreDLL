@@ -114,6 +114,7 @@ get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature"
 get_plot_culture_state {"x":10,"y":12,"player":0} -> {"x":10,"y":12,"player":0,"culture":42,"total_culture":50,"culture_percent":84}
 get_plot_visibility_state {"x":10,"y":12,"team":0} -> {"x":10,"y":12,"team":0,"debug":false,"visible":true,"revealed":true,"revealed_owner":0,"revealed_team":0,"revealed_improvement":2,"revealed_route":1}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
+get_city_detail_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"production":true,"food_production":false,"disorder":false,"occupation":false,"we_love_the_king_day":false,"food":12,"food_kept":4,"growth_threshold":26,"food_consumption":8,"food_difference":3,"happy_level":7,"unhappy_level":5,"angry_population":0,"good_health":6,"bad_health":4,"health_rate":0,"unhealthy_population":0,"maintenance":3,"distance_maintenance":1,"num_cities_maintenance":2,"colony_maintenance":0,"corporation_maintenance":0,"production_left":12,"current_production_difference":5,"defense_damage":0,"total_defense":40,"defense_modifier":40,"yield_rate":[11,8,12],"commerce_rate":[6,14,2,0],"commerce_rate_times100":[600,1400,200,0]}
 get_city_building_state {"player":0,"city":3,"building":"BUILDING_GRANARY"} -> {"player":0,"city":3,"building":12,"real":1,"free":0,"active":true}
 get_city_religion_state {"player":0,"city":3,"religion":"RELIGION_BUDDHISM"} -> {"player":0,"city":3,"religion":0,"has":true}
 get_city_corporation_state {"player":0,"city":3,"corporation":"CORPORATION_SID_SUSHI"} -> {"player":0,"city":3,"corporation":0,"has":false}
@@ -413,7 +414,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_team_stolen_visibility_timer`, `change_team_stolen_visibility_timer`
 - `get_map_state`, `get_plot_state`, `get_plot_culture_state`, `get_plot_visibility_state`, `get_plot_visibility_state_with_debug`,
   `PlotCultureState`, and `PlotVisibilityState`
-- `get_city_state`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
+- `get_city_state`, `get_city_detail_state`, `CityDetailState`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `set_city_production`, `change_city_production`, `set_city_unit_production`, `set_city_building_production`, `set_city_project_production`
 - `push_city_order`, `clear_city_order_queue`, `pop_city_order`, `CityOrder`, and `CityOrderType`
 - `get_city_building_state`, `set_city_real_building`, `set_city_free_building`, and `CityBuildingState`

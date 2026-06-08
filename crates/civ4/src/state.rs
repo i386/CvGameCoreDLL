@@ -226,6 +226,54 @@ impl CityState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityDetailState {
+    pub player: i32,
+    pub city: i32,
+    pub x: i32,
+    pub y: i32,
+    pub production: bool,
+    pub food_production: bool,
+    pub disorder: bool,
+    pub occupation: bool,
+    pub we_love_the_king_day: bool,
+    pub food: i32,
+    pub food_kept: i32,
+    pub growth_threshold: i32,
+    pub food_consumption: i32,
+    pub food_difference: i32,
+    pub happy_level: i32,
+    pub unhappy_level: i32,
+    pub angry_population: i32,
+    pub good_health: i32,
+    pub bad_health: i32,
+    pub health_rate: i32,
+    pub unhealthy_population: i32,
+    pub maintenance: i32,
+    pub distance_maintenance: i32,
+    pub num_cities_maintenance: i32,
+    pub colony_maintenance: i32,
+    pub corporation_maintenance: i32,
+    pub production_left: i32,
+    pub current_production_difference: i32,
+    pub defense_damage: i32,
+    pub total_defense: i32,
+    pub defense_modifier: i32,
+    pub yield_rate: Vec<i32>,
+    pub commerce_rate: Vec<i32>,
+    pub commerce_rate_times100: Vec<i32>,
+}
+
+impl CityDetailState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+
+    pub fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CityBuildingState {
     pub player: i32,
     pub city: i32,
@@ -649,6 +697,48 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(cities.cities[0].city_ref(), CityRef::new(0, 7));
+
+        let city_detail: CityDetailState = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "x": 10,
+            "y": 11,
+            "production": true,
+            "food_production": false,
+            "disorder": false,
+            "occupation": false,
+            "we_love_the_king_day": true,
+            "food": 12,
+            "food_kept": 4,
+            "growth_threshold": 26,
+            "food_consumption": 8,
+            "food_difference": 3,
+            "happy_level": 7,
+            "unhappy_level": 5,
+            "angry_population": 0,
+            "good_health": 6,
+            "bad_health": 4,
+            "health_rate": 0,
+            "unhealthy_population": 0,
+            "maintenance": 3,
+            "distance_maintenance": 1,
+            "num_cities_maintenance": 2,
+            "colony_maintenance": 0,
+            "corporation_maintenance": 0,
+            "production_left": 12,
+            "current_production_difference": 5,
+            "defense_damage": 0,
+            "total_defense": 40,
+            "defense_modifier": 40,
+            "yield_rate": [11, 8, 12],
+            "commerce_rate": [6, 14, 2, 0],
+            "commerce_rate_times100": [600, 1400, 200, 0]
+        }))
+        .unwrap();
+        assert_eq!(city_detail.city_ref(), CityRef::new(0, 7));
+        assert_eq!(city_detail.plot(), Plot::new(10, 11));
+        assert_eq!(city_detail.yield_rate[0], 11);
+        assert_eq!(city_detail.commerce_rate_times100[1], 1400);
 
         let units: PlayerUnitsResult = serde_json::from_value(json!({
             "player": 0,
