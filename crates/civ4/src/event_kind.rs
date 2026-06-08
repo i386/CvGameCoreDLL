@@ -90,6 +90,100 @@ pub enum BridgeEventKind {
 }
 
 impl BridgeEventKind {
+    pub const BRIDGED_NAMES: &'static [&'static str] = &[
+        "begin_game_turn",
+        "begin_player_turn",
+        "building_built",
+        "can_build",
+        "can_construct",
+        "can_create",
+        "can_declare_war",
+        "can_do_civic",
+        "can_found_cities_on_water",
+        "can_maintain",
+        "can_research",
+        "can_train",
+        "cannot_construct",
+        "cannot_create",
+        "cannot_do_civic",
+        "cannot_found_city",
+        "cannot_maintain",
+        "cannot_research",
+        "cannot_train",
+        "change_war",
+        "chat",
+        "city_acquired",
+        "city_acquired_kept",
+        "city_building_building",
+        "city_building_unit",
+        "city_built",
+        "city_do_turn",
+        "city_growth",
+        "city_hurry",
+        "city_lost",
+        "city_razed",
+        "city_rename",
+        "combat_result",
+        "corporation_founded",
+        "corporation_remove",
+        "corporation_spread",
+        "culture_expansion",
+        "end_game_turn",
+        "end_golden_age",
+        "end_player_turn",
+        "first_contact",
+        "game_end",
+        "game_start",
+        "get_building_cost_mod",
+        "get_city_found_value",
+        "golden_age",
+        "goody_received",
+        "goto_plot_set",
+        "great_person_born",
+        "improvement_built",
+        "improvement_destroyed",
+        "init",
+        "is_player_research",
+        "kbd_event",
+        "mod_net_message",
+        "mouse_event",
+        "nuke_explosion",
+        "player_change_state_religion",
+        "player_gold_trade",
+        "plot_feature_removed",
+        "plot_picked",
+        "plot_revealed",
+        "pre_save",
+        "project_built",
+        "religion_founded",
+        "religion_remove",
+        "religion_spread",
+        "route_built",
+        "selection_group_push_mission",
+        "set_player_alive",
+        "tech_acquired",
+        "tech_selected",
+        "uninit",
+        "unit_build_improvement",
+        "unit_built",
+        "unit_cannot_move_into",
+        "unit_created",
+        "unit_gifted",
+        "unit_killed",
+        "unit_lost",
+        "unit_move",
+        "unit_pillage",
+        "unit_promoted",
+        "unit_rename",
+        "unit_selected",
+        "unit_set_xy",
+        "unit_spread_religion_attempt",
+        "update",
+        "vassal_state",
+        "victory",
+        "window_activation",
+    ];
+
     pub fn name(self) -> &'static str {
         match self {
             Self::Init => "init",
@@ -333,6 +427,17 @@ mod tests {
             Some(BridgeEventKind::CanDeclareWar)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
+    }
+
+    #[test]
+    fn bridged_event_name_catalog_maps_to_known_kinds() {
+        assert_eq!(BridgeEventKind::BRIDGED_NAMES.len(), 91);
+        for name in BridgeEventKind::BRIDGED_NAMES {
+            assert!(
+                BridgeEventKind::from_name(name).is_some(),
+                "{name} should map to a bridge event kind"
+            );
+        }
     }
 
     #[test]
