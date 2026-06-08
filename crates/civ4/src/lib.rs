@@ -6,6 +6,7 @@ mod event_kind;
 mod event_payloads;
 #[cfg(test)]
 mod event_tests;
+mod event_types;
 pub mod events;
 mod game_api;
 mod info_api;
