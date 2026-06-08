@@ -1,9 +1,80 @@
 use crate::client::{BridgeClient, Result};
-use crate::state::{TeamRelationState, TeamState, TeamsResult};
-use crate::types::{TeamId, WarPlan};
+use crate::state::{TeamRelationState, TeamState, TeamTechState, TeamsResult};
+use crate::types::{InfoType, PlayerId, TeamId, WarPlan};
 use serde_json::{json, Value};
 
 impl BridgeClient {
+    pub fn get_team_tech_state<T, I>(&mut self, team: T, tech: I) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        self.query(
+            "get_team_tech_state",
+            json!({ "team": team.0, "tech": tech.into() }),
+        )
+    }
+
+    pub fn set_team_has_tech<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        has: bool,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        let mut args = json!({
+            "team": team.0,
+            "tech": tech.into(),
+            "has": if has { 1 } else { 0 },
+        });
+        if let Some(player) = player {
+            args["player"] = json!(player.0);
+        }
+        self.command("set_team_has_tech", args)
+    }
+
+    pub fn grant_team_tech<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        self.set_team_has_tech(team, tech, true, player)
+    }
+
+    pub fn change_team_research_progress<T, I>(
+        &mut self,
+        team: T,
+        tech: I,
+        change: i32,
+        player: Option<PlayerId>,
+    ) -> Result<TeamTechState>
+    where
+        T: Into<TeamId>,
+        I: Into<InfoType>,
+    {
+        let team = team.into();
+        let mut args = json!({
+            "team": team.0,
+            "tech": tech.into(),
+            "change": change,
+        });
+        if let Some(player) = player {
+            args["player"] = json!(player.0);
+        }
+        self.command("change_team_research_progress", args)
+    }
+
     pub fn get_team_state<T: Into<TeamId>>(&mut self, team: T) -> Result<TeamState> {
         let team = team.into();
         self.query("get_team_state", json!({ "team": team.0 }))

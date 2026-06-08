@@ -9,6 +9,7 @@ pub mod events;
 mod game_api;
 mod info_api;
 pub mod metadata;
+mod mod_state_api;
 mod player_api;
 mod plot_api;
 pub mod protocol;

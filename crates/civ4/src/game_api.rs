@@ -1,9 +1,16 @@
 use crate::client::{BridgeClient, Result};
-use crate::state::{ForceControlState, GameOptionState, GameState, MultiplayerOptionState};
+use crate::state::{
+    ForceControlState, GameOptionState, GameState, GameTurnResult, MultiplayerOptionState,
+};
 use crate::types::{GameStatus, InfoType, PlayerId, TeamId};
 use serde_json::json;
 
 impl BridgeClient {
+    pub fn get_game_turn(&mut self) -> Result<i32> {
+        let result: GameTurnResult = self.query("get_game_turn", json!({}))?;
+        Ok(result.turn)
+    }
+
     pub fn get_game_state(&mut self) -> Result<GameState> {
         self.query("get_game_state", json!({}))
     }
