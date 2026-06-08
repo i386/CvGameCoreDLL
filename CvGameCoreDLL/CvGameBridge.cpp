@@ -462,14 +462,36 @@ namespace
 
 	void setUnitState(JSON_Object* pResult, CvUnit* pUnit)
 	{
+		JSON_Value* pPromotionsValue = json_value_init_array();
+		JSON_Array* pPromotions = json_value_get_array(pPromotionsValue);
+
 		json_object_set_number(pResult, "player", pUnit->getOwnerINLINE());
 		json_object_set_number(pResult, "unit", pUnit->getID());
 		json_object_set_number(pResult, "unit_type", pUnit->getUnitType());
+		json_object_set_number(pResult, "unit_ai", pUnit->AI_getUnitAIType());
+		json_object_set_number(pResult, "domain", pUnit->getDomainType());
 		json_object_set_number(pResult, "x", pUnit->getX_INLINE());
 		json_object_set_number(pResult, "y", pUnit->getY_INLINE());
 		json_object_set_number(pResult, "damage", pUnit->getDamage());
 		json_object_set_number(pResult, "experience", pUnit->getExperience());
 		json_object_set_number(pResult, "level", pUnit->getLevel());
+		json_object_set_number(pResult, "moves", pUnit->getMoves());
+		json_object_set_number(pResult, "max_moves", pUnit->maxMoves());
+		json_object_set_number(pResult, "base_combat", pUnit->baseCombatStr());
+		json_object_set_number(pResult, "cargo", pUnit->getCargo());
+		json_object_set_number(pResult, "fortify_turns", pUnit->getFortifyTurns());
+		json_object_set_number(pResult, "immobile_timer", pUnit->getImmobileTimer());
+		json_object_set_boolean(pResult, "made_attack", pUnit->isMadeAttack() ? 1 : 0);
+
+		for (int iPromotion = 0; iPromotion < GC.getNumPromotionInfos(); ++iPromotion)
+		{
+			if (pUnit->isHasPromotion((PromotionTypes)iPromotion))
+			{
+				json_array_append_number(pPromotions, iPromotion);
+			}
+		}
+
+		json_object_set_value(pResult, "promotions", pPromotionsValue);
 	}
 
 	CvString makeUnitStateReply(int iId, CvUnit* pUnit)
@@ -477,6 +499,17 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setUnitState(pResult, pUnit);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeUnitPromotionStateReply(int iId, CvUnit* pUnit, int iPromotion)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pUnit->getOwnerINLINE());
+		json_object_set_number(pResult, "unit", pUnit->getID());
+		json_object_set_number(pResult, "promotion", iPromotion);
+		json_object_set_boolean(pResult, "has", pUnit->isHasPromotion((PromotionTypes)iPromotion) ? 1 : 0);
 		return serializeAndFree(pValue);
 	}
 
@@ -725,6 +758,24 @@ namespace
 				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
 			}
 			return makeUnitStateReply(iId, pUnit);
+		}
+
+		if (strcmp(szName, "get_unit_promotion_state") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			CvUnit* pUnit = NULL;
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			JSON_Value* pPromotionValue = json_object_get_value(pArgs, "promotion");
+			int iPromotion = getInfoTypeFromValue(pPromotionValue);
+			if (pPromotionValue == NULL || iPromotion < 0 || iPromotion >= GC.getNumPromotionInfos())
+			{
+				return makeErrorReply(iId, "bad_promotion", "promotion is missing or out of range");
+			}
+			return makeUnitPromotionStateReply(iId, pUnit, iPromotion);
 		}
 
 		if (strcmp(szName, "list_player_units") == 0)
@@ -1361,6 +1412,341 @@ namespace
 		return makeUnitStateReply(iId, pUnit);
 	}
 
+	CvString handleChangeUnitExperience(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pUnit->getExperience() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "experience cannot be reduced below zero");
+		}
+
+		pUnit->changeExperience(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitXY(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iX = -1;
+		int iY = -1;
+		int iGroup = 0;
+		int iUpdate = 1;
+		int iShow = 0;
+		int iCheckPlotVisible = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "x", iX) || !getInt(pArgs, "y", iY) || GC.getMapINLINE().plot(iX, iY) == NULL)
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		getInt(pArgs, "group", iGroup);
+		getInt(pArgs, "update", iUpdate);
+		getInt(pArgs, "show", iShow);
+		getInt(pArgs, "check_plot_visible", iCheckPlotVisible);
+
+		pUnit->setXY(iX, iY, iGroup != 0, iUpdate != 0, iShow != 0, iCheckPlotVisible != 0);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitMoves(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pUnit->setMoves(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleChangeUnitMoves(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pUnit->getMoves() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "moves cannot be reduced below zero");
+		}
+
+		pUnit->changeMoves(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleFinishUnitMoves(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+
+		pUnit->finishMoves();
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitLevel(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 1)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or less than one");
+		}
+
+		pUnit->setLevel(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleChangeUnitLevel(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pUnit->getLevel() + iChange < 1)
+		{
+			return makeErrorReply(iId, "bad_value", "level cannot be reduced below one");
+		}
+
+		pUnit->changeLevel(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitFortifyTurns(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pUnit->setFortifyTurns(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleChangeUnitFortifyTurns(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pUnit->getFortifyTurns() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "fortify_turns cannot be reduced below zero");
+		}
+
+		pUnit->changeFortifyTurns(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitMadeAttack(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue))
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing");
+		}
+
+		pUnit->setMadeAttack(iValue != 0);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitBaseCombat(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pUnit->setBaseCombatStr(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitImmobileTimer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iValue = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pUnit->setImmobileTimer(iValue);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleChangeUnitImmobileTimer(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iChange = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+
+		pUnit->changeImmobileTimer(iChange);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleSetUnitPromotion(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iHas = 0;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		JSON_Value* pPromotionValue = json_object_get_value(pArgs, "promotion");
+		int iPromotion = getInfoTypeFromValue(pPromotionValue);
+		if (pPromotionValue == NULL || iPromotion < 0 || iPromotion >= GC.getNumPromotionInfos())
+		{
+			return makeErrorReply(iId, "bad_promotion", "promotion is missing or out of range");
+		}
+		if (!getInt(pArgs, "has", iHas))
+		{
+			return makeErrorReply(iId, "bad_has", "has is missing");
+		}
+
+		pUnit->setHasPromotion((PromotionTypes)iPromotion, iHas != 0);
+		markGameDataDirty();
+		return makeUnitStateReply(iId, pUnit);
+	}
+
+	CvString handleKillUnit(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iDelay = 0;
+		int iKiller = NO_PLAYER;
+		CvUnit* pUnit = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		getInt(pArgs, "delay", iDelay);
+		getInt(pArgs, "killer", iKiller);
+		if (iKiller != NO_PLAYER && !validPlayer(iKiller))
+		{
+			return makeErrorReply(iId, "bad_player", "killer is out of range");
+		}
+
+		pUnit->kill(iDelay != 0, (PlayerTypes)iKiller);
+		markGameDataDirty();
+
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "unit", iUnit);
+		json_object_set_boolean(pResult, "killed", 1);
+		return serializeAndFree(pValue);
+	}
+
 	CvString handleSpawnUnit(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -1672,6 +2058,66 @@ namespace
 		if (strcmp(szName, "set_unit_experience") == 0)
 		{
 			return handleSetUnitExperience(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_experience") == 0)
+		{
+			return handleChangeUnitExperience(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_xy") == 0)
+		{
+			return handleSetUnitXY(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_moves") == 0)
+		{
+			return handleSetUnitMoves(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_moves") == 0)
+		{
+			return handleChangeUnitMoves(iId, pArgs);
+		}
+		if (strcmp(szName, "finish_unit_moves") == 0)
+		{
+			return handleFinishUnitMoves(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_level") == 0)
+		{
+			return handleSetUnitLevel(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_level") == 0)
+		{
+			return handleChangeUnitLevel(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_fortify_turns") == 0)
+		{
+			return handleSetUnitFortifyTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_fortify_turns") == 0)
+		{
+			return handleChangeUnitFortifyTurns(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_made_attack") == 0)
+		{
+			return handleSetUnitMadeAttack(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_base_combat") == 0)
+		{
+			return handleSetUnitBaseCombat(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_immobile_timer") == 0)
+		{
+			return handleSetUnitImmobileTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "change_unit_immobile_timer") == 0)
+		{
+			return handleChangeUnitImmobileTimer(iId, pArgs);
+		}
+		if (strcmp(szName, "set_unit_promotion") == 0)
+		{
+			return handleSetUnitPromotion(iId, pArgs);
+		}
+		if (strcmp(szName, "kill_unit") == 0)
+		{
+			return handleKillUnit(iId, pArgs);
 		}
 		if (strcmp(szName, "spawn_unit") == 0)
 		{

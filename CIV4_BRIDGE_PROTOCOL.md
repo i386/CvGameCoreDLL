@@ -69,7 +69,8 @@ get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
 get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1}
 list_player_cities {"player":0} -> {"player":0,"cities":[city state, ...]}
-get_unit_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"x":10,"y":12,"damage":0,"experience":2,"level":1}
+get_unit_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"unit_ai":2,"domain":0,"x":10,"y":12,"damage":0,"experience":2,"level":1,"moves":0,"max_moves":2,"base_combat":3,"cargo":0,"fortify_turns":0,"immobile_timer":0,"made_attack":false,"promotions":[1,4]}
+get_unit_promotion_state {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1"} -> {"player":0,"unit":123,"promotion":1,"has":true}
 list_player_units {"player":0} -> {"player":0,"units":[unit state, ...]}
 get_mod_state -> {"json":"{\"schema_version\":1}"}
 ```
@@ -104,6 +105,21 @@ set_plot_revealed {"x":10,"y":12,"team":0,"revealed":1} -> plot state
 set_unit_damage {"player":0,"unit":123,"value":25} -> unit state
 change_unit_damage {"player":0,"unit":123,"change":-10} -> unit state
 set_unit_experience {"player":0,"unit":123,"value":5} -> unit state
+change_unit_experience {"player":0,"unit":123,"change":1} -> unit state
+set_unit_xy {"player":0,"unit":123,"x":11,"y":12} -> unit state
+set_unit_moves {"player":0,"unit":123,"value":0} -> unit state
+change_unit_moves {"player":0,"unit":123,"change":60} -> unit state
+finish_unit_moves {"player":0,"unit":123} -> unit state
+set_unit_level {"player":0,"unit":123,"value":2} -> unit state
+change_unit_level {"player":0,"unit":123,"change":1} -> unit state
+set_unit_fortify_turns {"player":0,"unit":123,"value":3} -> unit state
+change_unit_fortify_turns {"player":0,"unit":123,"change":1} -> unit state
+set_unit_made_attack {"player":0,"unit":123,"value":1} -> unit state
+set_unit_base_combat {"player":0,"unit":123,"value":4} -> unit state
+set_unit_immobile_timer {"player":0,"unit":123,"value":2} -> unit state
+change_unit_immobile_timer {"player":0,"unit":123,"change":-1} -> unit state
+set_unit_promotion {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1","has":1} -> unit state
+kill_unit {"player":0,"unit":123,"killer":1} -> {"player":0,"unit":123,"killed":true}
 spawn_unit {"player":0,"unit_type":"UNIT_WARRIOR","x":10,"y":12} -> {"player":0,"unit":123,"x":10,"y":12}
 set_mod_state {"json":"{\"schema_version\":1}"} -> {"bytes":20}
 set_player_civic {"player":0,"civic":"CIVIC_SLAVERY"} -> player options
@@ -114,8 +130,8 @@ change_team_research_progress {"team":0,"tech":"TECH_BRONZE_WORKING","change":50
 ```
 
 `unit_type`, `building_type`, `project_type`, `process_type`, `terrain`, `feature`, `bonus`,
-`improvement`, `route`, `tech`, `civic`, and `religion` may be either numeric Civ4 info IDs or
-XML type names. `unit_ai` for `spawn_unit` may also be numeric or an XML type name.
+`improvement`, `route`, `promotion`, `tech`, `civic`, and `religion` may be either numeric Civ4
+info IDs or XML type names. `unit_ai` for `spawn_unit` may also be numeric or an XML type name.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
 If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
 Use religion `-1` with `set_player_state_religion` to clear a player's state religion.
@@ -205,8 +221,11 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `push_city_order`, `clear_city_order_queue`, `pop_city_order`, `CityOrder`, and `CityOrderType`
 - `set_plot_owner`, `clear_plot_owner`, `set_plot_terrain`, `set_plot_feature`, `clear_plot_feature`, `set_plot_bonus`, `clear_plot_bonus`
 - `set_plot_improvement`, `clear_plot_improvement`, `set_plot_route`, `clear_plot_route`, `set_plot_culture`, `change_plot_culture`, `set_plot_revealed`
-- `get_unit_state`, `list_player_units`, `list_all_units`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`
-- `spawn_unit`
+- `get_unit_state`, `get_unit_promotion_state`, `list_player_units`, `list_all_units`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`, `change_unit_experience`
+- `set_unit_xy`, `set_unit_moves`, `change_unit_moves`, `finish_unit_moves`, `set_unit_level`, `change_unit_level`
+- `set_unit_fortify_turns`, `change_unit_fortify_turns`, `set_unit_made_attack`, `set_unit_base_combat`
+- `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
+- `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
 - `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`
