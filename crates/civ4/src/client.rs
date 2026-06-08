@@ -3,7 +3,8 @@ use crate::events::{
     BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage,
 };
 use crate::protocol::{
-    decode_jsonl, encode_jsonl, BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION,
+    decode_jsonl, encode_jsonl, BridgeCapability, BridgeHello, BridgeReply, Message,
+    BRIDGE_PROTOCOL_VERSION,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -79,6 +80,14 @@ impl BridgeClient {
         Ok((client, hello))
     }
 
+    pub fn connect_from_env_requiring(
+        required: &[BridgeCapability],
+    ) -> Result<(Self, BridgeHello)> {
+        let mut client = Self::connect_from_env()?;
+        let hello = client.handshake_requiring(required)?;
+        Ok((client, hello))
+    }
+
     pub fn connect_default() -> Result<Self> {
         Self::connect(
             r"\\.\pipe\CvGameCoreDLL-Control",
@@ -92,6 +101,12 @@ impl BridgeClient {
         Ok((client, hello))
     }
 
+    pub fn connect_default_requiring(required: &[BridgeCapability]) -> Result<(Self, BridgeHello)> {
+        let mut client = Self::connect_default()?;
+        let hello = client.handshake_requiring(required)?;
+        Ok((client, hello))
+    }
+
     pub fn connect_with_prefix(prefix: &str) -> Result<Self> {
         Self::connect(
             format!(r"\\.\pipe\{prefix}-Control"),
@@ -102,6 +117,15 @@ impl BridgeClient {
     pub fn connect_with_prefix_and_handshake(prefix: &str) -> Result<(Self, BridgeHello)> {
         let mut client = Self::connect_with_prefix(prefix)?;
         let hello = client.handshake()?;
+        Ok((client, hello))
+    }
+
+    pub fn connect_with_prefix_requiring(
+        prefix: &str,
+        required: &[BridgeCapability],
+    ) -> Result<(Self, BridgeHello)> {
+        let mut client = Self::connect_with_prefix(prefix)?;
+        let hello = client.handshake_requiring(required)?;
         Ok((client, hello))
     }
 
@@ -134,6 +158,20 @@ impl BridgeClient {
             return Err(BridgeError::Protocol(format!(
                 "unexpected bridge side {:?}, expected \"dll\"",
                 hello.side
+            )));
+        }
+        Ok(hello)
+    }
+
+    pub fn handshake_requiring(&mut self, required: &[BridgeCapability]) -> Result<BridgeHello> {
+        let hello = self.handshake()?;
+        let missing = hello.missing_bridge_capabilities(required);
+        if !missing.is_empty() {
+            let missing_names: Vec<&str> =
+                missing.iter().map(|capability| capability.name()).collect();
+            return Err(BridgeError::Protocol(format!(
+                "bridge is missing capabilities: {}",
+                missing_names.join(", ")
             )));
         }
         Ok(hello)
@@ -500,7 +538,50 @@ mod tests {
         let _ = fs::remove_file(callback_path);
     }
 
+    #[test]
+    fn handshake_requiring_accepts_present_capabilities() {
+        let (mut client, control_path, callback_path) = temp_file_client_with_control(
+            "capabilities-ok",
+            r#"{"type":"hello","protocol":1,"side":"dll","capabilities":["events","queries","commands"]}"#,
+        );
+
+        let hello = client
+            .handshake_requiring(&[
+                BridgeCapability::Events,
+                BridgeCapability::Queries,
+                BridgeCapability::Commands,
+            ])
+            .unwrap();
+
+        assert!(hello.has_bridge_capability(BridgeCapability::Commands));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
+    #[test]
+    fn handshake_requiring_reports_missing_capabilities() {
+        let (mut client, control_path, callback_path) = temp_file_client_with_control(
+            "capabilities-missing",
+            r#"{"type":"hello","protocol":1,"side":"dll","capabilities":["events"]}"#,
+        );
+
+        let error = client
+            .handshake_requiring(&[BridgeCapability::Events, BridgeCapability::Commands])
+            .unwrap_err();
+
+        assert!(matches!(error, BridgeError::Protocol(message) if message.contains("commands")));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
     fn temp_file_client(test_name: &str) -> (BridgeClient, PathBuf, PathBuf) {
+        temp_file_client_with_control(test_name, "")
+    }
+
+    fn temp_file_client_with_control(
+        test_name: &str,
+        control_body: &str,
+    ) -> (BridgeClient, PathBuf, PathBuf) {
         let unique = format!(
             "civ4-client-{test_name}-{}-{}",
             std::process::id(),
@@ -512,7 +593,12 @@ mod tests {
         let control_path = std::env::temp_dir().join(format!("{unique}-control.jsonl"));
         let callback_path = std::env::temp_dir().join(format!("{unique}-callback.jsonl"));
 
-        fs::write(&control_path, b"").unwrap();
+        let control_body = if control_body.is_empty() {
+            String::new()
+        } else {
+            format!("{control_body}\n")
+        };
+        fs::write(&control_path, control_body).unwrap();
         fs::write(&callback_path, b"").unwrap();
 
         let client = BridgeClient::connect(&control_path, &callback_path).unwrap();

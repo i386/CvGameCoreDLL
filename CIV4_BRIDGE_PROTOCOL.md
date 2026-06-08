@@ -53,24 +53,17 @@ The launched process inherits the game environment. Rust companions should use
 Rust clients should perform the hello handshake before registering gameplay behavior:
 
 ```rust
-use civ4::{BridgeClient, Result};
+use civ4::{BridgeCapability, BridgeClient, Result};
 
 fn connect() -> Result<BridgeClient> {
-    let (client, hello) = BridgeClient::connect_from_env_with_handshake()?;
-    let missing = hello.missing_capabilities(&[
-        "events",
-        "queries",
-        "commands",
-        "callbacks",
-        "callback_requests",
-        "mod_state",
-    ]);
-    if !missing.is_empty() {
-        return Err(civ4::BridgeError::Protocol(format!(
-            "bridge is missing capabilities: {}",
-            missing.join(", ")
-        )));
-    }
+    let (client, _hello) = BridgeClient::connect_from_env_requiring(&[
+        BridgeCapability::Events,
+        BridgeCapability::Queries,
+        BridgeCapability::Commands,
+        BridgeCapability::Callbacks,
+        BridgeCapability::CallbackRequests,
+        BridgeCapability::ModState,
+    ])?;
     Ok(client)
 }
 ```
@@ -455,7 +448,9 @@ callbacks.run_until_stopped(&mut client)?;
 The Rust `civ4` crate exposes typed helpers for the current operation set:
 
 - `connect_from_env_with_handshake`, `connect_default_with_handshake`,
-  `connect_with_prefix_and_handshake`, `handshake`, and `BridgeHello`
+  `connect_with_prefix_and_handshake`, `connect_from_env_requiring`,
+  `connect_default_requiring`, `connect_with_prefix_requiring`, `handshake`,
+  `handshake_requiring`, `BridgeHello`, and `BridgeCapability`
 - `get_game_turn`, `get_game_state`, `set_game_turn`, `set_game_max_turns`, `change_game_max_turns`
 - `get_info_count`, `get_info_type`, `resolve_info_id`, `list_info_types`, `InfoKind`, `InfoTypeState`, and `InfoTypeEntry`
 - `set_game_start_turn`, `set_game_start_year`, `set_game_estimate_end_turn`, `set_game_target_score`

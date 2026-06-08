@@ -40,7 +40,7 @@ pub use plot_api::{
     PlotCultureChangeOptions, PlotCultureOptions, PlotFeatureOptions, PlotOwnerOptions,
     PlotRevealedOptions, PlotRouteOptions, PlotTerrainOptions,
 };
-pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
+pub use protocol::{BridgeCapability, BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
     CityProductionOptions, CityReligionState, CityState, ForceControlState, GameOptionState,

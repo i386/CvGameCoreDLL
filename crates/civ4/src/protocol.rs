@@ -3,6 +3,41 @@ use serde_json::Value;
 
 pub const BRIDGE_PROTOCOL_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BridgeCapability {
+    Events,
+    Queries,
+    Commands,
+    Callbacks,
+    CallbackRequests,
+    ModState,
+}
+
+impl BridgeCapability {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Events => "events",
+            Self::Queries => "queries",
+            Self::Commands => "commands",
+            Self::Callbacks => "callbacks",
+            Self::CallbackRequests => "callback_requests",
+            Self::ModState => "mod_state",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "events" => Self::Events,
+            "queries" => Self::Queries,
+            "commands" => Self::Commands,
+            "callbacks" => Self::Callbacks,
+            "callback_requests" => Self::CallbackRequests,
+            "mod_state" => Self::ModState,
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -75,6 +110,28 @@ impl BridgeHello {
             .iter()
             .copied()
             .filter(|capability| !self.has_capability(capability))
+            .collect()
+    }
+
+    pub fn has_bridge_capability(&self, capability: BridgeCapability) -> bool {
+        self.has_capability(capability.name())
+    }
+
+    pub fn missing_bridge_capabilities(
+        &self,
+        required: &[BridgeCapability],
+    ) -> Vec<BridgeCapability> {
+        required
+            .iter()
+            .copied()
+            .filter(|capability| !self.has_bridge_capability(*capability))
+            .collect()
+    }
+
+    pub fn bridge_capabilities(&self) -> Vec<BridgeCapability> {
+        self.capabilities
+            .iter()
+            .filter_map(|capability| BridgeCapability::from_name(capability))
             .collect()
     }
 
@@ -219,9 +276,26 @@ mod tests {
         assert_eq!(hello.protocol, BRIDGE_PROTOCOL_VERSION);
         assert_eq!(hello.side, "dll");
         assert!(hello.has_capability("queries"));
+        assert!(hello.has_bridge_capability(BridgeCapability::Queries));
         assert_eq!(
             hello.missing_capabilities(&["queries", "commands", "callback_requests"]),
             vec!["commands"]
+        );
+        assert_eq!(
+            hello.missing_bridge_capabilities(&[
+                BridgeCapability::Queries,
+                BridgeCapability::Commands,
+                BridgeCapability::CallbackRequests
+            ]),
+            vec![BridgeCapability::Commands]
+        );
+        assert_eq!(
+            hello.bridge_capabilities(),
+            vec![
+                BridgeCapability::Events,
+                BridgeCapability::Queries,
+                BridgeCapability::CallbackRequests
+            ]
         );
     }
 }
