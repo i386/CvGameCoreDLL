@@ -52,6 +52,19 @@ namespace
 			bridgeBoolString(bIgnoreUpgrades));
 		return szArgs;
 	}
+
+	CvString makeBridgeCityBuildingArgs(const CvCity* pCity, BuildingTypes eBuilding)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d,\"building\":%d}",
+			pCity->getOwnerINLINE(),
+			pCity->getID(),
+			pCity->getX_INLINE(),
+			pCity->getY_INLINE(),
+			eBuilding);
+		return szArgs;
+	}
 }
 
 // Public Functions...
@@ -2930,17 +2943,30 @@ int CvCity::getProductionNeeded(BuildingTypes eBuilding) const
 	// Python cost modifier
 	if (GC.getUSE_GET_BUILDING_COST_MOD_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add(getOwnerINLINE());	// Player ID
-		argsList.add(getID());	// City ID
-		argsList.add(eBuilding);	// Building ID
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "getBuildingCostMod", argsList.makeFunctionArgs(), &lResult);
-
-		if (lResult > 1)
+		int iBridgeResult = 0;
+		CvString szBridgeArgs = makeBridgeCityBuildingArgs(this, eBuilding);
+		if (CvGameBridge::requestCallbackInt("get_building_cost_mod", szBridgeArgs.GetCString(), iBridgeResult))
 		{
-			iProductionNeeded *= lResult;
-			iProductionNeeded /= 100;
+			if (iBridgeResult > 1)
+			{
+				iProductionNeeded *= iBridgeResult;
+				iProductionNeeded /= 100;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add(getOwnerINLINE());	// Player ID
+			argsList.add(getID());	// City ID
+			argsList.add(eBuilding);	// Building ID
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "getBuildingCostMod", argsList.makeFunctionArgs(), &lResult);
+
+			if (lResult > 1)
+			{
+				iProductionNeeded *= lResult;
+				iProductionNeeded /= 100;
+			}
 		}
 	}
 

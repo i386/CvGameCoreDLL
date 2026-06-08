@@ -5638,6 +5638,48 @@ namespace
 		return parseBoolFieldReply(szLine, iId, "value", false, bValue);
 	}
 
+	bool parseIntFieldReply(const CvString& szLine, int iId, const char* szField, int& iValue)
+	{
+		JSON_Value* pValue = json_parse_string(szLine.GetCString());
+		if (pValue == NULL || json_value_get_type(pValue) != JSONObject)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		JSON_Object* pObject = json_value_get_object(pValue);
+		const char* szType = json_object_get_string(pObject, "type");
+		int iReplyId = (int)json_object_get_number(pObject, "id");
+		if (szType == NULL || strcmp(szType, "reply") != 0 || iReplyId != iId)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		bool bHandled = false;
+		if (json_object_get_boolean(pObject, "ok"))
+		{
+			JSON_Object* pResult = json_object_get_object(pObject, "result");
+			if (pResult != NULL)
+			{
+				JSON_Value* pField = json_object_get_value(pResult, szField);
+				if (pField != NULL && json_value_get_type(pField) == JSONNumber)
+				{
+					iValue = (int)json_value_get_number(pField);
+					bHandled = true;
+				}
+			}
+		}
+
+		json_value_free(pValue);
+		return bHandled;
+	}
+
+	bool parseIntValueReply(const CvString& szLine, int iId, int& iValue)
+	{
+		return parseIntFieldReply(szLine, iId, "value", iValue);
+	}
+
 	bool sendCallbackRequest(int iId, const char* szName, const char* szArgsJson)
 	{
 		if (!g_bEnabled || !g_kCallbackPipe.bConnected || szName == NULL)
@@ -5708,6 +5750,35 @@ namespace
 			while (popBufferedLine(g_kCallbackPipe, szLine))
 			{
 				if (!szLine.empty() && parseValueReply(szLine, iId, bValue))
+				{
+					return true;
+				}
+			}
+
+			pollPipe(g_kControlPipe, true);
+
+			if (!g_kCallbackPipe.bConnected || GetTickCount() - dwStarted >= dwTimeout)
+			{
+				return false;
+			}
+
+			Sleep(1);
+		}
+	}
+
+	bool waitForIntValueReply(int iId, int& iValue)
+	{
+		DWORD dwStarted = GetTickCount();
+		DWORD dwTimeout = getCallbackTimeoutMs();
+
+		for (;;)
+		{
+			readAvailable(g_kCallbackPipe);
+
+			CvString szLine;
+			while (popBufferedLine(g_kCallbackPipe, szLine))
+			{
+				if (!szLine.empty() && parseIntValueReply(szLine, iId, iValue))
 				{
 					return true;
 				}
@@ -5812,6 +5883,27 @@ bool CvGameBridge::requestCallbackBool(const char* szName, const char* szArgsJso
 	}
 
 	if (!waitForValueReply(iId, bValue))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool CvGameBridge::requestCallbackInt(const char* szName, const char* szArgsJson, int& iValue)
+{
+	if (!g_bEnabled || !g_kCallbackPipe.bConnected)
+	{
+		return false;
+	}
+
+	int iId = (int)g_uiNextCallbackId++;
+	if (!sendCallbackRequest(iId, szName, szArgsJson))
+	{
+		return false;
+	}
+
+	if (!waitForIntValueReply(iId, iValue))
 	{
 		return false;
 	}

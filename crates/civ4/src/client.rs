@@ -1,4 +1,4 @@
-use crate::callbacks::{InputCallbackReply, RuleCallbackReply};
+use crate::callbacks::{InputCallbackReply, IntCallbackReply, RuleCallbackReply};
 use crate::events::{
     BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage,
 };
@@ -301,6 +301,10 @@ impl BridgeClient {
         self.write_callback_success(id, &RuleCallbackReply::new(value))
     }
 
+    pub fn write_int_callback_reply(&mut self, id: u64, value: i32) -> Result<()> {
+        self.write_callback_success(id, &IntCallbackReply::new(value))
+    }
+
     pub fn write_callback_error(
         &mut self,
         id: u64,
@@ -434,6 +438,17 @@ mod tests {
         client.write_rule_callback_reply(8, false).unwrap();
 
         assert_callback_reply(&callback_path, 8, json!({ "value": false }));
+        let _ = fs::remove_file(control_path);
+        let _ = fs::remove_file(callback_path);
+    }
+
+    #[test]
+    fn writes_typed_int_callback_reply() {
+        let (mut client, control_path, callback_path) = temp_file_client("int");
+
+        client.write_int_callback_reply(9, 125).unwrap();
+
+        assert_callback_reply(&callback_path, 9, json!({ "value": 125 }));
         let _ = fs::remove_file(control_path);
         let _ = fs::remove_file(callback_path);
     }

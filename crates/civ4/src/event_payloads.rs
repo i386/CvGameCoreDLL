@@ -340,6 +340,28 @@ impl CityBuildingPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct CityBuildingPlotPayload {
+    pub(crate) player: i32,
+    pub(crate) city: i32,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    pub(crate) building: i32,
+}
+
+impl CityBuildingPlotPayload {
+    pub(crate) fn city(&self) -> CityRef {
+        CityRef {
+            player: self.player,
+            id: self.city,
+        }
+    }
+
+    pub(crate) fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Deserialize)]
 pub(crate) struct CityHurryPayload {
     pub(crate) player: i32,
     pub(crate) city: i32,

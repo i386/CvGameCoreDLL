@@ -34,6 +34,7 @@ pub enum BridgeEventKind {
     CityDoTurn,
     CityBuildingUnit,
     CityBuildingBuilding,
+    BuildingCostMod,
     CityRename,
     CityHurry,
     CityProductionRule(CityProductionRule),
@@ -107,6 +108,7 @@ impl BridgeEventKind {
             Self::CityDoTurn => "city_do_turn",
             Self::CityBuildingUnit => "city_building_unit",
             Self::CityBuildingBuilding => "city_building_building",
+            Self::BuildingCostMod => "get_building_cost_mod",
             Self::CityRename => "city_rename",
             Self::CityHurry => "city_hurry",
             Self::CityProductionRule(rule) => rule.name(),
@@ -180,6 +182,7 @@ impl BridgeEventKind {
             "city_do_turn" => Self::CityDoTurn,
             "city_building_unit" => Self::CityBuildingUnit,
             "city_building_building" => Self::CityBuildingBuilding,
+            "get_building_cost_mod" => Self::BuildingCostMod,
             "city_rename" => Self::CityRename,
             "city_hurry" => Self::CityHurry,
             "selection_group_push_mission" => Self::SelectionGroupPushMission,
@@ -243,10 +246,18 @@ mod tests {
     fn maps_known_event_kind_names() {
         assert_eq!(BridgeEventKind::BeginPlayerTurn.name(), "begin_player_turn");
         assert_eq!(
+            BridgeEventKind::BuildingCostMod.name(),
+            "get_building_cost_mod"
+        );
+        assert_eq!(
             BridgeEventKind::from_name("cannot_train"),
             Some(BridgeEventKind::CityProductionRule(
                 CityProductionRule::CannotTrain
             ))
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("get_building_cost_mod"),
+            Some(BridgeEventKind::BuildingCostMod)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

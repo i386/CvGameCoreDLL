@@ -25,7 +25,8 @@ mod unit_api;
 mod unit_state;
 
 pub use callbacks::{
-    CallbackControl, CallbackDispatch, CallbackDispatcher, InputCallbackReply, RuleCallbackReply,
+    CallbackControl, CallbackDispatch, CallbackDispatcher, InputCallbackReply, IntCallbackReply,
+    RuleCallbackReply,
 };
 pub use city_api::CityProductionOptionsQuery;
 pub use client::{BridgeClient, BridgeError, Result};

@@ -194,6 +194,31 @@ fn decodes_city_production_rule_callback_payloads() {
 }
 
 #[test]
+fn decodes_building_cost_mod_callback_payload() {
+    let event = BridgeEvent::from_name_args(
+        "get_building_cost_mod".to_string(),
+        json!({
+            "player": 1,
+            "city": 9,
+            "x": 20,
+            "y": 21,
+            "building": 12
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::BuildingCostMod {
+            city: CityRef::new(1, 9),
+            plot: Plot::new(20, 21),
+            building: 12,
+        }
+    );
+    assert_eq!(event.name(), "get_building_cost_mod");
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

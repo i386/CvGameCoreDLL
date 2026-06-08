@@ -169,6 +169,11 @@ pub enum BridgeEvent {
         city: CityRef,
         building: i32,
     },
+    BuildingCostMod {
+        city: CityRef,
+        plot: Plot,
+        building: i32,
+    },
     CityRename {
         city: CityRef,
         plot: Plot,
@@ -398,6 +403,7 @@ impl BridgeEvent {
             Self::CityDoTurn { .. } => "city_do_turn",
             Self::CityBuildingUnit { .. } => "city_building_unit",
             Self::CityBuildingBuilding { .. } => "city_building_building",
+            Self::BuildingCostMod { .. } => "get_building_cost_mod",
             Self::CityRename { .. } => "city_rename",
             Self::CityHurry { .. } => "city_hurry",
             Self::CityProductionRule { rule, .. } => rule.name(),
@@ -635,6 +641,14 @@ impl BridgeEvent {
                 let payload: CityBuildingPayload = decode(args)?;
                 Self::CityBuildingBuilding {
                     city: payload.city(),
+                    building: payload.building,
+                }
+            }
+            "get_building_cost_mod" => {
+                let payload: CityBuildingPlotPayload = decode(args)?;
+                Self::BuildingCostMod {
+                    city: payload.city(),
+                    plot: payload.plot(),
                     building: payload.building,
                 }
             }

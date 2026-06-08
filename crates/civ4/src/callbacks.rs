@@ -31,6 +31,14 @@ impl CallbackControl {
     pub fn rule_value_and_stop(value: bool) -> Self {
         Self::RespondAndStop(RuleCallbackReply::new(value).into_value())
     }
+
+    pub fn int_value(value: i32) -> Self {
+        Self::Respond(IntCallbackReply::new(value).into_value())
+    }
+
+    pub fn int_value_and_stop(value: i32) -> Self {
+        Self::RespondAndStop(IntCallbackReply::new(value).into_value())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -60,6 +68,21 @@ impl RuleCallbackReply {
 
     pub fn into_value(self) -> Value {
         serde_json::to_value(self).expect("rule callback reply serializes")
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct IntCallbackReply {
+    pub value: i32,
+}
+
+impl IntCallbackReply {
+    pub fn new(value: i32) -> Self {
+        Self { value }
+    }
+
+    pub fn into_value(self) -> Value {
+        serde_json::to_value(self).expect("integer callback reply serializes")
     }
 }
 
@@ -236,6 +259,10 @@ mod tests {
             RuleCallbackReply::new(false).into_value(),
             json!({ "value": false })
         );
+        assert_eq!(
+            IntCallbackReply::new(125).into_value(),
+            json!({ "value": 125 })
+        );
     }
 
     #[test]
@@ -255,6 +282,14 @@ mod tests {
         assert_eq!(
             CallbackControl::rule_value_and_stop(false),
             CallbackControl::RespondAndStop(json!({ "value": false }))
+        );
+        assert_eq!(
+            CallbackControl::int_value(125),
+            CallbackControl::Respond(json!({ "value": 125 }))
+        );
+        assert_eq!(
+            CallbackControl::int_value_and_stop(75),
+            CallbackControl::RespondAndStop(json!({ "value": 75 }))
         );
     }
 
@@ -412,6 +447,33 @@ mod tests {
                 test_visible: false,
                 ignore_cost: false,
                 ignore_upgrades: false,
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
+    fn direct_bridge_event_handlers_can_respond_with_int_values() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(BridgeEventKind::BuildingCostMod, |_client, event| {
+            let modifier = match event {
+                BridgeEvent::BuildingCostMod { building, .. } if *building == 12 => 125,
+                _ => 100,
+            };
+            Ok(CallbackControl::int_value(modifier))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 45,
+            event: BridgeEvent::BuildingCostMod {
+                city: crate::types::CityRef::new(0, 1),
+                plot: crate::types::Plot::new(2, 3),
+                building: 12,
             },
         });
 
