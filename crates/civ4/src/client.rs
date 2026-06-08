@@ -456,6 +456,233 @@ impl BridgeClient {
         )
     }
 
+    pub fn set_city_production(&mut self, city: CityRef, value: i32) -> Result<CityState> {
+        self.command(
+            "set_city_production",
+            json!({ "player": city.player, "city": city.id, "value": value }),
+        )
+    }
+
+    pub fn change_city_production(&mut self, city: CityRef, change: i32) -> Result<CityState> {
+        self.command(
+            "change_city_production",
+            json!({ "player": city.player, "city": city.id, "change": change }),
+        )
+    }
+
+    pub fn set_city_unit_production<U>(
+        &mut self,
+        city: CityRef,
+        unit_type: U,
+        value: i32,
+    ) -> Result<CityState>
+    where
+        U: Into<InfoType>,
+    {
+        self.command(
+            "set_city_unit_production",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "unit_type": unit_type.into(),
+                "value": value
+            }),
+        )
+    }
+
+    pub fn set_city_building_production<B>(
+        &mut self,
+        city: CityRef,
+        building_type: B,
+        value: i32,
+    ) -> Result<CityState>
+    where
+        B: Into<InfoType>,
+    {
+        self.command(
+            "set_city_building_production",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "building_type": building_type.into(),
+                "value": value
+            }),
+        )
+    }
+
+    pub fn set_city_project_production<P>(
+        &mut self,
+        city: CityRef,
+        project_type: P,
+        value: i32,
+    ) -> Result<CityState>
+    where
+        P: Into<InfoType>,
+    {
+        self.command(
+            "set_city_project_production",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "project_type": project_type.into(),
+                "value": value
+            }),
+        )
+    }
+
+    pub fn push_city_order(&mut self, city: CityRef, order: CityOrder) -> Result<CityState> {
+        self.command("push_city_order", order.into_args(city)?)
+    }
+
+    pub fn clear_city_order_queue(&mut self, city: CityRef) -> Result<CityState> {
+        self.command(
+            "clear_city_order_queue",
+            json!({ "player": city.player, "city": city.id }),
+        )
+    }
+
+    pub fn pop_city_order(&mut self, city: CityRef, index: i32) -> Result<CityState> {
+        self.command(
+            "pop_city_order",
+            json!({ "player": city.player, "city": city.id, "index": index }),
+        )
+    }
+
+    pub fn set_plot_owner<P: Into<PlayerId>>(&mut self, plot: Plot, owner: P) -> Result<PlotState> {
+        let owner = owner.into();
+        let result: PlotStateResult = self.command(
+            "set_plot_owner",
+            json!({ "x": plot.x, "y": plot.y, "owner": owner.0 }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn clear_plot_owner(&mut self, plot: Plot) -> Result<PlotState> {
+        let result: PlotStateResult = self.command(
+            "set_plot_owner",
+            json!({ "x": plot.x, "y": plot.y, "owner": -1 }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn set_plot_terrain<T>(&mut self, plot: Plot, terrain: T) -> Result<PlotState>
+    where
+        T: Into<InfoType>,
+    {
+        let result: PlotStateResult = self.command(
+            "set_plot_terrain",
+            json!({ "x": plot.x, "y": plot.y, "terrain": terrain.into() }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn set_plot_feature<F>(&mut self, plot: Plot, feature: F) -> Result<PlotState>
+    where
+        F: Into<InfoType>,
+    {
+        let result: PlotStateResult = self.command(
+            "set_plot_feature",
+            json!({ "x": plot.x, "y": plot.y, "feature": feature.into() }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn clear_plot_feature(&mut self, plot: Plot) -> Result<PlotState> {
+        self.set_plot_feature(plot, -1)
+    }
+
+    pub fn set_plot_bonus<B>(&mut self, plot: Plot, bonus: B) -> Result<PlotState>
+    where
+        B: Into<InfoType>,
+    {
+        let result: PlotStateResult = self.command(
+            "set_plot_bonus",
+            json!({ "x": plot.x, "y": plot.y, "bonus": bonus.into() }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn clear_plot_bonus(&mut self, plot: Plot) -> Result<PlotState> {
+        self.set_plot_bonus(plot, -1)
+    }
+
+    pub fn set_plot_improvement<I>(&mut self, plot: Plot, improvement: I) -> Result<PlotState>
+    where
+        I: Into<InfoType>,
+    {
+        let result: PlotStateResult = self.command(
+            "set_plot_improvement",
+            json!({ "x": plot.x, "y": plot.y, "improvement": improvement.into() }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn clear_plot_improvement(&mut self, plot: Plot) -> Result<PlotState> {
+        self.set_plot_improvement(plot, -1)
+    }
+
+    pub fn set_plot_route<R>(&mut self, plot: Plot, route: R) -> Result<PlotState>
+    where
+        R: Into<InfoType>,
+    {
+        let result: PlotStateResult = self.command(
+            "set_plot_route",
+            json!({ "x": plot.x, "y": plot.y, "route": route.into() }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn clear_plot_route(&mut self, plot: Plot) -> Result<PlotState> {
+        self.set_plot_route(plot, -1)
+    }
+
+    pub fn set_plot_culture<P: Into<PlayerId>>(
+        &mut self,
+        plot: Plot,
+        player: P,
+        value: i32,
+    ) -> Result<PlotState> {
+        let player = player.into();
+        let result: PlotStateResult = self.command(
+            "set_plot_culture",
+            json!({ "x": plot.x, "y": plot.y, "player": player.0, "value": value }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn change_plot_culture<P: Into<PlayerId>>(
+        &mut self,
+        plot: Plot,
+        player: P,
+        change: i32,
+    ) -> Result<PlotState> {
+        let player = player.into();
+        let result: PlotStateResult = self.command(
+            "change_plot_culture",
+            json!({ "x": plot.x, "y": plot.y, "player": player.0, "change": change }),
+        )?;
+        Ok(result.into())
+    }
+
+    pub fn set_plot_revealed<T: Into<TeamId>>(
+        &mut self,
+        plot: Plot,
+        team: T,
+        revealed: bool,
+    ) -> Result<PlotState> {
+        let team = team.into();
+        let result: PlotStateResult = self.command(
+            "set_plot_revealed",
+            json!({
+                "x": plot.x,
+                "y": plot.y,
+                "team": team.0,
+                "revealed": if revealed { 1 } else { 0 }
+            }),
+        )?;
+        Ok(result.into())
+    }
+
     pub fn set_unit_damage(&mut self, unit: UnitRef, value: i32) -> Result<UnitState> {
         self.command(
             "set_unit_damage",
@@ -790,6 +1017,112 @@ pub struct SpawnedUnit {
     pub plot: Plot,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CityOrderType {
+    Train,
+    Construct,
+    Create,
+    Maintain,
+}
+
+impl CityOrderType {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Train => "train",
+            Self::Construct => "construct",
+            Self::Create => "create",
+            Self::Maintain => "maintain",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CityOrder {
+    pub order: CityOrderType,
+    pub data1: InfoType,
+    pub data2: Option<i32>,
+    pub save: bool,
+    pub pop: bool,
+    pub append: bool,
+    pub force: bool,
+}
+
+impl CityOrder {
+    pub fn train<U: Into<InfoType>>(unit_type: U) -> Self {
+        Self::new(CityOrderType::Train, unit_type)
+    }
+
+    pub fn train_with_ai<U: Into<InfoType>>(unit_type: U, unit_ai: i32) -> Self {
+        Self::train(unit_type).with_data2(unit_ai)
+    }
+
+    pub fn construct<B: Into<InfoType>>(building_type: B) -> Self {
+        Self::new(CityOrderType::Construct, building_type)
+    }
+
+    pub fn create<P: Into<InfoType>>(project_type: P) -> Self {
+        Self::new(CityOrderType::Create, project_type)
+    }
+
+    pub fn maintain<P: Into<InfoType>>(process_type: P) -> Self {
+        Self::new(CityOrderType::Maintain, process_type)
+    }
+
+    pub fn with_data2(mut self, data2: i32) -> Self {
+        self.data2 = Some(data2);
+        self
+    }
+
+    pub fn saved(mut self, save: bool) -> Self {
+        self.save = save;
+        self
+    }
+
+    pub fn pop_current(mut self, pop: bool) -> Self {
+        self.pop = pop;
+        self
+    }
+
+    pub fn append(mut self, append: bool) -> Self {
+        self.append = append;
+        self
+    }
+
+    pub fn force(mut self, force: bool) -> Self {
+        self.force = force;
+        self
+    }
+
+    fn new<T: Into<InfoType>>(order: CityOrderType, data1: T) -> Self {
+        Self {
+            order,
+            data1: data1.into(),
+            data2: None,
+            save: true,
+            pop: false,
+            append: false,
+            force: false,
+        }
+    }
+
+    fn into_args(self, city: CityRef) -> Result<Value> {
+        let mut args = json!({
+            "player": city.player,
+            "city": city.id,
+            "order": self.order.as_str(),
+            "data1": self.data1,
+            "save": if self.save { 1 } else { 0 },
+            "pop": if self.pop { 1 } else { 0 },
+            "append": if self.append { 1 } else { 0 },
+            "force": if self.force { 1 } else { 0 },
+        });
+        if let Some(data2) = self.data2 {
+            args["data2"] = json!(data2);
+        }
+        Ok(args)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct PlayerState {
     pub player: i32,
@@ -855,6 +1188,7 @@ pub struct PlotState {
     pub feature: i32,
     pub bonus: i32,
     pub improvement: i32,
+    pub route: i32,
     pub water: bool,
     pub peak: bool,
     pub units: i32,
@@ -870,6 +1204,7 @@ struct PlotStateResult {
     feature: i32,
     bonus: i32,
     improvement: i32,
+    route: i32,
     water: bool,
     peak: bool,
     units: i32,
@@ -886,6 +1221,7 @@ impl From<PlotStateResult> for PlotState {
             feature: value.feature,
             bonus: value.bonus,
             improvement: value.improvement,
+            route: value.route,
             water: value.water,
             peak: value.peak,
             units: value.units,
@@ -903,6 +1239,14 @@ pub struct CityState {
     pub y: i32,
     pub population: i32,
     pub culture: i32,
+    pub production: i32,
+    pub production_needed: i32,
+    pub production_unit: i32,
+    pub production_unit_ai: i32,
+    pub production_building: i32,
+    pub production_project: i32,
+    pub production_process: i32,
+    pub order_queue_length: i32,
 }
 
 impl CityState {
@@ -1033,6 +1377,7 @@ mod tests {
             feature: -1,
             bonus: -1,
             improvement: -1,
+            route: -1,
             water: false,
             peak: false,
             units: 0,
@@ -1083,7 +1428,15 @@ mod tests {
                 "x": 10,
                 "y": 11,
                 "population": 4,
-                "culture": 99
+                "culture": 99,
+                "production": 10,
+                "production_needed": 35,
+                "production_unit": 1,
+                "production_unit_ai": 2,
+                "production_building": -1,
+                "production_project": -1,
+                "production_process": -1,
+                "order_queue_length": 1
             }]
         }))
         .unwrap();
@@ -1135,5 +1488,29 @@ mod tests {
         assert_eq!(tech.tech, 7);
         assert!(tech.has);
         assert_eq!(tech.progress, 42);
+    }
+
+    #[test]
+    fn city_order_serializes_to_bridge_args() {
+        let args = CityOrder::train_with_ai("UNIT_WARRIOR", 3)
+            .append(true)
+            .force(true)
+            .into_args(CityRef::new(0, 7))
+            .unwrap();
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 0,
+                "city": 7,
+                "order": "train",
+                "data1": "UNIT_WARRIOR",
+                "data2": 3,
+                "save": 1,
+                "pop": 0,
+                "append": 1,
+                "force": 1
+            })
+        );
     }
 }

@@ -272,6 +272,42 @@ namespace
 		return -1;
 	}
 
+	int getOrderTypeFromValue(JSON_Value* pValue)
+	{
+		const char* szOrder = NULL;
+		if (pValue == NULL)
+		{
+			return NO_ORDER;
+		}
+		if (json_value_get_type(pValue) == JSONNumber)
+		{
+			return (int)json_value_get_number(pValue);
+		}
+		if (json_value_get_type(pValue) != JSONString)
+		{
+			return NO_ORDER;
+		}
+
+		szOrder = json_value_get_string(pValue);
+		if (stricmp(szOrder, "train") == 0 || stricmp(szOrder, "ORDER_TRAIN") == 0)
+		{
+			return ORDER_TRAIN;
+		}
+		if (stricmp(szOrder, "construct") == 0 || stricmp(szOrder, "ORDER_CONSTRUCT") == 0)
+		{
+			return ORDER_CONSTRUCT;
+		}
+		if (stricmp(szOrder, "create") == 0 || stricmp(szOrder, "ORDER_CREATE") == 0)
+		{
+			return ORDER_CREATE;
+		}
+		if (stricmp(szOrder, "maintain") == 0 || stricmp(szOrder, "ORDER_MAINTAIN") == 0)
+		{
+			return ORDER_MAINTAIN;
+		}
+		return NO_ORDER;
+	}
+
 	bool validPlayer(int iPlayer)
 	{
 		return (iPlayer >= 0 && iPlayer < GC.getMAX_PLAYERS());
@@ -406,6 +442,14 @@ namespace
 		json_object_set_number(pResult, "y", pCity->getY_INLINE());
 		json_object_set_number(pResult, "population", pCity->getPopulation());
 		json_object_set_number(pResult, "culture", pCity->getCulture((PlayerTypes)iPlayer));
+		json_object_set_number(pResult, "production", pCity->getProduction());
+		json_object_set_number(pResult, "production_needed", pCity->getProductionNeeded());
+		json_object_set_number(pResult, "production_unit", pCity->getProductionUnit());
+		json_object_set_number(pResult, "production_unit_ai", pCity->getProductionUnitAI());
+		json_object_set_number(pResult, "production_building", pCity->getProductionBuilding());
+		json_object_set_number(pResult, "production_project", pCity->getProductionProject());
+		json_object_set_number(pResult, "production_process", pCity->getProductionProcess());
+		json_object_set_number(pResult, "order_queue_length", pCity->getOrderQueueLength());
 	}
 
 	CvString makeCityStateReply(int iId, CvCity* pCity)
@@ -448,6 +492,7 @@ namespace
 		json_object_set_number(pResult, "feature", pPlot->getFeatureType());
 		json_object_set_number(pResult, "bonus", pPlot->getBonusType(NO_TEAM));
 		json_object_set_number(pResult, "improvement", pPlot->getImprovementType());
+		json_object_set_number(pResult, "route", pPlot->getRouteType());
 		json_object_set_boolean(pResult, "water", pPlot->isWater() ? 1 : 0);
 		json_object_set_boolean(pResult, "peak", pPlot->isPeak() ? 1 : 0);
 		json_object_set_number(pResult, "units", pPlot->getNumUnits());
@@ -814,6 +859,448 @@ namespace
 		return makeCityStateReply(iId, pCity);
 	}
 
+	CvString handleSetCityProduction(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setProduction(iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleChangeCityProduction(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iChange = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pCity->getProduction() + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "production cannot be reduced below zero");
+		}
+
+		pCity->changeProduction(iChange);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityUnitProduction(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		int iUnit = getInfoTypeFromValue(json_object_get_value(pArgs, "unit_type"));
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (iUnit < 0 || iUnit >= GC.getNumUnitInfos())
+		{
+			return makeErrorReply(iId, "bad_unit_type", "unit_type is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setUnitProduction((UnitTypes)iUnit, iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityBuildingProduction(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		int iBuilding = getInfoTypeFromValue(json_object_get_value(pArgs, "building_type"));
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (iBuilding < 0 || iBuilding >= GC.getNumBuildingInfos())
+		{
+			return makeErrorReply(iId, "bad_building_type", "building_type is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setBuildingProduction((BuildingTypes)iBuilding, iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityProjectProduction(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iValue = 0;
+		int iProject = getInfoTypeFromValue(json_object_get_value(pArgs, "project_type"));
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (iProject < 0 || iProject >= GC.getNumProjectInfos())
+		{
+			return makeErrorReply(iId, "bad_project_type", "project_type is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+
+		pCity->setProjectProduction((ProjectTypes)iProject, iValue);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handlePushCityOrder(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iOrder = getOrderTypeFromValue(json_object_get_value(pArgs, "order"));
+		int iData1 = getInfoTypeFromValue(json_object_get_value(pArgs, "data1"));
+		int iData2 = -1;
+		int iSave = 1;
+		int iPop = 0;
+		int iAppend = 0;
+		int iForce = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (iOrder < 0 || iOrder >= NUM_ORDER_TYPES)
+		{
+			return makeErrorReply(iId, "bad_order", "order is missing or out of range");
+		}
+		getInt(pArgs, "data2", iData2);
+		getInt(pArgs, "save", iSave);
+		getInt(pArgs, "pop", iPop);
+		getInt(pArgs, "append", iAppend);
+		getInt(pArgs, "force", iForce);
+
+		if (iOrder == ORDER_TRAIN && (iData1 < 0 || iData1 >= GC.getNumUnitInfos()))
+		{
+			return makeErrorReply(iId, "bad_data1", "data1 unit_type is missing or out of range");
+		}
+		if (iOrder == ORDER_TRAIN && (iData2 < -1 || iData2 >= (int)GC.getUnitAIInfo().size()))
+		{
+			return makeErrorReply(iId, "bad_data2", "data2 unit_ai is out of range");
+		}
+		if (iOrder == ORDER_CONSTRUCT && (iData1 < 0 || iData1 >= GC.getNumBuildingInfos()))
+		{
+			return makeErrorReply(iId, "bad_data1", "data1 building_type is missing or out of range");
+		}
+		if (iOrder == ORDER_CREATE && (iData1 < 0 || iData1 >= GC.getNumProjectInfos()))
+		{
+			return makeErrorReply(iId, "bad_data1", "data1 project_type is missing or out of range");
+		}
+		if (iOrder == ORDER_MAINTAIN && (iData1 < 0 || iData1 >= GC.getNumProcessInfos()))
+		{
+			return makeErrorReply(iId, "bad_data1", "data1 process_type is missing or out of range");
+		}
+
+		pCity->pushOrder((OrderTypes)iOrder, iData1, iData2, iSave != 0, iPop != 0, iAppend != 0, iForce != 0);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleClearCityOrderQueue(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+
+		pCity->clearOrderQueue();
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handlePopCityOrder(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iIndex = 0;
+		int iFinish = 0;
+		int iChoose = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		getInt(pArgs, "index", iIndex);
+		getInt(pArgs, "finish", iFinish);
+		getInt(pArgs, "choose", iChoose);
+		if (iIndex < 0 || iIndex >= pCity->getOrderQueueLength())
+		{
+			return makeErrorReply(iId, "bad_index", "index is out of range");
+		}
+
+		pCity->popOrder(iIndex, iFinish != 0, iChoose != 0);
+		markGameDataDirty();
+		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetPlotOwner(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		int iOwner = NO_PLAYER;
+		int iCheckUnits = 1;
+		int iUpdatePlotGroup = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (!getInt(pArgs, "owner", iOwner) || (iOwner != NO_PLAYER && !validPlayer(iOwner)))
+		{
+			return makeErrorReply(iId, "bad_owner", "owner is missing or out of range");
+		}
+		getInt(pArgs, "check_units", iCheckUnits);
+		getInt(pArgs, "update_plot_group", iUpdatePlotGroup);
+
+		pPlot->setOwner((PlayerTypes)iOwner, iCheckUnits != 0, iUpdatePlotGroup != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotTerrain(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		int iTerrain = getInfoTypeFromValue(json_object_get_value(pArgs, "terrain"));
+		int iRecalculate = 1;
+		int iRebuildGraphics = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (iTerrain < 0 || iTerrain >= GC.getNumTerrainInfos())
+		{
+			return makeErrorReply(iId, "bad_terrain", "terrain is missing or out of range");
+		}
+		getInt(pArgs, "recalculate", iRecalculate);
+		getInt(pArgs, "rebuild_graphics", iRebuildGraphics);
+
+		pPlot->setTerrainType((TerrainTypes)iTerrain, iRecalculate != 0, iRebuildGraphics != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotFeature(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		JSON_Value* pFeatureValue = json_object_get_value(pArgs, "feature");
+		int iFeature = getInfoTypeFromValue(pFeatureValue);
+		int iVariety = -1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (pFeatureValue == NULL || iFeature < NO_FEATURE || iFeature >= GC.getNumFeatureInfos())
+		{
+			return makeErrorReply(iId, "bad_feature", "feature is missing or out of range");
+		}
+		getInt(pArgs, "variety", iVariety);
+
+		pPlot->setFeatureType((FeatureTypes)iFeature, iVariety);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotBonus(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		JSON_Value* pBonusValue = json_object_get_value(pArgs, "bonus");
+		int iBonus = getInfoTypeFromValue(pBonusValue);
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (pBonusValue == NULL || iBonus < NO_BONUS || iBonus >= GC.getNumBonusInfos())
+		{
+			return makeErrorReply(iId, "bad_bonus", "bonus is missing or out of range");
+		}
+
+		pPlot->setBonusType((BonusTypes)iBonus);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotImprovement(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		JSON_Value* pImprovementValue = json_object_get_value(pArgs, "improvement");
+		int iImprovement = getInfoTypeFromValue(pImprovementValue);
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (pImprovementValue == NULL || iImprovement < NO_IMPROVEMENT || iImprovement >= GC.getNumImprovementInfos())
+		{
+			return makeErrorReply(iId, "bad_improvement", "improvement is missing or out of range");
+		}
+
+		pPlot->setImprovementType((ImprovementTypes)iImprovement);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotRoute(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		JSON_Value* pRouteValue = json_object_get_value(pArgs, "route");
+		int iRoute = getInfoTypeFromValue(pRouteValue);
+		int iUpdatePlotGroup = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (pRouteValue == NULL || iRoute < NO_ROUTE || iRoute >= GC.getNumRouteInfos())
+		{
+			return makeErrorReply(iId, "bad_route", "route is missing or out of range");
+		}
+		getInt(pArgs, "update_plot_group", iUpdatePlotGroup);
+
+		pPlot->setRouteType((RouteTypes)iRoute, iUpdatePlotGroup != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotCulture(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		int iPlayer = -1;
+		int iValue = 0;
+		int iUpdate = 1;
+		int iUpdatePlotGroups = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "value", iValue) || iValue < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "value is missing or negative");
+		}
+		getInt(pArgs, "update", iUpdate);
+		getInt(pArgs, "update_plot_groups", iUpdatePlotGroups);
+
+		pPlot->setCulture((PlayerTypes)iPlayer, iValue, iUpdate != 0, iUpdatePlotGroups != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleChangePlotCulture(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		int iPlayer = -1;
+		int iChange = 0;
+		int iUpdate = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+		if (!getInt(pArgs, "change", iChange))
+		{
+			return makeErrorReply(iId, "bad_change", "change is missing");
+		}
+		if (pPlot->getCulture((PlayerTypes)iPlayer) + iChange < 0)
+		{
+			return makeErrorReply(iId, "bad_value", "culture cannot be reduced below zero");
+		}
+		getInt(pArgs, "update", iUpdate);
+
+		pPlot->changeCulture((PlayerTypes)iPlayer, iChange, iUpdate != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
+	CvString handleSetPlotRevealed(int iId, JSON_Object* pArgs)
+	{
+		int iX = -1;
+		int iY = -1;
+		int iTeam = -1;
+		int iRevealed = 0;
+		int iTerrainOnly = 0;
+		int iFromTeam = NO_TEAM;
+		int iUpdatePlotGroup = 1;
+		CvPlot* pPlot = NULL;
+		if (!getPlotArgs(pArgs, iX, iY, pPlot))
+		{
+			return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+		}
+		if (!getInt(pArgs, "team", iTeam) || !validTeam(iTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "team is missing or out of range");
+		}
+		if (!getInt(pArgs, "revealed", iRevealed))
+		{
+			return makeErrorReply(iId, "bad_revealed", "revealed is missing");
+		}
+		getInt(pArgs, "terrain_only", iTerrainOnly);
+		getInt(pArgs, "from_team", iFromTeam);
+		getInt(pArgs, "update_plot_group", iUpdatePlotGroup);
+		if (iFromTeam != NO_TEAM && !validTeam(iFromTeam))
+		{
+			return makeErrorReply(iId, "bad_team", "from_team is out of range");
+		}
+
+		pPlot->setRevealed((TeamTypes)iTeam, iRevealed != 0, iTerrainOnly != 0, (TeamTypes)iFromTeam, iUpdatePlotGroup != 0);
+		markGameDataDirty();
+		return makePlotStateReply(iId, pPlot);
+	}
+
 	CvString handleSetUnitDamage(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -1105,6 +1592,74 @@ namespace
 		if (strcmp(szName, "set_city_culture") == 0)
 		{
 			return handleSetCityCulture(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_production") == 0)
+		{
+			return handleSetCityProduction(iId, pArgs);
+		}
+		if (strcmp(szName, "change_city_production") == 0)
+		{
+			return handleChangeCityProduction(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_unit_production") == 0)
+		{
+			return handleSetCityUnitProduction(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_building_production") == 0)
+		{
+			return handleSetCityBuildingProduction(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_project_production") == 0)
+		{
+			return handleSetCityProjectProduction(iId, pArgs);
+		}
+		if (strcmp(szName, "push_city_order") == 0)
+		{
+			return handlePushCityOrder(iId, pArgs);
+		}
+		if (strcmp(szName, "clear_city_order_queue") == 0)
+		{
+			return handleClearCityOrderQueue(iId, pArgs);
+		}
+		if (strcmp(szName, "pop_city_order") == 0)
+		{
+			return handlePopCityOrder(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_owner") == 0)
+		{
+			return handleSetPlotOwner(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_terrain") == 0)
+		{
+			return handleSetPlotTerrain(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_feature") == 0)
+		{
+			return handleSetPlotFeature(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_bonus") == 0)
+		{
+			return handleSetPlotBonus(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_improvement") == 0)
+		{
+			return handleSetPlotImprovement(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_route") == 0)
+		{
+			return handleSetPlotRoute(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_culture") == 0)
+		{
+			return handleSetPlotCulture(iId, pArgs);
+		}
+		if (strcmp(szName, "change_plot_culture") == 0)
+		{
+			return handleChangePlotCulture(iId, pArgs);
+		}
+		if (strcmp(szName, "set_plot_revealed") == 0)
+		{
+			return handleSetPlotRevealed(iId, pArgs);
 		}
 		if (strcmp(szName, "set_unit_damage") == 0)
 		{
