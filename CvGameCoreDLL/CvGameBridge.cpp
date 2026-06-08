@@ -893,6 +893,20 @@ namespace
 		return (pUnit != NULL);
 	}
 
+	bool getSelectionGroupArgs(JSON_Object* pArgs, int& iPlayer, int& iGroup, CvSelectionGroup*& pGroup)
+	{
+		if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+		{
+			return false;
+		}
+		if (!getInt(pArgs, "group", iGroup))
+		{
+			return false;
+		}
+		pGroup = GET_PLAYER((PlayerTypes)iPlayer).getSelectionGroup(iGroup);
+		return (pGroup != NULL);
+	}
+
 	bool getPlayerArg(JSON_Object* pArgs, int& iPlayer)
 	{
 		return (getInt(pArgs, "player", iPlayer) && validPlayer(iPlayer));
@@ -1377,6 +1391,29 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setSelectionGroupState(pResult, pGroup);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeSelectionGroupsListReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		JSON_Value* pGroupsValue = json_value_init_array();
+		JSON_Array* pGroups = json_value_get_array(pGroupsValue);
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		int iLoop = 0;
+		CvSelectionGroup* pLoopGroup = NULL;
+
+		for (pLoopGroup = kPlayer.firstSelectionGroup(&iLoop); pLoopGroup != NULL; pLoopGroup = kPlayer.nextSelectionGroup(&iLoop))
+		{
+			JSON_Value* pGroupValue = json_value_init_object();
+			JSON_Object* pGroup = json_value_get_object(pGroupValue);
+			setSelectionGroupState(pGroup, pLoopGroup);
+			json_array_append_value(pGroups, pGroupValue);
+		}
+
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_value(pResult, "groups", pGroupsValue);
 		return serializeAndFree(pValue);
 	}
 
@@ -2233,6 +2270,28 @@ namespace
 				return makeErrorReply(iId, "bad_group", "unit has no selection group");
 			}
 			return makeSelectionGroupStateReply(iId, pGroup);
+		}
+
+		if (strcmp(szName, "get_selection_group_state") == 0)
+		{
+			int iPlayer = -1;
+			int iGroup = -1;
+			CvSelectionGroup* pGroup = NULL;
+			if (!getSelectionGroupArgs(pArgs, iPlayer, iGroup, pGroup))
+			{
+				return makeErrorReply(iId, "bad_group", "selection group is missing or not found");
+			}
+			return makeSelectionGroupStateReply(iId, pGroup);
+		}
+
+		if (strcmp(szName, "list_player_selection_groups") == 0)
+		{
+			int iPlayer = -1;
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makeSelectionGroupsListReply(iId, iPlayer);
 		}
 
 		if (strcmp(szName, "can_unit_group_start_mission") == 0)

@@ -49,6 +49,21 @@ impl UnitRef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SelectionGroupRef {
+    pub player: i32,
+    pub id: i32,
+}
+
+impl SelectionGroupRef {
+    pub fn new<P: Into<PlayerId>>(player: P, id: i32) -> Self {
+        Self {
+            player: player.into().0,
+            id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Plot {
     pub x: i32,
     pub y: i32,

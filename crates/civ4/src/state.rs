@@ -1,4 +1,5 @@
 pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
+pub(crate) use crate::selection_group_state::PlayerSelectionGroupsResult;
 pub use crate::selection_group_state::{
     SelectionGroupCommandCheck, SelectionGroupMissionCheck, SelectionGroupMissionState,
     SelectionGroupState, UnitCommandResult, UnitGroupJoinCheck,

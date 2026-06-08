@@ -14,6 +14,7 @@ mod player_api;
 mod plot_api;
 mod plot_state;
 pub mod protocol;
+mod selection_group_api;
 mod selection_group_state;
 pub mod state;
 mod team_api;
@@ -46,5 +47,5 @@ pub use state::{
 };
 pub use types::{
     CityProductionRule, CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot,
-    TeamId, UnitRef, WarPlan,
+    SelectionGroupRef, TeamId, UnitRef, WarPlan,
 };

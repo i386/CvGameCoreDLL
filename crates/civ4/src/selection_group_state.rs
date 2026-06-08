@@ -1,4 +1,4 @@
-use crate::types::{PlayerId, Plot, TeamId, UnitRef};
+use crate::types::{PlayerId, Plot, SelectionGroupRef, TeamId, UnitRef};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -105,6 +105,12 @@ impl UnitGroupJoinCheck {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub(crate) struct PlayerSelectionGroupsResult {
+    pub player: i32,
+    pub groups: Vec<SelectionGroupState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct SelectionGroupState {
     pub player: i32,
     pub group: i32,
@@ -140,6 +146,10 @@ pub struct SelectionGroupState {
 }
 
 impl SelectionGroupState {
+    pub fn selection_group_ref(&self) -> SelectionGroupRef {
+        SelectionGroupRef::new(self.player, self.group)
+    }
+
     pub fn player_id(&self) -> PlayerId {
         PlayerId(self.player)
     }
@@ -203,6 +213,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(state.player_id(), PlayerId(0));
+        assert_eq!(state.selection_group_ref(), SelectionGroupRef::new(0, 9));
         assert_eq!(state.team_id(), TeamId(0));
         assert_eq!(state.plot(), Plot::new(10, 12));
         assert_eq!(state.head_unit_ref(), Some(UnitRef::new(0, 123)));
