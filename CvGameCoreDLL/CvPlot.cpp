@@ -48,6 +48,17 @@ namespace
 			bridgeBoolString(bTestVisible));
 		return szArgs;
 	}
+
+	CvString makeBridgeCityFoundValueArgs(const CvPlot* pPlot, PlayerTypes ePlayer)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"x\":%d,\"y\":%d}",
+			ePlayer,
+			pPlot->getX_INLINE(),
+			pPlot->getY_INLINE());
+		return szArgs;
+	}
 }
 
 // Public Functions...
@@ -6273,11 +6284,20 @@ int CvPlot::getFoundValue(PlayerTypes eIndex)
 		long lResult=-1;
 		if(GC.getUSE_GET_CITY_FOUND_VALUE_CALLBACK())
 		{
-			CyArgsList argsList;
-			argsList.add((int)eIndex);
-			argsList.add(getX());
-			argsList.add(getY());
-			gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+			int iBridgeResult = -1;
+			CvString szBridgeArgs = makeBridgeCityFoundValueArgs(this, eIndex);
+			if (CvGameBridge::requestCallbackInt("get_city_found_value", szBridgeArgs.GetCString(), iBridgeResult))
+			{
+				lResult = iBridgeResult;
+			}
+			else
+			{
+				CyArgsList argsList;
+				argsList.add((int)eIndex);
+				argsList.add(getX());
+				argsList.add(getY());
+				gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+			}
 		}
 
 		if (lResult == -1)

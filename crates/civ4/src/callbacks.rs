@@ -610,6 +610,36 @@ mod tests {
     }
 
     #[test]
+    fn direct_bridge_event_handlers_can_score_city_found_values() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(BridgeEventKind::CityFoundValue, |_client, event| {
+            let score = match event {
+                BridgeEvent::CityFoundValue { plot, .. }
+                    if *plot == crate::types::Plot::new(5, 6) =>
+                {
+                    240
+                }
+                _ => -1,
+            };
+            Ok(CallbackControl::int_value(score))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 50,
+            event: BridgeEvent::CityFoundValue {
+                player: crate::types::PlayerId(0),
+                plot: crate::types::Plot::new(5, 6),
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
     fn stop_prevents_later_handlers() {
         let calls = Rc::new(RefCell::new(Vec::new()));
         let mut dispatcher = CallbackDispatcher::new();

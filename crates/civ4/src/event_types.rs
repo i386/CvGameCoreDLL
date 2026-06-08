@@ -109,6 +109,10 @@ pub enum BridgeEvent {
         plot: Plot,
         test_visible: bool,
     },
+    CityFoundValue {
+        player: PlayerId,
+        plot: Plot,
+    },
     FirstContact {
         team: TeamId,
         other_team: TeamId,

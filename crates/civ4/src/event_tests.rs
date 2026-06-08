@@ -387,6 +387,28 @@ fn decodes_city_founding_callback_payloads() {
 }
 
 #[test]
+fn decodes_city_found_value_callback_payload() {
+    let event = BridgeEvent::from_name_args(
+        "get_city_found_value".to_string(),
+        json!({
+            "player": 1,
+            "x": 20,
+            "y": 21
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::CityFoundValue {
+            player: PlayerId(1),
+            plot: Plot::new(20, 21),
+        }
+    );
+    assert_eq!(event.name(), "get_city_found_value");
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

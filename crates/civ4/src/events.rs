@@ -27,6 +27,7 @@ impl BridgeEvent {
             Self::CannotDoCivic { .. } => "cannot_do_civic",
             Self::CannotFoundCity { .. } => "cannot_found_city",
             Self::CanFoundCitiesOnWater { .. } => "can_found_cities_on_water",
+            Self::CityFoundValue { .. } => "get_city_found_value",
             Self::FirstContact { .. } => "first_contact",
             Self::CombatResult { .. } => "combat_result",
             Self::ImprovementBuilt { .. } => "improvement_built",
@@ -190,6 +191,13 @@ impl BridgeEvent {
                     player: PlayerId(payload.player),
                     plot: payload.plot(),
                     test_visible: payload.test_visible,
+                }
+            }
+            "get_city_found_value" => {
+                let payload: PlotPlayerPayload = decode(args)?;
+                Self::CityFoundValue {
+                    player: PlayerId(payload.player),
+                    plot: payload.plot(),
                 }
             }
             "first_contact" => {

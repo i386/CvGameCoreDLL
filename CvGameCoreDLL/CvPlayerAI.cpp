@@ -24,11 +24,26 @@
 #include "CvDLLFAStarIFaceBase.h"
 #include "FAStarNode.h"
 #include "CvEventReporter.h"
+#include "CvGameBridge.h"
 
 #define DANGER_RANGE						(4)
 #define GREATER_FOUND_RANGE			(5)
 #define CIVIC_CHANGE_DELAY			(25)
 #define RELIGION_CHANGE_DELAY		(15)
+
+namespace
+{
+	CvString makeBridgeCityFoundValueArgs(PlayerTypes ePlayer, const CvPlot* pPlot)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"x\":%d,\"y\":%d}",
+			ePlayer,
+			pPlot->getX_INLINE(),
+			pPlot->getY_INLINE());
+		return szArgs;
+	}
+}
 
 // statics
 
@@ -882,11 +897,20 @@ void CvPlayerAI::AI_updateFoundValues(bool bStartingLoc) const
 				long lResult=-1;
 				if(GC.getUSE_GET_CITY_FOUND_VALUE_CALLBACK())
 				{
-					CyArgsList argsList;
-					argsList.add((int)getID());
-					argsList.add(pLoopPlot->getX());
-					argsList.add(pLoopPlot->getY());
-					gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+					int iBridgeResult = -1;
+					CvString szBridgeArgs = makeBridgeCityFoundValueArgs(getID(), pLoopPlot);
+					if (CvGameBridge::requestCallbackInt("get_city_found_value", szBridgeArgs.GetCString(), iBridgeResult))
+					{
+						lResult = iBridgeResult;
+					}
+					else
+					{
+						CyArgsList argsList;
+						argsList.add((int)getID());
+						argsList.add(pLoopPlot->getX());
+						argsList.add(pLoopPlot->getY());
+						gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+					}
 				}
 
 				if (lResult == -1)
@@ -16086,11 +16110,20 @@ void CvPlayerAI::AI_recalculateFoundValues(int iX, int iY, int iInnerRadius, int
 						long lResult=-1;
 						if(GC.getUSE_GET_CITY_FOUND_VALUE_CALLBACK())
 						{
-							CyArgsList argsList;
-							argsList.add((int)getID());
-							argsList.add(pLoopPlot->getX());
-							argsList.add(pLoopPlot->getY());
-							gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+							int iBridgeResult = -1;
+							CvString szBridgeArgs = makeBridgeCityFoundValueArgs(getID(), pLoopPlot);
+							if (CvGameBridge::requestCallbackInt("get_city_found_value", szBridgeArgs.GetCString(), iBridgeResult))
+							{
+								lResult = iBridgeResult;
+							}
+							else
+							{
+								CyArgsList argsList;
+								argsList.add((int)getID());
+								argsList.add(pLoopPlot->getX());
+								argsList.add(pLoopPlot->getY());
+								gDLL->getPythonIFace()->callFunction(PYGameModule, "getCityFoundValue", argsList.makeFunctionArgs(), &lResult);
+							}
 						}
 
 						if (lResult == -1)
