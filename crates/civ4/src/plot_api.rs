@@ -1,5 +1,7 @@
 use crate::client::{BridgeClient, Result};
-use crate::state::{MapState, PlotState, PlotStateResult};
+use crate::plot_state::{
+    MapState, PlotCultureState, PlotState, PlotStateResult, PlotVisibilityState,
+};
 use crate::types::{InfoType, PlayerId, Plot, TeamId};
 use serde_json::{json, Value};
 
@@ -103,6 +105,44 @@ impl BridgeClient {
         let result: PlotStateResult =
             self.query("get_plot_state", json!({ "x": plot.x, "y": plot.y }))?;
         Ok(result.into())
+    }
+
+    pub fn get_plot_culture_state<P: Into<PlayerId>>(
+        &mut self,
+        plot: Plot,
+        player: P,
+    ) -> Result<PlotCultureState> {
+        let player = player.into();
+        self.query(
+            "get_plot_culture_state",
+            json!({ "x": plot.x, "y": plot.y, "player": player.0 }),
+        )
+    }
+
+    pub fn get_plot_visibility_state<T: Into<TeamId>>(
+        &mut self,
+        plot: Plot,
+        team: T,
+    ) -> Result<PlotVisibilityState> {
+        self.get_plot_visibility_state_with_debug(plot, team, false)
+    }
+
+    pub fn get_plot_visibility_state_with_debug<T: Into<TeamId>>(
+        &mut self,
+        plot: Plot,
+        team: T,
+        debug: bool,
+    ) -> Result<PlotVisibilityState> {
+        let team = team.into();
+        self.query(
+            "get_plot_visibility_state",
+            json!({
+                "x": plot.x,
+                "y": plot.y,
+                "team": team.0,
+                "debug": if debug { 1 } else { 0 }
+            }),
+        )
     }
 
     pub fn set_plot_owner<P: Into<PlayerId>>(&mut self, plot: Plot, owner: P) -> Result<PlotState> {

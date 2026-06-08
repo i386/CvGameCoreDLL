@@ -111,6 +111,8 @@ get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":
 get_team_relation_state {"team":0,"other_team":1} -> {"team":0,"other_team":1,"has_met":true,"at_war":false,"can_declare_war":true,"can_change_war_peace":true,"permanent_war_peace":false,"open_borders":true,"defensive_pact":false,"force_peace":false,"vassal":false,"master":false,"war_weariness":0,"stolen_visibility_timer":0,"war_plan":-1}
 get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
 get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
+get_plot_culture_state {"x":10,"y":12,"player":0} -> {"x":10,"y":12,"player":0,"culture":42,"total_culture":50,"culture_percent":84}
+get_plot_visibility_state {"x":10,"y":12,"team":0} -> {"x":10,"y":12,"team":0,"debug":false,"visible":true,"revealed":true,"revealed_owner":0,"revealed_team":0,"revealed_improvement":2,"revealed_route":1}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
 get_city_building_state {"player":0,"city":3,"building":"BUILDING_GRANARY"} -> {"player":0,"city":3,"building":12,"real":1,"free":0,"active":true}
 get_city_religion_state {"player":0,"city":3,"religion":"RELIGION_BUDDHISM"} -> {"player":0,"city":3,"religion":0,"has":true}
@@ -409,7 +411,8 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_team_open_borders`, `set_team_defensive_pact`, `set_team_force_peace`, `set_team_permanent_war_peace`
 - `set_team_vassal`, `set_team_war_weariness`, `change_team_war_weariness`
 - `set_team_stolen_visibility_timer`, `change_team_stolen_visibility_timer`
-- `get_map_state`, `get_plot_state`
+- `get_map_state`, `get_plot_state`, `get_plot_culture_state`, `get_plot_visibility_state`, `get_plot_visibility_state_with_debug`,
+  `PlotCultureState`, and `PlotVisibilityState`
 - `get_city_state`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `set_city_production`, `change_city_production`, `set_city_unit_production`, `set_city_building_production`, `set_city_project_production`
 - `push_city_order`, `clear_city_order_queue`, `pop_city_order`, `CityOrder`, and `CityOrderType`

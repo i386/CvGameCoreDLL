@@ -1114,6 +1114,37 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makePlotCultureStateReply(int iId, CvPlot* pPlot, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "x", pPlot->getX_INLINE());
+		json_object_set_number(pResult, "y", pPlot->getY_INLINE());
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "culture", pPlot->getCulture((PlayerTypes)iPlayer));
+		json_object_set_number(pResult, "total_culture", pPlot->countTotalCulture());
+		json_object_set_number(pResult, "culture_percent", pPlot->calculateCulturePercent((PlayerTypes)iPlayer));
+		return serializeAndFree(pValue);
+	}
+
+	CvString makePlotVisibilityStateReply(int iId, CvPlot* pPlot, int iTeam, int iDebug)
+	{
+		bool bDebug = (iDebug != 0);
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "x", pPlot->getX_INLINE());
+		json_object_set_number(pResult, "y", pPlot->getY_INLINE());
+		json_object_set_number(pResult, "team", iTeam);
+		json_object_set_boolean(pResult, "debug", bDebug ? 1 : 0);
+		json_object_set_boolean(pResult, "visible", pPlot->isVisible((TeamTypes)iTeam, bDebug) ? 1 : 0);
+		json_object_set_boolean(pResult, "revealed", pPlot->isRevealed((TeamTypes)iTeam, bDebug) ? 1 : 0);
+		json_object_set_number(pResult, "revealed_owner", pPlot->getRevealedOwner((TeamTypes)iTeam, bDebug));
+		json_object_set_number(pResult, "revealed_team", pPlot->getRevealedTeam((TeamTypes)iTeam, bDebug));
+		json_object_set_number(pResult, "revealed_improvement", pPlot->getRevealedImprovementType((TeamTypes)iTeam, bDebug));
+		json_object_set_number(pResult, "revealed_route", pPlot->getRevealedRouteType((TeamTypes)iTeam, bDebug));
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlayersListReply(int iId)
 	{
 		JSON_Object* pResult = NULL;
@@ -1644,6 +1675,42 @@ namespace
 				return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
 			}
 			return makePlotStateReply(iId, pPlot);
+		}
+
+		if (strcmp(szName, "get_plot_culture_state") == 0)
+		{
+			int iX = -1;
+			int iY = -1;
+			int iPlayer = -1;
+			CvPlot* pPlot = NULL;
+			if (!getPlotArgs(pArgs, iX, iY, pPlot))
+			{
+				return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+			}
+			if (!getInt(pArgs, "player", iPlayer) || !validPlayer(iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makePlotCultureStateReply(iId, pPlot, iPlayer);
+		}
+
+		if (strcmp(szName, "get_plot_visibility_state") == 0)
+		{
+			int iX = -1;
+			int iY = -1;
+			int iTeam = -1;
+			int iDebug = 0;
+			CvPlot* pPlot = NULL;
+			if (!getPlotArgs(pArgs, iX, iY, pPlot))
+			{
+				return makeErrorReply(iId, "bad_plot", "plot is missing or out of range");
+			}
+			if (!getInt(pArgs, "team", iTeam) || !validTeam(iTeam))
+			{
+				return makeErrorReply(iId, "bad_team", "team is missing or out of range");
+			}
+			getInt(pArgs, "debug", iDebug);
+			return makePlotVisibilityStateReply(iId, pPlot, iTeam, iDebug);
 		}
 
 		if (strcmp(szName, "get_city_state") == 0)

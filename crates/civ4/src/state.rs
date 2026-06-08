@@ -1,3 +1,4 @@
+pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
 use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
 use serde::Deserialize;
 
@@ -191,65 +192,6 @@ impl PlayerOptions {
 
     pub fn current_research(&self) -> Option<i32> {
         (self.current_research >= 0).then_some(self.current_research)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct MapState {
-    pub width: i32,
-    pub height: i32,
-    pub plots: i32,
-    pub land_plots: i32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlotState {
-    pub plot: Plot,
-    pub owner: Option<PlayerId>,
-    pub terrain: i32,
-    pub feature: i32,
-    pub bonus: i32,
-    pub improvement: i32,
-    pub route: i32,
-    pub water: bool,
-    pub peak: bool,
-    pub units: i32,
-    pub city: Option<CityRef>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub(crate) struct PlotStateResult {
-    pub x: i32,
-    pub y: i32,
-    pub owner: i32,
-    pub terrain: i32,
-    pub feature: i32,
-    pub bonus: i32,
-    pub improvement: i32,
-    pub route: i32,
-    pub water: bool,
-    pub peak: bool,
-    pub units: i32,
-    pub city_player: i32,
-    pub city: i32,
-}
-
-impl From<PlotStateResult> for PlotState {
-    fn from(value: PlotStateResult) -> Self {
-        Self {
-            plot: Plot::new(value.x, value.y),
-            owner: (value.owner >= 0).then_some(PlayerId(value.owner)),
-            terrain: value.terrain,
-            feature: value.feature,
-            bonus: value.bonus,
-            improvement: value.improvement,
-            route: value.route,
-            water: value.water,
-            peak: value.peak,
-            units: value.units,
-            city: (value.city_player >= 0 && value.city >= 0)
-                .then_some(CityRef::new(value.city_player, value.city)),
-        }
     }
 }
 
@@ -532,30 +474,6 @@ mod tests {
     struct TestState {
         schema_version: u32,
         enabled: bool,
-    }
-
-    #[test]
-    fn plot_state_maps_negative_owner_and_city_to_none() {
-        let result = PlotStateResult {
-            x: 1,
-            y: 2,
-            owner: -1,
-            terrain: 3,
-            feature: -1,
-            bonus: -1,
-            improvement: -1,
-            route: -1,
-            water: false,
-            peak: false,
-            units: 0,
-            city_player: -1,
-            city: -1,
-        };
-
-        let state = PlotState::from(result);
-        assert_eq!(state.plot, Plot::new(1, 2));
-        assert_eq!(state.owner, None);
-        assert_eq!(state.city, None);
     }
 
     #[test]
