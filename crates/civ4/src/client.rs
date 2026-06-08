@@ -6,8 +6,8 @@ use crate::protocol::{
     decode_jsonl, encode_jsonl, BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION,
 };
 use crate::state::{
-    CityState, GameTurnResult, MapState, ModStateResult, PlayerCitiesResult, PlayerUnitsResult,
-    PlotState, PlotStateResult, SetModStateResult, TeamTechState, UnitState,
+    CityState, GameTurnResult, ModStateResult, PlayerCitiesResult, PlayerUnitsResult,
+    SetModStateResult, TeamTechState, UnitState,
 };
 use crate::types::{CityRef, InfoType, PlayerId, Plot, TeamId, UnitRef};
 use serde::de::DeserializeOwned;
@@ -188,16 +188,6 @@ impl BridgeClient {
     pub fn get_game_turn(&mut self) -> Result<i32> {
         let result: GameTurnResult = self.query("get_game_turn", json!({}))?;
         Ok(result.turn)
-    }
-
-    pub fn get_map_state(&mut self) -> Result<MapState> {
-        self.query("get_map_state", json!({}))
-    }
-
-    pub fn get_plot_state(&mut self, plot: Plot) -> Result<PlotState> {
-        let result: PlotStateResult =
-            self.query("get_plot_state", json!({ "x": plot.x, "y": plot.y }))?;
-        Ok(result.into())
     }
 
     pub fn get_city_state(&mut self, city: CityRef) -> Result<CityState> {
@@ -444,141 +434,6 @@ impl BridgeClient {
             "pop_city_order",
             json!({ "player": city.player, "city": city.id, "index": index }),
         )
-    }
-
-    pub fn set_plot_owner<P: Into<PlayerId>>(&mut self, plot: Plot, owner: P) -> Result<PlotState> {
-        let owner = owner.into();
-        let result: PlotStateResult = self.command(
-            "set_plot_owner",
-            json!({ "x": plot.x, "y": plot.y, "owner": owner.0 }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn clear_plot_owner(&mut self, plot: Plot) -> Result<PlotState> {
-        let result: PlotStateResult = self.command(
-            "set_plot_owner",
-            json!({ "x": plot.x, "y": plot.y, "owner": -1 }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn set_plot_terrain<T>(&mut self, plot: Plot, terrain: T) -> Result<PlotState>
-    where
-        T: Into<InfoType>,
-    {
-        let result: PlotStateResult = self.command(
-            "set_plot_terrain",
-            json!({ "x": plot.x, "y": plot.y, "terrain": terrain.into() }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn set_plot_feature<F>(&mut self, plot: Plot, feature: F) -> Result<PlotState>
-    where
-        F: Into<InfoType>,
-    {
-        let result: PlotStateResult = self.command(
-            "set_plot_feature",
-            json!({ "x": plot.x, "y": plot.y, "feature": feature.into() }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn clear_plot_feature(&mut self, plot: Plot) -> Result<PlotState> {
-        self.set_plot_feature(plot, -1)
-    }
-
-    pub fn set_plot_bonus<B>(&mut self, plot: Plot, bonus: B) -> Result<PlotState>
-    where
-        B: Into<InfoType>,
-    {
-        let result: PlotStateResult = self.command(
-            "set_plot_bonus",
-            json!({ "x": plot.x, "y": plot.y, "bonus": bonus.into() }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn clear_plot_bonus(&mut self, plot: Plot) -> Result<PlotState> {
-        self.set_plot_bonus(plot, -1)
-    }
-
-    pub fn set_plot_improvement<I>(&mut self, plot: Plot, improvement: I) -> Result<PlotState>
-    where
-        I: Into<InfoType>,
-    {
-        let result: PlotStateResult = self.command(
-            "set_plot_improvement",
-            json!({ "x": plot.x, "y": plot.y, "improvement": improvement.into() }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn clear_plot_improvement(&mut self, plot: Plot) -> Result<PlotState> {
-        self.set_plot_improvement(plot, -1)
-    }
-
-    pub fn set_plot_route<R>(&mut self, plot: Plot, route: R) -> Result<PlotState>
-    where
-        R: Into<InfoType>,
-    {
-        let result: PlotStateResult = self.command(
-            "set_plot_route",
-            json!({ "x": plot.x, "y": plot.y, "route": route.into() }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn clear_plot_route(&mut self, plot: Plot) -> Result<PlotState> {
-        self.set_plot_route(plot, -1)
-    }
-
-    pub fn set_plot_culture<P: Into<PlayerId>>(
-        &mut self,
-        plot: Plot,
-        player: P,
-        value: i32,
-    ) -> Result<PlotState> {
-        let player = player.into();
-        let result: PlotStateResult = self.command(
-            "set_plot_culture",
-            json!({ "x": plot.x, "y": plot.y, "player": player.0, "value": value }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn change_plot_culture<P: Into<PlayerId>>(
-        &mut self,
-        plot: Plot,
-        player: P,
-        change: i32,
-    ) -> Result<PlotState> {
-        let player = player.into();
-        let result: PlotStateResult = self.command(
-            "change_plot_culture",
-            json!({ "x": plot.x, "y": plot.y, "player": player.0, "change": change }),
-        )?;
-        Ok(result.into())
-    }
-
-    pub fn set_plot_revealed<T: Into<TeamId>>(
-        &mut self,
-        plot: Plot,
-        team: T,
-        revealed: bool,
-    ) -> Result<PlotState> {
-        let team = team.into();
-        let result: PlotStateResult = self.command(
-            "set_plot_revealed",
-            json!({
-                "x": plot.x,
-                "y": plot.y,
-                "team": team.0,
-                "revealed": if revealed { 1 } else { 0 }
-            }),
-        )?;
-        Ok(result.into())
     }
 
     pub fn set_unit_damage(&mut self, unit: UnitRef, value: i32) -> Result<UnitState> {

@@ -10,6 +10,7 @@ mod game_api;
 mod info_api;
 pub mod metadata;
 mod player_api;
+mod plot_api;
 pub mod protocol;
 pub mod state;
 mod team_api;
@@ -21,6 +22,10 @@ pub use client::{BridgeClient, BridgeError, Result};
 pub use commands::{CityOrder, CityOrderType, SpawnUnitRequest, SpawnedUnit};
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
 pub use metadata::{InfoCount, InfoTypeEntry, InfoTypeState, InfoTypesResult};
+pub use plot_api::{
+    PlotCultureChangeOptions, PlotCultureOptions, PlotFeatureOptions, PlotOwnerOptions,
+    PlotRevealedOptions, PlotRouteOptions, PlotTerrainOptions,
+};
 pub use protocol::{BridgeHello, BridgeReply, Message, BRIDGE_PROTOCOL_VERSION};
 pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityReligionState, CityState,

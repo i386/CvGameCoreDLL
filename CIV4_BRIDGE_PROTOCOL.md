@@ -264,6 +264,12 @@ optional `reciprocal` flag that defaults to `1`.
 Use `{"player":-1}` with `set_game_pause_player` to unpause.
 Use `-1` with `set_plot_feature`, `set_plot_bonus`, `set_plot_improvement`, `set_plot_route`, or
 `set_plot_owner` to clear that plot value.
+Plot commands accept the same optional update flags as the Civ4 DLL methods: `set_plot_owner`
+accepts `check_units` and `update_plot_group`; `set_plot_terrain` accepts `recalculate` and
+`rebuild_graphics`; `set_plot_feature` accepts `variety`; `set_plot_route` accepts
+`update_plot_group`; `set_plot_culture` accepts `update` and `update_plot_groups`;
+`change_plot_culture` accepts `update`; `set_plot_revealed` accepts `terrain_only`, `from_team`,
+and `update_plot_group`.
 `push_city_order` accepts `order` as `train`, `construct`, `create`, `maintain`, or the matching
 Civ4 enum name. `data1` is interpreted as a unit, building, project, or process according to the
 order. Optional flags `save`, `pop`, `append`, and `force` are integers where `0` is false and
@@ -414,6 +420,8 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_city_occupation_timer`, `change_city_occupation_timer`, `change_city_hurry_anger_timer`
 - `set_plot_owner`, `clear_plot_owner`, `set_plot_terrain`, `set_plot_feature`, `clear_plot_feature`, `set_plot_bonus`, `clear_plot_bonus`
 - `set_plot_improvement`, `clear_plot_improvement`, `set_plot_route`, `clear_plot_route`, `set_plot_culture`, `change_plot_culture`, `set_plot_revealed`
+- `set_plot_owner_with_options`, `clear_plot_owner_with_options`, `set_plot_terrain_with_options`, `set_plot_feature_with_options`, `set_plot_route_with_options`,
+  `set_plot_culture_with_options`, `change_plot_culture_with_options`, `set_plot_revealed_with_options`, and the matching `Plot*Options` structs
 - `get_unit_state`, `get_unit_promotion_state`, `list_player_units`, `list_all_units`, `set_unit_damage`, `change_unit_damage`, `set_unit_experience`, `change_unit_experience`
 - `set_unit_xy`, `set_unit_moves`, `change_unit_moves`, `finish_unit_moves`, `set_unit_level`, `change_unit_level`
 - `set_unit_fortify_turns`, `change_unit_fortify_turns`, `set_unit_made_attack`, `set_unit_base_combat`
