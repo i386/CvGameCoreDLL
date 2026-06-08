@@ -80,6 +80,9 @@ pub enum BridgeEvent {
     Chat {
         text: String,
     },
+    UiText {
+        args: Value,
+    },
     BeginGameTurn {
         turn: i32,
     },

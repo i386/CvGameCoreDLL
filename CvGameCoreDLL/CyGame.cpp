@@ -13,6 +13,88 @@
 #include "CyReplayInfo.h"
 #include "CvReplayInfo.h"
 #include "CyPlot.h"
+#include "CvGameBridge.h"
+#include "ThirdParty/parson/parson.h"
+
+namespace
+{
+	static const unsigned int BRIDGE_UI_TEXT_CALLBACK_TIMEOUT_MS = 1800;
+
+	CvString wideToUtf8(const wchar* szWide)
+	{
+		CvString szResult;
+		if (szWide == NULL)
+		{
+			return szResult;
+		}
+
+		int iLength = WideCharToMultiByte(CP_UTF8, 0, szWide, -1, NULL, 0, NULL, NULL);
+		if (iLength <= 0)
+		{
+			return szResult;
+		}
+
+		char* szBuffer = new char[iLength];
+		if (WideCharToMultiByte(CP_UTF8, 0, szWide, -1, szBuffer, iLength, NULL, NULL) > 0)
+		{
+			szResult = szBuffer;
+		}
+		delete[] szBuffer;
+		return szResult;
+	}
+
+	CvWString utf8ToWide(const char* szUtf8)
+	{
+		CvWString szResult;
+		if (szUtf8 == NULL)
+		{
+			return szResult;
+		}
+
+		int iLength = MultiByteToWideChar(CP_UTF8, 0, szUtf8, -1, NULL, 0);
+		if (iLength <= 0)
+		{
+			return szResult;
+		}
+
+		wchar* szBuffer = new wchar[iLength];
+		if (MultiByteToWideChar(CP_UTF8, 0, szUtf8, -1, szBuffer, iLength) > 0)
+		{
+			szResult = szBuffer;
+		}
+		delete[] szBuffer;
+		return szResult;
+	}
+
+	void setJsonWideString(JSON_Object* pObject, const char* szKey, const std::wstring& szValue)
+	{
+		CvString szUtf8 = wideToUtf8(szValue.c_str());
+		json_object_set_string(pObject, szKey, szUtf8.GetCString());
+	}
+
+	CvString serializeJsonAndFree(JSON_Value* pValue)
+	{
+		CvString szResult;
+		char* szSerialized = json_serialize_to_string(pValue);
+		if (szSerialized != NULL)
+		{
+			szResult = szSerialized;
+			json_free_serialized_string(szSerialized);
+		}
+		json_value_free(pValue);
+		return szResult;
+	}
+
+	std::wstring requestBridgeUiTextUtf8(const CvString& szArgsJson)
+	{
+		CvString szText;
+		if (CvGameBridge::requestCallbackTextTimeout("ui_text", szArgsJson.GetCString(), BRIDGE_UI_TEXT_CALLBACK_TIMEOUT_MS, szText))
+		{
+			return utf8ToWide(szText.GetCString());
+		}
+		return L"";
+	}
+}
 
 CyGame::CyGame() : m_pGame(NULL)
 {
@@ -925,6 +1007,33 @@ void CyGame::setScriptData(std::string szNewValue)
 {
 	if (m_pGame)
 		m_pGame->setScriptData(szNewValue);
+}
+
+std::wstring CyGame::getBridgeUiText(std::string szArgsJson)
+{
+	CvString szArgs = szArgsJson.c_str();
+	return requestBridgeUiTextUtf8(szArgs);
+}
+
+std::wstring CyGame::getBridgeDiplomacyText(std::wstring szCommentType, int iActivePlayer, int iLeaderPlayer, int iTurn, std::wstring szActivePlayerName, std::wstring szActiveCivilization, std::wstring szLeaderName, std::wstring szLeaderCivilization, std::wstring szAttitude, bool bAtWar, std::wstring szPowerRelation, std::wstring szFallbackText)
+{
+	JSON_Value* pValue = json_value_init_object();
+	JSON_Object* pObject = json_value_get_object(pValue);
+	json_object_set_string(pObject, "surface", "diplomacy_comment");
+	setJsonWideString(pObject, "comment_type", szCommentType);
+	json_object_set_number(pObject, "active_player_id", iActivePlayer);
+	json_object_set_number(pObject, "leader_player_id", iLeaderPlayer);
+	json_object_set_number(pObject, "turn", iTurn);
+	setJsonWideString(pObject, "active_player_name", szActivePlayerName);
+	setJsonWideString(pObject, "active_civilization", szActiveCivilization);
+	setJsonWideString(pObject, "leader_name", szLeaderName);
+	setJsonWideString(pObject, "leader_civilization", szLeaderCivilization);
+	setJsonWideString(pObject, "attitude", szAttitude);
+	json_object_set_boolean(pObject, "at_war", bAtWar ? 1 : 0);
+	setJsonWideString(pObject, "power_relation", szPowerRelation);
+	setJsonWideString(pObject, "fallback_text", szFallbackText);
+
+	return requestBridgeUiTextUtf8(serializeJsonAndFree(pValue));
 }
 
 void CyGame::setName(TCHAR* szNewValue)

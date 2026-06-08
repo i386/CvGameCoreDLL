@@ -15,6 +15,8 @@ namespace CvGameBridge
 	bool requestCallbackConsumeTimeout(const char* szName, const char* szArgsJson, unsigned int uiTimeoutMs, bool& bConsumed);
 	bool requestCallbackBool(const char* szName, const char* szArgsJson, bool& bValue);
 	bool requestCallbackInt(const char* szName, const char* szArgsJson, int& iValue);
+	bool requestCallbackText(const char* szName, const char* szArgsJson, CvString& szValue);
+	bool requestCallbackTextTimeout(const char* szName, const char* szArgsJson, unsigned int uiTimeoutMs, CvString& szValue);
 }
 
 #endif

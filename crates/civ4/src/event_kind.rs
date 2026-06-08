@@ -14,6 +14,7 @@ pub enum BridgeEventKind {
     Update,
     WindowActivation,
     Chat,
+    UiText,
     BeginGameTurn,
     EndGameTurn,
     BeginPlayerTurn,
@@ -163,6 +164,7 @@ impl BridgeEventKind {
         "set_player_alive",
         "tech_acquired",
         "tech_selected",
+        "ui_text",
         "uninit",
         "unit_build_improvement",
         "unit_built",
@@ -197,6 +199,7 @@ impl BridgeEventKind {
             Self::Update => "update",
             Self::WindowActivation => "window_activation",
             Self::Chat => "chat",
+            Self::UiText => "ui_text",
             Self::BeginGameTurn => "begin_game_turn",
             Self::EndGameTurn => "end_game_turn",
             Self::BeginPlayerTurn => "begin_player_turn",
@@ -286,6 +289,7 @@ impl BridgeEventKind {
             "update" => Self::Update,
             "window_activation" => Self::WindowActivation,
             "chat" => Self::Chat,
+            "ui_text" => Self::UiText,
             "begin_game_turn" => Self::BeginGameTurn,
             "end_game_turn" => Self::EndGameTurn,
             "begin_player_turn" => Self::BeginPlayerTurn,
@@ -431,7 +435,7 @@ mod tests {
 
     #[test]
     fn bridged_event_name_catalog_maps_to_known_kinds() {
-        assert_eq!(BridgeEventKind::BRIDGED_NAMES.len(), 91);
+        assert_eq!(BridgeEventKind::BRIDGED_NAMES.len(), 92);
         for name in BridgeEventKind::BRIDGED_NAMES {
             assert!(
                 BridgeEventKind::from_name(name).is_some(),

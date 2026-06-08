@@ -218,6 +218,8 @@ void CyGamePythonInterface()
 
 		.def("getScriptData", &CyGame::getScriptData, "str () - Returns ScriptData member (used to store custom data)")
 		.def("setScriptData", &CyGame::setScriptData, "void (str) - Sets ScriptData member (used to store custom data)")
+		.def("getBridgeUiText", &CyGame::getBridgeUiText, "wstring (str argsJson) - Requests generic bridge UI text")
+		.def("getBridgeDiplomacyText", &CyGame::getBridgeDiplomacyText, "wstring (str commentType, int activePlayer, int leaderPlayer, int turn, str activePlayerName, str activeCivilization, str leaderName, str leaderCivilization, str attitude, bool atWar, str powerRelation, str fallbackText) - Requests bridge diplomacy text")
 
 		.def("setName", &CyGame::setName)
 		.def("getName", &CyGame::getName)

@@ -20,6 +20,7 @@ impl BridgeEvent {
             Self::Update { .. } => "update",
             Self::WindowActivation { .. } => "window_activation",
             Self::Chat { .. } => "chat",
+            Self::UiText { .. } => "ui_text",
             Self::BeginGameTurn { .. } => "begin_game_turn",
             Self::EndGameTurn { .. } => "end_game_turn",
             Self::BeginPlayerTurn { .. } => "begin_player_turn",
@@ -150,6 +151,7 @@ impl BridgeEvent {
                 let payload: ChatPayload = decode(args)?;
                 Self::Chat { text: payload.text }
             }
+            "ui_text" => Self::UiText { args },
             "begin_game_turn" => {
                 let payload: TurnPayload = decode(args)?;
                 Self::BeginGameTurn { turn: payload.turn }

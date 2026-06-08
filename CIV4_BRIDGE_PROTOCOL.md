@@ -296,6 +296,11 @@ hooks expect booleans and integer hooks expect numbers. If there is no reply, th
 disconnected, or the reply times out, the DLL falls back to the normal Python callback. The timeout
 is 50ms.
 
+UI text hooks are also sent as blocking `callback_request` messages, but they expect
+`result.text`. They are advisory text replacement hooks: if the external process does not reply
+with a string before the hook-specific timeout, the DLL returns an empty string and the Python UI
+keeps its normal fallback text.
+
 ```json
 {"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}}
 {"type":"reply","id":200,"ok":true,"result":{"consume":false}}
@@ -332,6 +337,14 @@ can_found_cities_on_water {"player":0,"x":10,"y":12,"test_visible":false}
 get_city_found_value {"player":0,"x":10,"y":12}
 can_declare_war {"team":0,"other_team":1}
 ```
+
+UI text callback request payloads:
+
+```text
+ui_text {"surface":"diplomacy_comment","comment_type":"AI_DIPLOCOMMENT_DECLARE_WAR","active_player_id":0,"leader_player_id":1,"turn":42,"active_player_name":"Player","active_civilization":"Rome","leader_name":"Leader","leader_civilization":"Greece","attitude":"annoyed","at_war":false,"power_relation":"roughly_equal","fallback_text":"The XML fallback line."}
+```
+
+Reply with `{"text":"..."}` to replace the UI text for that request.
 
 Reply with `{"value":true}` to make the corresponding hook return true. Reply with
 `{"value":false}` to make it return false. For example, `can_train` true allows the unit before

@@ -17,6 +17,7 @@ const API_SOURCES: &[&str] = &[
 const BRIDGE_EVENT_CPP_SOURCES: &[&str] = &[
     include_str!("../../../CvGameCoreDLL/CvCity.cpp"),
     include_str!("../../../CvGameCoreDLL/CvEventReporter.cpp"),
+    include_str!("../../../CvGameCoreDLL/CyGame.cpp"),
     include_str!("../../../CvGameCoreDLL/CvPlayer.cpp"),
     include_str!("../../../CvGameCoreDLL/CvPlayerAI.cpp"),
     include_str!("../../../CvGameCoreDLL/CvPlot.cpp"),
@@ -101,6 +102,8 @@ fn collect_cpp_bridge_event_names() -> BTreeSet<String> {
         "requestCallbackConsume(",
         "requestCallbackConsumeTimeout(",
         "requestCallbackInt(",
+        "requestCallbackText(",
+        "requestCallbackTextTimeout(",
     ];
 
     for source in BRIDGE_EVENT_CPP_SOURCES {

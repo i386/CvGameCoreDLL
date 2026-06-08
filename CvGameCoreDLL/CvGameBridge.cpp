@@ -5779,6 +5779,52 @@ namespace
 		return parseIntFieldReply(szLine, iId, "value", iValue);
 	}
 
+	bool parseTextFieldReply(const CvString& szLine, int iId, const char* szField, CvString& szValue)
+	{
+		JSON_Value* pValue = json_parse_string(szLine.GetCString());
+		if (pValue == NULL || json_value_get_type(pValue) != JSONObject)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		JSON_Object* pObject = json_value_get_object(pValue);
+		const char* szType = json_object_get_string(pObject, "type");
+		int iReplyId = (int)json_object_get_number(pObject, "id");
+		if (szType == NULL || strcmp(szType, "reply") != 0 || iReplyId != iId)
+		{
+			json_value_free(pValue);
+			return false;
+		}
+
+		bool bHandled = false;
+		if (json_object_get_boolean(pObject, "ok"))
+		{
+			JSON_Object* pResult = json_object_get_object(pObject, "result");
+			if (pResult != NULL)
+			{
+				JSON_Value* pField = json_object_get_value(pResult, szField);
+				if (pField != NULL && json_value_get_type(pField) == JSONString)
+				{
+					const char* szText = json_value_get_string(pField);
+					if (szText != NULL)
+					{
+						szValue = szText;
+						bHandled = true;
+					}
+				}
+			}
+		}
+
+		json_value_free(pValue);
+		return bHandled;
+	}
+
+	bool parseTextValueReply(const CvString& szLine, int iId, CvString& szValue)
+	{
+		return parseTextFieldReply(szLine, iId, "text", szValue);
+	}
+
 	bool sendCallbackRequest(int iId, const char* szName, const char* szArgsJson)
 	{
 		if (!g_bEnabled || !g_kCallbackPipe.bConnected || szName == NULL)
@@ -5877,6 +5923,34 @@ namespace
 			while (popBufferedLine(g_kCallbackPipe, szLine))
 			{
 				if (!szLine.empty() && parseIntValueReply(szLine, iId, iValue))
+				{
+					return true;
+				}
+			}
+
+			pollPipe(g_kControlPipe, true);
+
+			if (!g_kCallbackPipe.bConnected || GetTickCount() - dwStarted >= dwTimeout)
+			{
+				return false;
+			}
+
+			Sleep(1);
+		}
+	}
+
+	bool waitForTextValueReply(int iId, DWORD dwTimeout, CvString& szValue)
+	{
+		DWORD dwStarted = GetTickCount();
+
+		for (;;)
+		{
+			readAvailable(g_kCallbackPipe);
+
+			CvString szLine;
+			while (popBufferedLine(g_kCallbackPipe, szLine))
+			{
+				if (!szLine.empty() && parseTextValueReply(szLine, iId, szValue))
 				{
 					return true;
 				}
@@ -6007,6 +6081,32 @@ bool CvGameBridge::requestCallbackInt(const char* szName, const char* szArgsJson
 	}
 
 	if (!waitForIntValueReply(iId, iValue))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool CvGameBridge::requestCallbackText(const char* szName, const char* szArgsJson, CvString& szValue)
+{
+	return requestCallbackTextTimeout(szName, szArgsJson, getCallbackTimeoutMs(), szValue);
+}
+
+bool CvGameBridge::requestCallbackTextTimeout(const char* szName, const char* szArgsJson, unsigned int uiTimeoutMs, CvString& szValue)
+{
+	if (!g_bEnabled || !g_kCallbackPipe.bConnected)
+	{
+		return false;
+	}
+
+	int iId = (int)g_uiNextCallbackId++;
+	if (!sendCallbackRequest(iId, szName, szArgsJson))
+	{
+		return false;
+	}
+
+	if (!waitForTextValueReply(iId, (DWORD)uiTimeoutMs, szValue))
 	{
 		return false;
 	}

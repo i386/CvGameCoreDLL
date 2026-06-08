@@ -226,6 +226,8 @@ public:
 
 	std::string getScriptData() const;
 	void setScriptData(std::string szNewValue);
+	std::wstring getBridgeUiText(std::string szArgsJson);
+	std::wstring getBridgeDiplomacyText(std::wstring szCommentType, int iActivePlayer, int iLeaderPlayer, int iTurn, std::wstring szActivePlayerName, std::wstring szActiveCivilization, std::wstring szLeaderName, std::wstring szLeaderCivilization, std::wstring szAttitude, bool bAtWar, std::wstring szPowerRelation, std::wstring szFallbackText);
 
 	void setName(TCHAR* szName);
 	std::wstring getName();
