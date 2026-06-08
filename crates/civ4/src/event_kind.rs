@@ -19,6 +19,8 @@ pub enum BridgeEventKind {
     CannotResearch,
     CanDoCivic,
     CannotDoCivic,
+    CannotFoundCity,
+    CanFoundCitiesOnWater,
     FirstContact,
     CombatResult,
     ImprovementBuilt,
@@ -100,6 +102,8 @@ impl BridgeEventKind {
             Self::CannotResearch => "cannot_research",
             Self::CanDoCivic => "can_do_civic",
             Self::CannotDoCivic => "cannot_do_civic",
+            Self::CannotFoundCity => "cannot_found_city",
+            Self::CanFoundCitiesOnWater => "can_found_cities_on_water",
             Self::FirstContact => "first_contact",
             Self::CombatResult => "combat_result",
             Self::ImprovementBuilt => "improvement_built",
@@ -181,6 +185,8 @@ impl BridgeEventKind {
             "cannot_research" => Self::CannotResearch,
             "can_do_civic" => Self::CanDoCivic,
             "cannot_do_civic" => Self::CannotDoCivic,
+            "cannot_found_city" => Self::CannotFoundCity,
+            "can_found_cities_on_water" => Self::CanFoundCitiesOnWater,
             "first_contact" => Self::FirstContact,
             "combat_result" => Self::CombatResult,
             "improvement_built" => Self::ImprovementBuilt,
@@ -295,6 +301,10 @@ mod tests {
         assert_eq!(
             BridgeEventKind::from_name("can_build"),
             Some(BridgeEventKind::CanBuild)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("cannot_found_city"),
+            Some(BridgeEventKind::CannotFoundCity)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

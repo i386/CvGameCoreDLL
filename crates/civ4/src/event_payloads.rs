@@ -109,6 +109,21 @@ pub(crate) struct PlotPlayerPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct PlayerPlotRulePayload {
+    pub(crate) player: i32,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) test_visible: bool,
+}
+
+impl PlayerPlotRulePayload {
+    pub(crate) fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Deserialize)]
 pub(crate) struct PlotBuildPayload {
     pub(crate) x: i32,
     pub(crate) y: i32,

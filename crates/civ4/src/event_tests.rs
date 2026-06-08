@@ -346,6 +346,47 @@ fn decodes_can_build_callback_payload() {
 }
 
 #[test]
+fn decodes_city_founding_callback_payloads() {
+    let cannot_found = BridgeEvent::from_name_args(
+        "cannot_found_city".to_string(),
+        json!({
+            "player": 1,
+            "x": 20,
+            "y": 21,
+            "test_visible": false
+        }),
+    )
+    .unwrap();
+    assert_eq!(
+        cannot_found,
+        BridgeEvent::CannotFoundCity {
+            player: PlayerId(1),
+            plot: Plot::new(20, 21),
+            test_visible: false,
+        }
+    );
+
+    let water = BridgeEvent::from_name_args(
+        "can_found_cities_on_water".to_string(),
+        json!({
+            "player": 1,
+            "x": 20,
+            "y": 21,
+            "test_visible": 1
+        }),
+    )
+    .unwrap();
+    assert_eq!(
+        water,
+        BridgeEvent::CanFoundCitiesOnWater {
+            player: PlayerId(1),
+            plot: Plot::new(20, 21),
+            test_visible: true,
+        }
+    );
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

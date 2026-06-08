@@ -64,6 +64,18 @@ namespace
 		szArgs.Format("{\"player\":%d,\"civic\":%d}", pPlayer->getID(), eCivic);
 		return szArgs;
 	}
+
+	CvString makeBridgePlayerPlotArgs(const CvPlayer* pPlayer, int iX, int iY, bool bTestVisible)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"x\":%d,\"y\":%d,\"test_visible\":%s}",
+			pPlayer->getID(),
+			iX,
+			iY,
+			bridgeBoolString(bTestVisible));
+		return szArgs;
+	}
 }
 
 // Public Functions...
@@ -4933,15 +4945,27 @@ bool CvPlayer::canFound(int iX, int iY, bool bTestVisible) const
 	long lResult=0;
 	if(GC.getUSE_CANNOT_FOUND_CITY_CALLBACK())
 	{
-		CyArgsList argsList;
-		argsList.add((int)getID());
-		argsList.add(iX);
-		argsList.add(iY);
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotFoundCity", argsList.makeFunctionArgs(), &lResult);
-
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerPlotArgs(this, iX, iY, bTestVisible);
+		if (CvGameBridge::requestCallbackBool("cannot_found_city", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyArgsList argsList;
+			argsList.add((int)getID());
+			argsList.add(iX);
+			argsList.add(iY);
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotFoundCity", argsList.makeFunctionArgs(), &lResult);
+
+			if (lResult == 1)
+			{
+				return false;
+			}
 		}
 	}
 
@@ -5008,11 +5032,20 @@ bool CvPlayer::canFound(int iX, int iY, bool bTestVisible) const
 
 	if(GC.getUSE_CAN_FOUND_CITIES_ON_WATER_CALLBACK())
 	{
-		CyArgsList argsList2;
-		argsList2.add(iX);
-		argsList2.add(iY);
-		lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canFoundCitiesOnWater", argsList2.makeFunctionArgs(), &lResult);
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgePlayerPlotArgs(this, iX, iY, bTestVisible);
+		if (CvGameBridge::requestCallbackBool("can_found_cities_on_water", szBridgeArgs.GetCString(), bBridgeResult))
+		{
+			lResult = bBridgeResult ? 1 : -1;
+		}
+		else
+		{
+			CyArgsList argsList2;
+			argsList2.add(iX);
+			argsList2.add(iY);
+			lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canFoundCitiesOnWater", argsList2.makeFunctionArgs(), &lResult);
+		}
 	}
 
 	if (lResult == 1)

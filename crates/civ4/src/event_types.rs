@@ -99,6 +99,16 @@ pub enum BridgeEvent {
         player: PlayerId,
         civic: i32,
     },
+    CannotFoundCity {
+        player: PlayerId,
+        plot: Plot,
+        test_visible: bool,
+    },
+    CanFoundCitiesOnWater {
+        player: PlayerId,
+        plot: Plot,
+        test_visible: bool,
+    },
     FirstContact {
         team: TeamId,
         other_team: TeamId,

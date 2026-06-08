@@ -579,6 +579,37 @@ mod tests {
     }
 
     #[test]
+    fn direct_bridge_event_handlers_can_veto_city_founding() {
+        let mut dispatcher = CallbackDispatcher::new();
+        dispatcher.on_bridge_event(BridgeEventKind::CannotFoundCity, |_client, event| {
+            let blocked = matches!(
+                event,
+                BridgeEvent::CannotFoundCity {
+                    plot,
+                    test_visible: false,
+                    ..
+                } if *plot == crate::types::Plot::new(5, 6)
+            );
+            Ok(CallbackControl::rule_value(blocked))
+        });
+
+        let callback = BridgeCallbackMessage::Request(crate::events::BridgeCallbackRequest {
+            id: 49,
+            event: BridgeEvent::CannotFoundCity {
+                player: crate::types::PlayerId(0),
+                plot: crate::types::Plot::new(5, 6),
+                test_visible: false,
+            },
+        });
+
+        let mut client = dummy_client();
+        let dispatch = dispatcher.dispatch_callback(&mut client, callback).unwrap();
+
+        assert_eq!(dispatch.handlers_run, 1);
+        assert!(dispatch.reply_sent);
+    }
+
+    #[test]
     fn stop_prevents_later_handlers() {
         let calls = Rc::new(RefCell::new(Vec::new()));
         let mut dispatcher = CallbackDispatcher::new();
