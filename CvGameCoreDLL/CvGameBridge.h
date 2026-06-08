@@ -12,6 +12,7 @@ namespace CvGameBridge
 	void sendEvent(const char* szName, const char* szArgsJson = NULL);
 	void sendCallbackMirror(const char* szName, const char* szArgsJson = NULL);
 	bool requestCallbackConsume(const char* szName, const char* szArgsJson, bool& bConsumed);
+	bool requestCallbackBool(const char* szName, const char* szArgsJson, bool& bValue);
 }
 
 #endif

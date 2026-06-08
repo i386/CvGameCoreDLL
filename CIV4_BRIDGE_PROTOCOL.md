@@ -296,11 +296,13 @@ The string is saved and loaded with `CvGame`.
 The bridge mirrors the main Python event callbacks to the callback pipe as `callback_mirror`
 messages before the normal in-process Python event call runs.
 
-Keyboard and mouse input callbacks are sent as blocking `callback_request` messages before Python.
-If the external process replies before the timeout, the DLL uses `result.consume` as the callback
-return value and skips Python. If there is no reply, the callback pipe is disconnected, or the reply
-times out, the DLL falls back to the normal Python callback. Set `CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS`
-to override the default 50ms timeout.
+Keyboard, mouse input, and selected Python game-rule hooks are sent as blocking
+`callback_request` messages before Python. For input callbacks, if the external process replies
+before the timeout, the DLL uses `result.consume` as the callback return value and skips Python.
+For game-rule hooks, it uses `result.value` as the hook return value and skips Python. If there is
+no reply, the callback pipe is disconnected, or the reply times out, the DLL falls back to the
+normal Python callback. Set `CVGAME_BRIDGE_CALLBACK_TIMEOUT_MS` to override the default 50ms
+timeout.
 
 ```json
 {"type":"callback_request","id":200,"name":"kbd_event","args":{"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}}
@@ -313,6 +315,23 @@ Input callback request payloads:
 kbd_event {"evt":6,"key":65,"cursor_x":100,"cursor_y":120,"x":10,"y":12}
 mouse_event {"evt":1,"cursor_x":100,"cursor_y":120,"x":10,"y":12,"interface_consumed":false}
 ```
+
+City production rule callback request payloads:
+
+```text
+can_train {"player":0,"city":3,"x":10,"y":12,"unit":1,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+cannot_train {"player":0,"city":3,"x":10,"y":12,"unit":1,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+can_construct {"player":0,"city":3,"x":10,"y":12,"building":12,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+cannot_construct {"player":0,"city":3,"x":10,"y":12,"building":12,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+can_create {"player":0,"city":3,"x":10,"y":12,"project":1,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+cannot_create {"player":0,"city":3,"x":10,"y":12,"project":1,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+can_maintain {"player":0,"city":3,"x":10,"y":12,"process":2,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+cannot_maintain {"player":0,"city":3,"x":10,"y":12,"process":2,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
+```
+
+Reply with `{"value":true}` to make the corresponding hook return true. Reply with
+`{"value":false}` to make it return false. For example, `can_train` true allows the unit before
+normal Civ4 checks, while `cannot_train` true vetoes it after normal Civ4 checks.
 
 Callback mirror payloads cover most of `CvEventReporter`. Object references are serialized as
 stable game IDs and coordinates:
@@ -419,7 +438,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_team_stolen_visibility_timer`, `change_team_stolen_visibility_timer`
 - `get_map_state`, `get_plot_state`, `get_plot_culture_state`, `get_plot_visibility_state`, `get_plot_visibility_state_with_debug`,
   `PlotCultureState`, and `PlotVisibilityState`
-- `get_city_state`, `get_city_detail_state`, `CityDetailState`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
+- `get_city_state`, `get_city_detail_state`, `get_city_production_options`, `CityDetailState`, `CityProductionOptions`, `CityProductionOptionsQuery`, `list_player_cities`, `list_all_cities`, `set_city_population`, `change_city_population`, `set_city_culture`, `set_owner_city_culture`
 - `set_city_production`, `change_city_production`, `set_city_unit_production`, `set_city_building_production`, `set_city_project_production`
 - `push_city_order`, `clear_city_order_queue`, `pop_city_order`, `CityOrder`, and `CityOrderType`
 - `get_city_building_state`, `set_city_real_building`, `set_city_free_building`, and `CityBuildingState`
@@ -437,6 +456,6 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
-- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads
+- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, and `next_callback_request`
 - `CallbackDispatcher`, `CallbackControl`, and `CallbackDispatch`

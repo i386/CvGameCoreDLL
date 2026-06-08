@@ -356,6 +356,43 @@ impl CityHurryPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct CityProductionRulePayload {
+    pub(crate) player: i32,
+    pub(crate) city: i32,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    #[serde(default)]
+    pub(crate) unit: Option<i32>,
+    #[serde(default)]
+    pub(crate) building: Option<i32>,
+    #[serde(default)]
+    pub(crate) project: Option<i32>,
+    #[serde(default)]
+    pub(crate) process: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_int_bool")]
+    pub(crate) continue_current: bool,
+    #[serde(default, deserialize_with = "deserialize_int_bool")]
+    pub(crate) test_visible: bool,
+    #[serde(default, deserialize_with = "deserialize_int_bool")]
+    pub(crate) ignore_cost: bool,
+    #[serde(default, deserialize_with = "deserialize_int_bool")]
+    pub(crate) ignore_upgrades: bool,
+}
+
+impl CityProductionRulePayload {
+    pub(crate) fn city(&self) -> CityRef {
+        CityRef {
+            player: self.player,
+            id: self.city,
+        }
+    }
+
+    pub(crate) fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Deserialize)]
 pub(crate) struct CityProjectPayload {
     pub(crate) player: i32,
     pub(crate) city: i32,

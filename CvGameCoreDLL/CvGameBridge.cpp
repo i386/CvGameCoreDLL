@@ -5003,7 +5003,7 @@ namespace
 		writeLine(kPipe, serializeAndFree(pValue));
 	}
 
-	bool parseConsumeReply(const CvString& szLine, int iId, bool& bConsumed)
+	bool parseBoolFieldReply(const CvString& szLine, int iId, const char* szField, bool bAllowMissing, bool& bValue)
 	{
 		JSON_Value* pValue = json_parse_string(szLine.GetCString());
 		if (pValue == NULL || json_value_get_type(pValue) != JSONObject)
@@ -5021,29 +5021,41 @@ namespace
 			return false;
 		}
 
-		bool bHandled = true;
+		bool bHandled = false;
 		if (json_object_get_boolean(pObject, "ok"))
 		{
 			JSON_Object* pResult = json_object_get_object(pObject, "result");
 			if (pResult != NULL)
 			{
-				JSON_Value* pConsume = json_object_get_value(pResult, "consume");
-				if (pConsume != NULL)
+				JSON_Value* pField = json_object_get_value(pResult, szField);
+				if (pField != NULL)
 				{
-					if (json_value_get_type(pConsume) == JSONBoolean)
+					if (json_value_get_type(pField) == JSONBoolean)
 					{
-						bConsumed = json_value_get_boolean(pConsume) ? true : false;
+						bValue = json_value_get_boolean(pField) ? true : false;
+						bHandled = true;
 					}
-					else if (json_value_get_type(pConsume) == JSONNumber)
+					else if (json_value_get_type(pField) == JSONNumber)
 					{
-						bConsumed = ((int)json_value_get_number(pConsume)) != 0;
+						bValue = ((int)json_value_get_number(pField)) != 0;
+						bHandled = true;
 					}
 				}
 			}
 		}
 
 		json_value_free(pValue);
-		return bHandled;
+		return bHandled || bAllowMissing;
+	}
+
+	bool parseConsumeReply(const CvString& szLine, int iId, bool& bConsumed)
+	{
+		return parseBoolFieldReply(szLine, iId, "consume", true, bConsumed);
+	}
+
+	bool parseValueReply(const CvString& szLine, int iId, bool& bValue)
+	{
+		return parseBoolFieldReply(szLine, iId, "value", false, bValue);
 	}
 
 	bool sendCallbackRequest(int iId, const char* szName, const char* szArgsJson)
@@ -5087,6 +5099,35 @@ namespace
 			while (popBufferedLine(g_kCallbackPipe, szLine))
 			{
 				if (!szLine.empty() && parseConsumeReply(szLine, iId, bConsumed))
+				{
+					return true;
+				}
+			}
+
+			pollPipe(g_kControlPipe, true);
+
+			if (!g_kCallbackPipe.bConnected || GetTickCount() - dwStarted >= dwTimeout)
+			{
+				return false;
+			}
+
+			Sleep(1);
+		}
+	}
+
+	bool waitForValueReply(int iId, bool& bValue)
+	{
+		DWORD dwStarted = GetTickCount();
+		DWORD dwTimeout = getCallbackTimeoutMs();
+
+		for (;;)
+		{
+			readAvailable(g_kCallbackPipe);
+
+			CvString szLine;
+			while (popBufferedLine(g_kCallbackPipe, szLine))
+			{
+				if (!szLine.empty() && parseValueReply(szLine, iId, bValue))
 				{
 					return true;
 				}
@@ -5179,6 +5220,27 @@ bool CvGameBridge::requestCallbackConsume(const char* szName, const char* szArgs
 	}
 
 	if (!waitForConsumeReply(iId, bConsumed))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool CvGameBridge::requestCallbackBool(const char* szName, const char* szArgsJson, bool& bValue)
+{
+	if (!g_bEnabled || !g_kCallbackPipe.bConnected)
+	{
+		return false;
+	}
+
+	int iId = (int)g_uiNextCallbackId++;
+	if (!sendCallbackRequest(iId, szName, szArgsJson))
+	{
+		return false;
+	}
+
+	if (!waitForValueReply(iId, bValue))
 	{
 		return false;
 	}

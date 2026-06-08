@@ -14,6 +14,7 @@
 #include "CvInfos.h"
 #include "CvRandom.h"
 #include "CvArtFileMgr.h"
+#include "CvGameBridge.h"
 #include "CvPopupInfo.h"
 #include "CyCity.h"
 #include "CyArgsList.h"
@@ -26,6 +27,32 @@
 #include "CvDLLEntityIFaceBase.h"
 #include "CvDLLInterfaceIFaceBase.h"
 #include "CvEventReporter.h"
+
+namespace
+{
+	const char* bridgeBoolString(bool bValue)
+	{
+		return bValue ? "true" : "false";
+	}
+
+	CvString makeBridgeCityProductionRuleArgs(const CvCity* pCity, const char* szItemKey, int iItem, bool bContinue, bool bTestVisible, bool bIgnoreCost, bool bIgnoreUpgrades)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"city\":%d,\"x\":%d,\"y\":%d,\"%s\":%d,\"continue_current\":%s,\"test_visible\":%s,\"ignore_cost\":%s,\"ignore_upgrades\":%s}",
+			pCity->getOwnerINLINE(),
+			pCity->getID(),
+			pCity->getX_INLINE(),
+			pCity->getY_INLINE(),
+			szItemKey,
+			iItem,
+			bridgeBoolString(bContinue),
+			bridgeBoolString(bTestVisible),
+			bridgeBoolString(bIgnoreCost),
+			bridgeBoolString(bIgnoreUpgrades));
+		return szArgs;
+	}
+}
 
 // Public Functions...
 
@@ -1710,20 +1737,32 @@ bool CvCity::canTrain(UnitTypes eUnit, bool bContinue, bool bTestVisible, bool b
 
 	if(GC.getUSE_CAN_TRAIN_CALLBACK())
 	{
-		CyCity* pyCity = new CyCity((CvCity*)this);
-		CyArgsList argsList;
-		argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-		argsList.add(eUnit);
-		argsList.add(bContinue);
-		argsList.add(bTestVisible);
-		argsList.add(bIgnoreCost);
-		argsList.add(bIgnoreUpgrades);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canTrain", argsList.makeFunctionArgs(), &lResult);
-		delete pyCity;	// python fxn must not hold on to this pointer 
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "unit", eUnit, bContinue, bTestVisible, bIgnoreCost, bIgnoreUpgrades);
+		if (CvGameBridge::requestCallbackBool("can_train", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return true;
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList;
+			argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList.add(eUnit);
+			argsList.add(bContinue);
+			argsList.add(bTestVisible);
+			argsList.add(bIgnoreCost);
+			argsList.add(bIgnoreUpgrades);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canTrain", argsList.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return true;
+			}
 		}
 	}
 
@@ -1747,20 +1786,32 @@ bool CvCity::canTrain(UnitTypes eUnit, bool bContinue, bool bTestVisible, bool b
 
 	if(GC.getUSE_CANNOT_TRAIN_CALLBACK())
 	{
-		CyCity *pyCity = new CyCity((CvCity*)this);
-		CyArgsList argsList2; // XXX
-		argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-		argsList2.add(eUnit);
-		argsList2.add(bContinue);
-		argsList2.add(bTestVisible);
-		argsList2.add(bIgnoreCost);
-		argsList2.add(bIgnoreUpgrades);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotTrain", argsList2.makeFunctionArgs(), &lResult);
-		delete pyCity;	// python fxn must not hold on to this pointer 
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "unit", eUnit, bContinue, bTestVisible, bIgnoreCost, bIgnoreUpgrades);
+		if (CvGameBridge::requestCallbackBool("cannot_train", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyCity *pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList2; // XXX
+			argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList2.add(eUnit);
+			argsList2.add(bContinue);
+			argsList2.add(bTestVisible);
+			argsList2.add(bIgnoreCost);
+			argsList2.add(bIgnoreUpgrades);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotTrain", argsList2.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return false;
+			}
 		}
 	}
 
@@ -1804,19 +1855,31 @@ bool CvCity::canConstruct(BuildingTypes eBuilding, bool bContinue, bool bTestVis
 
 	if(GC.getUSE_CAN_CONSTRUCT_CALLBACK())
 	{
-		CyCity* pyCity = new CyCity((CvCity*)this);
-		CyArgsList argsList;
-		argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-		argsList.add(eBuilding);
-		argsList.add(bContinue);
-		argsList.add(bTestVisible);
-		argsList.add(bIgnoreCost);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "canConstruct", argsList.makeFunctionArgs(), &lResult);
-		delete pyCity;	// python fxn must not hold on to this pointer 
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "building", eBuilding, bContinue, bTestVisible, bIgnoreCost, false);
+		if (CvGameBridge::requestCallbackBool("can_construct", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return true;
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList;
+			argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList.add(eBuilding);
+			argsList.add(bContinue);
+			argsList.add(bTestVisible);
+			argsList.add(bIgnoreCost);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canConstruct", argsList.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return true;
+			}
 		}
 	}
 
@@ -2038,19 +2101,31 @@ bool CvCity::canConstruct(BuildingTypes eBuilding, bool bContinue, bool bTestVis
 
 	if(GC.getUSE_CANNOT_CONSTRUCT_CALLBACK())
 	{
-		CyCity *pyCity = new CyCity((CvCity*)this);
-		CyArgsList argsList2; // XXX
-		argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-		argsList2.add(eBuilding);
-		argsList2.add(bContinue);
-		argsList2.add(bTestVisible);
-		argsList2.add(bIgnoreCost);
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotConstruct", argsList2.makeFunctionArgs(), &lResult);
-		delete pyCity;	// python fxn must not hold on to this pointer 
-		if (lResult == 1)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "building", eBuilding, bContinue, bTestVisible, bIgnoreCost, false);
+		if (CvGameBridge::requestCallbackBool("cannot_construct", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyCity *pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList2; // XXX
+			argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList2.add(eBuilding);
+			argsList2.add(bContinue);
+			argsList2.add(bTestVisible);
+			argsList2.add(bIgnoreCost);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotConstruct", argsList2.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return false;
+			}
 		}
 	}
 
@@ -2060,18 +2135,32 @@ bool CvCity::canConstruct(BuildingTypes eBuilding, bool bContinue, bool bTestVis
 
 bool CvCity::canCreate(ProjectTypes eProject, bool bContinue, bool bTestVisible) const
 {
-	CyCity* pyCity = new CyCity((CvCity*)this);
-	CyArgsList argsList;
-	argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-	argsList.add(eProject);
-	argsList.add(bContinue);
-	argsList.add(bTestVisible);
-	long lResult=0;
-	gDLL->getPythonIFace()->callFunction(PYGameModule, "canCreate", argsList.makeFunctionArgs(), &lResult);
-	delete pyCity;	// python fxn must not hold on to this pointer 
-	if (lResult == 1)
 	{
-		return true;
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "project", eProject, bContinue, bTestVisible, false, false);
+		if (CvGameBridge::requestCallbackBool("can_create", szBridgeArgs.GetCString(), bBridgeResult))
+		{
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList;
+			argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList.add(eProject);
+			argsList.add(bContinue);
+			argsList.add(bTestVisible);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canCreate", argsList.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return true;
+			}
+		}
 	}
 
 	if (!(GET_PLAYER(getOwnerINLINE()).canCreate(eProject, bContinue, bTestVisible)))
@@ -2079,18 +2168,32 @@ bool CvCity::canCreate(ProjectTypes eProject, bool bContinue, bool bTestVisible)
 		return false;
 	}
 
-	pyCity = new CyCity((CvCity*)this);
-	CyArgsList argsList2; // XXX
-	argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-	argsList2.add(eProject);
-	argsList2.add(bContinue);
-	argsList2.add(bTestVisible);
-	lResult=0;
-	gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotCreate", argsList2.makeFunctionArgs(), &lResult);
-	delete pyCity;	// python fxn must not hold on to this pointer 
-	if (lResult == 1)
 	{
-		return false;
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "project", eProject, bContinue, bTestVisible, false, false);
+		if (CvGameBridge::requestCallbackBool("cannot_create", szBridgeArgs.GetCString(), bBridgeResult))
+		{
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList2; // XXX
+			argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList2.add(eProject);
+			argsList2.add(bContinue);
+			argsList2.add(bTestVisible);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotCreate", argsList2.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return false;
+			}
+		}
 	}
 
 	return true;
@@ -2099,17 +2202,31 @@ bool CvCity::canCreate(ProjectTypes eProject, bool bContinue, bool bTestVisible)
 
 bool CvCity::canMaintain(ProcessTypes eProcess, bool bContinue) const
 {
-	CyCity* pyCity = new CyCity((CvCity*)this);
-	CyArgsList argsList;
-	argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-	argsList.add(eProcess);
-	argsList.add(bContinue);
-	long lResult=0;
-	gDLL->getPythonIFace()->callFunction(PYGameModule, "canMaintain", argsList.makeFunctionArgs(), &lResult);
-	delete pyCity;	// python fxn must not hold on to this pointer 
-	if (lResult == 1)
 	{
-		return true;
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "process", eProcess, bContinue, false, false, false);
+		if (CvGameBridge::requestCallbackBool("can_maintain", szBridgeArgs.GetCString(), bBridgeResult))
+		{
+			if (bBridgeResult)
+			{
+				return true;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList;
+			argsList.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList.add(eProcess);
+			argsList.add(bContinue);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "canMaintain", argsList.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return true;
+			}
+		}
 	}
 
 	if (!(GET_PLAYER(getOwnerINLINE()).canMaintain(eProcess, bContinue)))
@@ -2117,17 +2234,31 @@ bool CvCity::canMaintain(ProcessTypes eProcess, bool bContinue) const
 		return false;
 	}
 
-	pyCity = new CyCity((CvCity*)this);
-	CyArgsList argsList2; // XXX
-	argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
-	argsList2.add(eProcess);
-	argsList2.add(bContinue);
-	lResult=0;
-	gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotMaintain", argsList2.makeFunctionArgs(), &lResult);
-	delete pyCity;	// python fxn must not hold on to this pointer 
-	if (lResult == 1)
 	{
-		return false;
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeCityProductionRuleArgs(this, "process", eProcess, bContinue, false, false, false);
+		if (CvGameBridge::requestCallbackBool("cannot_maintain", szBridgeArgs.GetCString(), bBridgeResult))
+		{
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			CyCity* pyCity = new CyCity((CvCity*)this);
+			CyArgsList argsList2; // XXX
+			argsList2.add(gDLL->getPythonIFace()->makePythonObject(pyCity));	// pass in city class
+			argsList2.add(eProcess);
+			argsList2.add(bContinue);
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "cannotMaintain", argsList2.makeFunctionArgs(), &lResult);
+			delete pyCity;	// python fxn must not hold on to this pointer
+			if (lResult == 1)
+			{
+				return false;
+			}
+		}
 	}
 
 	return true;

@@ -40,5 +40,6 @@ pub use state::{
     UnitPromotionState, UnitState,
 };
 pub use types::{
-    CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan,
+    CityProductionRule, CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot,
+    TeamId, UnitRef, WarPlan,
 };

@@ -108,6 +108,48 @@ pub enum GameStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum CityProductionRule {
+    CanTrain,
+    CannotTrain,
+    CanConstruct,
+    CannotConstruct,
+    CanCreate,
+    CannotCreate,
+    CanMaintain,
+    CannotMaintain,
+}
+
+impl CityProductionRule {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::CanTrain => "can_train",
+            Self::CannotTrain => "cannot_train",
+            Self::CanConstruct => "can_construct",
+            Self::CannotConstruct => "cannot_construct",
+            Self::CanCreate => "can_create",
+            Self::CannotCreate => "cannot_create",
+            Self::CanMaintain => "can_maintain",
+            Self::CannotMaintain => "cannot_maintain",
+        }
+    }
+
+    pub(crate) fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "can_train" => Some(Self::CanTrain),
+            "cannot_train" => Some(Self::CannotTrain),
+            "can_construct" => Some(Self::CanConstruct),
+            "cannot_construct" => Some(Self::CannotConstruct),
+            "can_create" => Some(Self::CanCreate),
+            "cannot_create" => Some(Self::CannotCreate),
+            "can_maintain" => Some(Self::CanMaintain),
+            "cannot_maintain" => Some(Self::CannotMaintain),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CommerceType {
     Gold,
     Research,

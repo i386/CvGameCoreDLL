@@ -1,5 +1,5 @@
 use crate::event_payloads::*;
-use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
+use crate::types::{CityProductionRule, CityRef, PlayerId, Plot, TeamId, UnitRef};
 use serde_json::Value;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -176,6 +176,16 @@ pub enum BridgeEvent {
     CityHurry {
         city: CityRef,
         hurry: i32,
+    },
+    CityProductionRule {
+        rule: CityProductionRule,
+        city: CityRef,
+        plot: Plot,
+        item: i32,
+        continue_current: bool,
+        test_visible: bool,
+        ignore_cost: bool,
+        ignore_upgrades: bool,
     },
     SelectionGroupPushMission {
         player: PlayerId,
@@ -390,6 +400,7 @@ impl BridgeEvent {
             Self::CityBuildingBuilding { .. } => "city_building_building",
             Self::CityRename { .. } => "city_rename",
             Self::CityHurry { .. } => "city_hurry",
+            Self::CityProductionRule { rule, .. } => rule.name(),
             Self::SelectionGroupPushMission { .. } => "selection_group_push_mission",
             Self::UnitMove { .. } => "unit_move",
             Self::UnitSetXY { .. } => "unit_set_xy",
@@ -639,6 +650,35 @@ impl BridgeEvent {
                 Self::CityHurry {
                     city: payload.city(),
                     hurry: payload.hurry,
+                }
+            }
+            "can_train" | "cannot_train" | "can_construct" | "cannot_construct" | "can_create"
+            | "cannot_create" | "can_maintain" | "cannot_maintain" => {
+                let rule = CityProductionRule::from_name(name.as_str()).unwrap();
+                let payload: CityProductionRulePayload = decode(args)?;
+                let item = match rule {
+                    CityProductionRule::CanTrain | CityProductionRule::CannotTrain => {
+                        payload.unit.unwrap_or(-1)
+                    }
+                    CityProductionRule::CanConstruct | CityProductionRule::CannotConstruct => {
+                        payload.building.unwrap_or(-1)
+                    }
+                    CityProductionRule::CanCreate | CityProductionRule::CannotCreate => {
+                        payload.project.unwrap_or(-1)
+                    }
+                    CityProductionRule::CanMaintain | CityProductionRule::CannotMaintain => {
+                        payload.process.unwrap_or(-1)
+                    }
+                };
+                Self::CityProductionRule {
+                    rule,
+                    city: payload.city(),
+                    plot: payload.plot(),
+                    item,
+                    continue_current: payload.continue_current,
+                    test_visible: payload.test_visible,
+                    ignore_cost: payload.ignore_cost,
+                    ignore_upgrades: payload.ignore_upgrades,
                 }
             }
             "selection_group_push_mission" => {

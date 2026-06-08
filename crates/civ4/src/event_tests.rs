@@ -1,5 +1,5 @@
 use crate::events::BridgeEvent;
-use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
+use crate::types::{CityProductionRule, CityRef, PlayerId, Plot, TeamId, UnitRef};
 use serde_json::json;
 
 #[test]
@@ -126,6 +126,71 @@ fn decodes_input_callback_payloads() {
             interface_consumed: true,
         }
     );
+}
+
+#[test]
+fn decodes_city_production_rule_callback_payloads() {
+    let can_train = BridgeEvent::from_name_args(
+        "can_train".to_string(),
+        json!({
+            "player": 0,
+            "city": 7,
+            "x": 10,
+            "y": 11,
+            "unit": 3,
+            "continue_current": true,
+            "test_visible": false,
+            "ignore_cost": true,
+            "ignore_upgrades": false
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        can_train,
+        BridgeEvent::CityProductionRule {
+            rule: CityProductionRule::CanTrain,
+            city: CityRef::new(0, 7),
+            plot: Plot::new(10, 11),
+            item: 3,
+            continue_current: true,
+            test_visible: false,
+            ignore_cost: true,
+            ignore_upgrades: false,
+        }
+    );
+    assert_eq!(can_train.name(), "can_train");
+
+    let cannot_construct = BridgeEvent::from_name_args(
+        "cannot_construct".to_string(),
+        json!({
+            "player": 1,
+            "city": 9,
+            "x": 20,
+            "y": 21,
+            "building": 12,
+            "continue_current": 0,
+            "test_visible": 1,
+            "ignore_cost": 0,
+            "ignore_upgrades": 0
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        cannot_construct,
+        BridgeEvent::CityProductionRule {
+            rule: CityProductionRule::CannotConstruct,
+            city: CityRef::new(1, 9),
+            plot: Plot::new(20, 21),
+            item: 12,
+            continue_current: false,
+            test_visible: true,
+            ignore_cost: false,
+            ignore_upgrades: false,
+        }
+    );
+    assert_eq!(cannot_construct.name(), "cannot_construct");
 }
 
 #[test]
