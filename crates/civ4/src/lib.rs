@@ -11,6 +11,7 @@ mod info_api;
 pub mod metadata;
 mod mod_state_api;
 mod player_api;
+mod player_identity_state;
 mod plot_api;
 mod plot_state;
 pub mod protocol;
@@ -40,8 +41,8 @@ pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
     CityProductionOptions, CityReligionState, CityState, ForceControlState, GameOptionState,
     GameState, KilledUnit, MapState, MultiplayerOptionState, PlayerEconomyState,
-    PlayerGoldPerTurnState, PlayerOptions, PlayerState, PlotCultureState, PlotState,
-    PlotVisibilityState, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
+    PlayerGoldPerTurnState, PlayerIdentityState, PlayerOptions, PlayerState, PlotCultureState,
+    PlotState, PlotVisibilityState, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
     SelectionGroupMissionState, SelectionGroupState, TeamRelationState, TeamState, TeamTechState,
     UnitCommandResult, UnitDetailState, UnitGroupJoinCheck, UnitPromotionState, UnitState,
 };

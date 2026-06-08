@@ -1,3 +1,4 @@
+pub use crate::player_identity_state::PlayerIdentityState;
 pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
 pub(crate) use crate::selection_group_state::PlayerSelectionGroupsResult;
 pub use crate::selection_group_state::{

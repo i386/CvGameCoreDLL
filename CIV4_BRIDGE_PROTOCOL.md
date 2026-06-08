@@ -101,6 +101,7 @@ get_multiplayer_option_state {"option":"MPOPTION_SIMULTANEOUS_TURNS"} -> {"optio
 get_force_control_state {"control":"FORCECONTROL_SPEED"} -> {"control":0,"enabled":false}
 get_player_gold {"player":0} -> {"gold":500}
 get_player_state {"player":0} -> {"player":0,"team":0,"alive":true,"ever_alive":true,"human":true,"barbarian":false,"minor":false,"playable":true,"founded_first_city":true,"extended_game":false,"turn_active":true,"turn_done":false,"end_turn":false,"auto_moves":false,"strike":false,"handicap":3,"civilization":1,"leader":2,"personality":2,"current_era":1,"parent":-1,"player_color":4,"gold":500,"cities":3,"units":8,"population":12}
+get_player_identity {"player":0} -> {"player":0,"team":0,"civilization":1,"leader":2,"personality":2,"name":"Gandhi","name_key":"TXT_KEY_LEADER_GANDHI","civilization_description":"Indian Empire","civilization_description_key":"TXT_KEY_CIV_INDIA_DESC","civilization_short_description":"India","civilization_short_description_key":"TXT_KEY_CIV_INDIA_SHORT_DESC","civilization_adjective":"Indian","civilization_adjective_key":"TXT_KEY_CIV_INDIA_ADJECTIVE"}
 list_players -> {"players":[player state, ...]}
 get_player_options {"player":0} -> {"player":0,"team":0,"state_religion":-1,"current_research":3,"civics":[1,2,3,4,5]}
 get_player_economy_state {"player":0} -> {"player":0,"gold":500,"gold_per_turn":10,"advanced_start_points":-1,"golden_age_turns":0,"golden_age_length":8,"golden_age":false,"num_unit_golden_ages":0,"units_required_for_golden_age":2,"units_golden_age_ready":1,"anarchy_turns":0,"anarchy":false,"strike_turns":0,"strike":false,"combat_experience":4,"gold_per_unit":1,"gold_per_military_unit":1,"total_culture":100,"commerce_percent":[0,80,20,0],"commerce_rate":[10,40,5,0],"commerce_rate_modifier":[0,25,0,0]}
@@ -452,7 +453,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_game_option_state`, `set_game_option`, `GameOptionState`, `get_multiplayer_option_state`, `set_multiplayer_option`, `MultiplayerOptionState`
 - `get_force_control_state`, `set_force_control`, `ForceControlState`, `GameState`, and `GameStatus`
 - `get_player_gold`, `set_player_gold`, `change_player_gold`
-- `get_player_state`, `get_player_options`, `get_player_economy_state`, `get_player_gold_per_turn_state`, `list_players`, `list_alive_players`
+- `get_player_state`, `get_player_identity`, `PlayerIdentityState`, `get_player_options`, `get_player_economy_state`, `get_player_gold_per_turn_state`, `list_players`, `list_alive_players`
 - `set_player_alive`, `set_player_playable`, `set_player_current_era`, `set_player_personality`, `set_player_parent`
 - `set_player_advanced_start_points`, `change_player_advanced_start_points`, `change_player_golden_age_turns`, `change_player_num_unit_golden_ages`
 - `change_player_anarchy_turns`, `change_player_strike_turns`, `set_player_combat_experience`, `change_player_combat_experience`

@@ -101,6 +101,29 @@ namespace
 		return szQuoted;
 	}
 
+	CvString wideToUtf8(const wchar* szWide)
+	{
+		CvString szResult;
+		if (szWide == NULL)
+		{
+			return szResult;
+		}
+
+		int iLength = WideCharToMultiByte(CP_UTF8, 0, szWide, -1, NULL, 0, NULL, NULL);
+		if (iLength <= 0)
+		{
+			return szResult;
+		}
+
+		char* szBuffer = new char[iLength];
+		if (WideCharToMultiByte(CP_UTF8, 0, szWide, -1, szBuffer, iLength, NULL, NULL) > 0)
+		{
+			szResult = szBuffer;
+		}
+		delete[] szBuffer;
+		return szResult;
+	}
+
 	bool findCompanionExe(CvString& szExePath)
 	{
 		setStringFromEnv(szExePath, "CVGAME_BRIDGE_COMPANION_EXE", "");
@@ -948,6 +971,27 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setPlayerState(pResult, iPlayer);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makePlayerIdentityReply(int iId, int iPlayer)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvPlayer& kPlayer = GET_PLAYER((PlayerTypes)iPlayer);
+		json_object_set_number(pResult, "player", iPlayer);
+		json_object_set_number(pResult, "team", kPlayer.getTeam());
+		json_object_set_number(pResult, "civilization", kPlayer.getCivilizationType());
+		json_object_set_number(pResult, "leader", kPlayer.getLeaderType());
+		json_object_set_number(pResult, "personality", kPlayer.getPersonalityType());
+		json_object_set_string(pResult, "name", wideToUtf8(kPlayer.getName()).GetCString());
+		json_object_set_string(pResult, "name_key", wideToUtf8(kPlayer.getNameKey()).GetCString());
+		json_object_set_string(pResult, "civilization_description", wideToUtf8(kPlayer.getCivilizationDescription()).GetCString());
+		json_object_set_string(pResult, "civilization_description_key", wideToUtf8(kPlayer.getCivilizationDescriptionKey()).GetCString());
+		json_object_set_string(pResult, "civilization_short_description", wideToUtf8(kPlayer.getCivilizationShortDescription()).GetCString());
+		json_object_set_string(pResult, "civilization_short_description_key", wideToUtf8(kPlayer.getCivilizationShortDescriptionKey()).GetCString());
+		json_object_set_string(pResult, "civilization_adjective", wideToUtf8(kPlayer.getCivilizationAdjective()).GetCString());
+		json_object_set_string(pResult, "civilization_adjective_key", wideToUtf8(kPlayer.getCivilizationAdjectiveKey()).GetCString());
 		return serializeAndFree(pValue);
 	}
 
@@ -1962,6 +2006,16 @@ namespace
 				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
 			}
 			return makePlayerStateReply(iId, iPlayer);
+		}
+
+		if (strcmp(szName, "get_player_identity") == 0)
+		{
+			int iPlayer = -1;
+			if (!getPlayerArg(pArgs, iPlayer))
+			{
+				return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+			}
+			return makePlayerIdentityReply(iId, iPlayer);
 		}
 
 		if (strcmp(szName, "list_players") == 0)

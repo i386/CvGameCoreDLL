@@ -1,7 +1,7 @@
 use crate::client::{BridgeClient, Result};
 use crate::state::{
-    PlayerEconomyState, PlayerGoldPerTurnState, PlayerGoldResult, PlayerOptions, PlayerState,
-    PlayersResult,
+    PlayerEconomyState, PlayerGoldPerTurnState, PlayerGoldResult, PlayerIdentityState,
+    PlayerOptions, PlayerState, PlayersResult,
 };
 use crate::types::{CommerceType, InfoType, PlayerId};
 use serde_json::json;
@@ -17,6 +17,14 @@ impl BridgeClient {
     pub fn get_player_state<P: Into<PlayerId>>(&mut self, player: P) -> Result<PlayerState> {
         let player = player.into();
         self.query("get_player_state", json!({ "player": player.0 }))
+    }
+
+    pub fn get_player_identity<P: Into<PlayerId>>(
+        &mut self,
+        player: P,
+    ) -> Result<PlayerIdentityState> {
+        let player = player.into();
+        self.query("get_player_identity", json!({ "player": player.0 }))
     }
 
     pub fn list_players(&mut self) -> Result<Vec<PlayerState>> {
