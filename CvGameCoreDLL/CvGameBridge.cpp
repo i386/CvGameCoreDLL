@@ -9,6 +9,7 @@ namespace
 {
 	static const DWORD PIPE_BUFFER_SIZE = 8192;
 	static const DWORD DEFAULT_CALLBACK_TIMEOUT_MS = 50;
+	static const DWORD COMPANION_SHUTDOWN_TIMEOUT_MS = 2000;
 	static const char* DEFAULT_CONTROL_PIPE_NAME = "\\\\.\\pipe\\CvGameCoreDLL-Control";
 	static const char* DEFAULT_CALLBACK_PIPE_NAME = "\\\\.\\pipe\\CvGameCoreDLL-Callbacks";
 
@@ -27,9 +28,11 @@ namespace
 	static unsigned int g_uiNextCallbackId = 1;
 	static BridgePipe g_kControlPipe;
 	static BridgePipe g_kCallbackPipe;
+	static PROCESS_INFORMATION g_kCompanionProcessInfo;
 
 	void closePipe(BridgePipe& kPipe);
 	void pollPipe(BridgePipe& kPipe, bool bControl);
+	void stopCompanionProcess();
 
 	void setStringFromEnv(CvString& szValue, const char* szEnvName, const char* szDefault)
 	{
@@ -38,11 +41,178 @@ namespace
 		szValue = (dwLength > 0 && dwLength < sizeof(szBuffer)) ? szBuffer : szDefault;
 	}
 
-	bool isEnvEnabled()
+	bool isEnvTruthy(const char* szEnvName)
 	{
 		char szBuffer[32];
-		DWORD dwLength = GetEnvironmentVariableA("CVGAME_BRIDGE", szBuffer, sizeof(szBuffer));
+		DWORD dwLength = GetEnvironmentVariableA(szEnvName, szBuffer, sizeof(szBuffer));
 		return (dwLength > 0 && stricmp(szBuffer, "0") != 0 && stricmp(szBuffer, "false") != 0);
+	}
+
+	bool isEnvEnabled()
+	{
+		return isEnvTruthy("CVGAME_BRIDGE");
+	}
+
+	CvString getParentDirectory(const CvString& szPath)
+	{
+		size_t iSlash = szPath.find_last_of("\\/");
+		if (iSlash == CvString::npos)
+		{
+			return "";
+		}
+		return szPath.substr(0, iSlash);
+	}
+
+	bool fileExists(const CvString& szPath)
+	{
+		DWORD dwAttributes = GetFileAttributesA(szPath.GetCString());
+		return (dwAttributes != INVALID_FILE_ATTRIBUTES && (dwAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0);
+	}
+
+	bool getDllDirectory(CvString& szDirectory)
+	{
+		char szModulePath[MAX_PATH];
+		HMODULE hModule = GetModuleHandleA("CvGameCoreDLL.dll");
+		DWORD dwLength = GetModuleFileNameA(hModule, szModulePath, MAX_PATH);
+		if (dwLength == 0 || dwLength >= MAX_PATH)
+		{
+			return false;
+		}
+
+		szDirectory = getParentDirectory(szModulePath);
+		return !szDirectory.empty();
+	}
+
+	CvString quoteCommandArgument(const CvString& szArgument)
+	{
+		CvString szQuoted = "\"";
+		for (int iI = 0; iI < (int)szArgument.length(); ++iI)
+		{
+			if (szArgument[iI] == '"')
+			{
+				szQuoted += "\\\"";
+			}
+			else
+			{
+				szQuoted += szArgument[iI];
+			}
+		}
+		szQuoted += "\"";
+		return szQuoted;
+	}
+
+	bool findCompanionExe(CvString& szExePath)
+	{
+		setStringFromEnv(szExePath, "CVGAME_BRIDGE_COMPANION_EXE", "");
+		if (!szExePath.empty())
+		{
+			return fileExists(szExePath);
+		}
+
+		CvString szDllDir;
+		if (!getDllDirectory(szDllDir))
+		{
+			return false;
+		}
+
+		CvString aszCandidates[] =
+		{
+			szDllDir + "\\CvGameBridgeCompanion.exe",
+			szDllDir + "\\AgesBeyondCompanion.exe",
+			szDllDir + "\\..\\Companion\\CvGameBridgeCompanion.exe",
+			szDllDir + "\\..\\Companion\\AgesBeyondCompanion.exe",
+			szDllDir + "\\..\\CvGameBridgeCompanion.exe",
+			szDllDir + "\\..\\AgesBeyondCompanion.exe"
+		};
+
+		for (int iI = 0; iI < 6; ++iI)
+		{
+			if (fileExists(aszCandidates[iI]))
+			{
+				szExePath = aszCandidates[iI];
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void startCompanionProcess()
+	{
+		if (!isEnvTruthy("CVGAME_BRIDGE_AUTOLAUNCH") || g_kCompanionProcessInfo.hProcess != NULL)
+		{
+			return;
+		}
+
+		CvString szExePath;
+		if (!findCompanionExe(szExePath))
+		{
+			OutputDebugString("CvGameBridge: companion autolaunch requested, but executable was not found\n");
+			return;
+		}
+
+		CvString szCommandLine = quoteCommandArgument(szExePath);
+		CvString szExtraArgs;
+		setStringFromEnv(szExtraArgs, "CVGAME_BRIDGE_COMPANION_ARGS", "");
+		if (!szExtraArgs.empty())
+		{
+			szCommandLine += " ";
+			szCommandLine += szExtraArgs;
+		}
+
+		STARTUPINFOA kStartupInfo;
+		ZeroMemory(&kStartupInfo, sizeof(kStartupInfo));
+		kStartupInfo.cb = sizeof(kStartupInfo);
+		kStartupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		kStartupInfo.wShowWindow = SW_HIDE;
+
+		ZeroMemory(&g_kCompanionProcessInfo, sizeof(g_kCompanionProcessInfo));
+
+		char* szMutableCommandLine = new char[szCommandLine.length() + 1];
+		strcpy(szMutableCommandLine, szCommandLine.GetCString());
+
+		CvString szWorkingDirectory = getParentDirectory(szExePath);
+		BOOL bStarted = CreateProcessA(
+			szExePath.GetCString(),
+			szMutableCommandLine,
+			NULL,
+			NULL,
+			FALSE,
+			CREATE_NO_WINDOW,
+			NULL,
+			szWorkingDirectory.empty() ? NULL : szWorkingDirectory.GetCString(),
+			&kStartupInfo,
+			&g_kCompanionProcessInfo);
+
+		delete[] szMutableCommandLine;
+
+		if (!bStarted)
+		{
+			ZeroMemory(&g_kCompanionProcessInfo, sizeof(g_kCompanionProcessInfo));
+			OutputDebugString("CvGameBridge: failed to launch companion process\n");
+			return;
+		}
+
+		OutputDebugString("CvGameBridge: launched companion process\n");
+	}
+
+	void stopCompanionProcess()
+	{
+		if (g_kCompanionProcessInfo.hProcess != NULL)
+		{
+			if (WaitForSingleObject(g_kCompanionProcessInfo.hProcess, COMPANION_SHUTDOWN_TIMEOUT_MS) == WAIT_TIMEOUT)
+			{
+				TerminateProcess(g_kCompanionProcessInfo.hProcess, 0);
+			}
+			CloseHandle(g_kCompanionProcessInfo.hProcess);
+			g_kCompanionProcessInfo.hProcess = NULL;
+		}
+
+		if (g_kCompanionProcessInfo.hThread != NULL)
+		{
+			CloseHandle(g_kCompanionProcessInfo.hThread);
+			g_kCompanionProcessInfo.hThread = NULL;
+		}
 	}
 
 	DWORD getCallbackTimeoutMs()
@@ -4435,11 +4605,13 @@ void CvGameBridge::init()
 
 	ensurePipe(g_kControlPipe);
 	ensurePipe(g_kCallbackPipe);
+	startCompanionProcess();
 	OutputDebugString("CvGameBridge: enabled\n");
 }
 
 void CvGameBridge::shutdown()
 {
+	stopCompanionProcess();
 	closePipe(g_kControlPipe);
 	closePipe(g_kCallbackPipe);
 	g_bEnabled = false;

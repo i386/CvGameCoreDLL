@@ -21,3 +21,6 @@ build/
 
 # GitHub workflow staging output
 artifacts/
+
+# Rust build outputs
+target/

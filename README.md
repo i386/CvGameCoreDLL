@@ -65,6 +65,14 @@ From the repository root:
 cargo build --workspace --all-targets
 ```
 
+## Running the bridge companion
+
+The DLL bridge is disabled by default. Set `CVGAME_BRIDGE=1` before launching
+the game to create the control and callback named pipes. Set
+`CVGAME_BRIDGE_AUTOLAUNCH=1` as well to let the DLL launch a companion process
+after the pipes are created. See `CIV4_BRIDGE_PROTOCOL.md` for executable
+discovery, pipe environment variables, and the Rust `BridgeClient` handshake.
+
 ## Installing the DLL
 
 To use a built DLL with Civilization IV: Beyond the Sword, copy `CvGameCoreDLL.dll` into the target `Assets` directory for the game or mod.
