@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod api_coverage_tests;
 pub mod callbacks;
 mod city_api;
 pub mod client;
