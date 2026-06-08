@@ -105,6 +105,29 @@ namespace
 		return szResult;
 	}
 
+	CvWString utf8ToWide(const char* szUtf8)
+	{
+		CvWString szResult;
+		if (szUtf8 == NULL)
+		{
+			return szResult;
+		}
+
+		int iLength = MultiByteToWideChar(CP_UTF8, 0, szUtf8, -1, NULL, 0);
+		if (iLength <= 0)
+		{
+			return szResult;
+		}
+
+		wchar* szBuffer = new wchar[iLength];
+		if (MultiByteToWideChar(CP_UTF8, 0, szUtf8, -1, szBuffer, iLength) > 0)
+		{
+			szResult = szBuffer;
+		}
+		delete[] szBuffer;
+		return szResult;
+	}
+
 	bool findCompanionExe(CvString& szExePath)
 	{
 		CvString szDllDir;
@@ -1025,6 +1048,20 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		setCityState(pResult, pCity);
+		return serializeAndFree(pValue);
+	}
+
+	CvString makeCityIdentityStateReply(int iId, CvCity* pCity)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		json_object_set_number(pResult, "player", pCity->getOwnerINLINE());
+		json_object_set_number(pResult, "city", pCity->getID());
+		json_object_set_number(pResult, "x", pCity->getX_INLINE());
+		json_object_set_number(pResult, "y", pCity->getY_INLINE());
+		json_object_set_string(pResult, "name", wideToUtf8(pCity->getName().c_str()).GetCString());
+		json_object_set_string(pResult, "name_key", wideToUtf8(pCity->getNameKey()).GetCString());
+		json_object_set_string(pResult, "script_data", pCity->getScriptData().c_str());
 		return serializeAndFree(pValue);
 	}
 
@@ -2127,6 +2164,18 @@ namespace
 			return makeCityDetailStateReply(iId, pCity);
 		}
 
+		if (strcmp(szName, "get_city_identity_state") == 0)
+		{
+			int iPlayer = -1;
+			int iCity = -1;
+			CvCity* pCity = NULL;
+			if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+			{
+				return makeErrorReply(iId, "bad_city", "city is missing or not found");
+			}
+			return makeCityIdentityStateReply(iId, pCity);
+		}
+
 		if (strcmp(szName, "get_city_production_options") == 0)
 		{
 			int iPlayer = -1;
@@ -2913,6 +2962,48 @@ namespace
 		pCity->changePopulation(iChange);
 		markGameDataDirty();
 		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityName(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iFound = 0;
+		const char* szName = json_object_get_string(pArgs, "name");
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (szName == NULL || strlen(szName) == 0)
+		{
+			return makeErrorReply(iId, "bad_name", "name is missing or empty");
+		}
+		getInt(pArgs, "found", iFound);
+
+		pCity->setName(utf8ToWide(szName).c_str(), iFound != 0);
+		markGameDataDirty();
+		return makeCityIdentityStateReply(iId, pCity);
+	}
+
+	CvString handleSetCityScriptData(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		const char* szScriptData = json_object_get_string(pArgs, "script_data");
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (szScriptData == NULL)
+		{
+			return makeErrorReply(iId, "bad_script_data", "script_data is missing");
+		}
+
+		pCity->setScriptData(szScriptData);
+		markGameDataDirty();
+		return makeCityIdentityStateReply(iId, pCity);
 	}
 
 	CvString handleSetCityCulture(int iId, JSON_Object* pArgs)
@@ -5119,6 +5210,14 @@ namespace
 		if (strcmp(szName, "change_city_population") == 0)
 		{
 			return handleChangeCityPopulation(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_name") == 0)
+		{
+			return handleSetCityName(iId, pArgs);
+		}
+		if (strcmp(szName, "set_city_script_data") == 0)
+		{
+			return handleSetCityScriptData(iId, pArgs);
 		}
 		if (strcmp(szName, "set_city_culture") == 0)
 		{

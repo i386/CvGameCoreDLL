@@ -11,6 +11,7 @@ pub const BRIDGED_QUERY_NAMES: &[&str] = &[
     "get_city_building_state",
     "get_city_corporation_state",
     "get_city_detail_state",
+    "get_city_identity_state",
     "get_city_production_options",
     "get_city_religion_state",
     "get_city_state",
@@ -95,12 +96,14 @@ pub const BRIDGED_COMMAND_NAMES: &[&str] = &[
     "set_city_corporation",
     "set_city_culture",
     "set_city_free_building",
+    "set_city_name",
     "set_city_occupation_timer",
     "set_city_population",
     "set_city_production",
     "set_city_project_production",
     "set_city_real_building",
     "set_city_religion",
+    "set_city_script_data",
     "set_city_unit_production",
     "set_force_control",
     "set_game_advanced_start_points",
@@ -481,9 +484,9 @@ mod tests {
 
     #[test]
     fn bridged_query_and_command_catalogs_are_stable() {
-        assert_eq!(BRIDGED_QUERY_NAMES.len(), 42);
-        assert_eq!(BRIDGED_COMMAND_NAMES.len(), 109);
-        assert_eq!(BRIDGED_QUERY_NAMES.len() + BRIDGED_COMMAND_NAMES.len(), 151);
+        assert_eq!(BRIDGED_QUERY_NAMES.len(), 43);
+        assert_eq!(BRIDGED_COMMAND_NAMES.len(), 111);
+        assert_eq!(BRIDGED_QUERY_NAMES.len() + BRIDGED_COMMAND_NAMES.len(), 154);
 
         assert_sorted_unique(BRIDGED_QUERY_NAMES);
         assert_sorted_unique(BRIDGED_COMMAND_NAMES);

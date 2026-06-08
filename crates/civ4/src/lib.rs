@@ -51,8 +51,8 @@ pub use protocol::{
 };
 pub use state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
-    CityProductionOptions, CityReligionState, CityState, ForceControlState, GameOptionState,
-    GameState, KilledUnit, MapState, MultiplayerOptionState, PlayerEconomyState,
+    CityIdentityState, CityProductionOptions, CityReligionState, CityState, ForceControlState,
+    GameOptionState, GameState, KilledUnit, MapState, MultiplayerOptionState, PlayerEconomyState,
     PlayerGoldPerTurnState, PlayerIdentityState, PlayerOptions, PlayerState, PlotCultureState,
     PlotState, PlotVisibilityState, SelectionGroupCommandCheck, SelectionGroupMissionCheck,
     SelectionGroupMissionState, SelectionGroupState, TeamRelationState, TeamState, TeamTechState,

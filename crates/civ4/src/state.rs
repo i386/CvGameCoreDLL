@@ -281,6 +281,27 @@ impl CityDetailState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CityIdentityState {
+    pub player: i32,
+    pub city: i32,
+    pub x: i32,
+    pub y: i32,
+    pub name: String,
+    pub name_key: String,
+    pub script_data: String,
+}
+
+impl CityIdentityState {
+    pub fn city_ref(&self) -> CityRef {
+        CityRef::new(self.player, self.city)
+    }
+
+    pub fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CityProductionOptions {
     pub player: i32,
     pub city: i32,
@@ -707,6 +728,21 @@ mod tests {
         assert_eq!(city_detail.plot(), Plot::new(10, 11));
         assert_eq!(city_detail.yield_rate[0], 11);
         assert_eq!(city_detail.commerce_rate_times100[1], 1400);
+
+        let city_identity: CityIdentityState = serde_json::from_value(json!({
+            "player": 0,
+            "city": 7,
+            "x": 10,
+            "y": 11,
+            "name": "Nidaros",
+            "name_key": "Nidaros",
+            "script_data": "{\"owner\":\"mod\"}"
+        }))
+        .unwrap();
+        assert_eq!(city_identity.city_ref(), CityRef::new(0, 7));
+        assert_eq!(city_identity.plot(), Plot::new(10, 11));
+        assert_eq!(city_identity.name, "Nidaros");
+        assert_eq!(city_identity.script_data, "{\"owner\":\"mod\"}");
 
         let production_options: CityProductionOptions = serde_json::from_value(json!({
             "player": 0,

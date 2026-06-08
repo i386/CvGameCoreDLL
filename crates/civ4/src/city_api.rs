@@ -2,7 +2,7 @@ use crate::client::{BridgeClient, Result};
 use crate::commands::CityOrder;
 use crate::state::{
     CityBuildingClassChange, CityBuildingState, CityCorporationState, CityDetailState,
-    CityProductionOptions, CityReligionState, CityState, PlayerCitiesResult,
+    CityIdentityState, CityProductionOptions, CityReligionState, CityState, PlayerCitiesResult,
 };
 use crate::types::{CityRef, InfoType, PlayerId};
 use serde_json::{json, Value};
@@ -67,6 +67,13 @@ impl BridgeClient {
         )
     }
 
+    pub fn get_city_identity_state(&mut self, city: CityRef) -> Result<CityIdentityState> {
+        self.query(
+            "get_city_identity_state",
+            json!({ "player": city.player, "city": city.id }),
+        )
+    }
+
     pub fn get_city_production_options(&mut self, city: CityRef) -> Result<CityProductionOptions> {
         self.get_city_production_options_with(city, CityProductionOptionsQuery::default())
     }
@@ -105,6 +112,42 @@ impl BridgeClient {
         self.command(
             "change_city_population",
             json!({ "player": city.player, "city": city.id, "change": change }),
+        )
+    }
+
+    pub fn set_city_name(&mut self, city: CityRef, name: &str) -> Result<CityIdentityState> {
+        self.set_city_name_with_found_message(city, name, false)
+    }
+
+    pub fn set_city_name_with_found_message(
+        &mut self,
+        city: CityRef,
+        name: &str,
+        found: bool,
+    ) -> Result<CityIdentityState> {
+        self.command(
+            "set_city_name",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "name": name,
+                "found": if found { 1 } else { 0 }
+            }),
+        )
+    }
+
+    pub fn set_city_script_data(
+        &mut self,
+        city: CityRef,
+        script_data: &str,
+    ) -> Result<CityIdentityState> {
+        self.command(
+            "set_city_script_data",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "script_data": script_data
+            }),
         )
     }
 
