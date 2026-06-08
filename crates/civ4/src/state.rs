@@ -1,5 +1,6 @@
 pub use crate::plot_state::{MapState, PlotCultureState, PlotState, PlotVisibilityState};
-use crate::types::{CityRef, PlayerId, Plot, TeamId, UnitRef};
+use crate::types::{CityRef, PlayerId, Plot, TeamId};
+pub use crate::unit_state::{KilledUnit, UnitDetailState, UnitPromotionState, UnitState};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -329,65 +330,6 @@ pub struct CityBuildingClassChange {
 impl CityBuildingClassChange {
     pub fn city_ref(&self) -> CityRef {
         CityRef::new(self.player, self.city)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct UnitState {
-    pub player: i32,
-    pub unit: i32,
-    pub unit_type: i32,
-    pub unit_ai: i32,
-    pub domain: i32,
-    pub x: i32,
-    pub y: i32,
-    pub damage: i32,
-    pub experience: i32,
-    pub level: i32,
-    pub moves: i32,
-    pub max_moves: i32,
-    pub base_combat: i32,
-    pub cargo: i32,
-    pub fortify_turns: i32,
-    pub immobile_timer: i32,
-    pub made_attack: bool,
-    pub promotions: Vec<i32>,
-}
-
-impl UnitState {
-    pub fn unit_ref(&self) -> UnitRef {
-        UnitRef::new(self.player, self.unit)
-    }
-
-    pub fn plot(&self) -> Plot {
-        Plot::new(self.x, self.y)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct UnitPromotionState {
-    pub player: i32,
-    pub unit: i32,
-    pub promotion: i32,
-    pub has: bool,
-}
-
-impl UnitPromotionState {
-    pub fn unit_ref(&self) -> UnitRef {
-        UnitRef::new(self.player, self.unit)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct KilledUnit {
-    pub player: i32,
-    pub unit: i32,
-    pub killed: bool,
-}
-
-impl KilledUnit {
-    pub fn unit_ref(&self) -> UnitRef {
-        UnitRef::new(self.player, self.unit)
     }
 }
 
@@ -742,30 +684,10 @@ mod tests {
 
         let units: PlayerUnitsResult = serde_json::from_value(json!({
             "player": 0,
-            "units": [{
-                "player": 0,
-                "unit": 42,
-                "unit_type": 1,
-                "unit_ai": 2,
-                "domain": 0,
-                "x": 10,
-                "y": 11,
-                "damage": 0,
-                "experience": 2,
-                "level": 1,
-                "moves": 0,
-                "max_moves": 2,
-                "base_combat": 3,
-                "cargo": 0,
-                "fortify_turns": 0,
-                "immobile_timer": 0,
-                "made_attack": false,
-                "promotions": [1, 4]
-            }]
+            "units": []
         }))
         .unwrap();
-        assert_eq!(units.units[0].unit_ref(), UnitRef::new(0, 42));
-        assert_eq!(units.units[0].promotions, vec![1, 4]);
+        assert!(units.units.is_empty());
     }
 
     #[test]
@@ -906,27 +828,5 @@ mod tests {
         assert_eq!(relation.team_id(), TeamId(0));
         assert_eq!(relation.other_team_id(), TeamId(1));
         assert!(relation.has_met);
-    }
-
-    #[test]
-    fn decodes_unit_promotion_and_kill_results() {
-        let promotion: UnitPromotionState = serde_json::from_value(json!({
-            "player": 0,
-            "unit": 42,
-            "promotion": 3,
-            "has": true
-        }))
-        .unwrap();
-        assert_eq!(promotion.unit_ref(), UnitRef::new(0, 42));
-        assert!(promotion.has);
-
-        let killed: KilledUnit = serde_json::from_value(json!({
-            "player": 0,
-            "unit": 42,
-            "killed": true
-        }))
-        .unwrap();
-        assert_eq!(killed.unit_ref(), UnitRef::new(0, 42));
-        assert!(killed.killed);
     }
 }

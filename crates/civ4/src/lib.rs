@@ -18,6 +18,7 @@ pub mod state;
 mod team_api;
 pub mod types;
 mod unit_api;
+mod unit_state;
 
 pub use callbacks::{CallbackControl, CallbackDispatch, CallbackDispatcher};
 pub use client::{BridgeClient, BridgeError, Result};
@@ -34,7 +35,7 @@ pub use state::{
     CityReligionState, CityState, ForceControlState, GameOptionState, GameState, KilledUnit,
     MapState, MultiplayerOptionState, PlayerEconomyState, PlayerGoldPerTurnState, PlayerOptions,
     PlayerState, PlotCultureState, PlotState, PlotVisibilityState, TeamRelationState, TeamState,
-    TeamTechState, UnitPromotionState, UnitState,
+    TeamTechState, UnitDetailState, UnitPromotionState, UnitState,
 };
 pub use types::{
     CityRef, CommerceType, GameStatus, InfoKind, InfoType, PlayerId, Plot, TeamId, UnitRef, WarPlan,

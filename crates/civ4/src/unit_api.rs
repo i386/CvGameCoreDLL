@@ -1,6 +1,6 @@
 use crate::client::{BridgeClient, Result};
 use crate::commands::{SpawnUnitRequest, SpawnUnitResult, SpawnedUnit};
-use crate::state::{KilledUnit, PlayerUnitsResult, UnitPromotionState, UnitState};
+use crate::state::{KilledUnit, PlayerUnitsResult, UnitDetailState, UnitPromotionState, UnitState};
 use crate::types::{InfoType, PlayerId, Plot, UnitRef};
 use serde_json::json;
 
@@ -8,6 +8,13 @@ impl BridgeClient {
     pub fn get_unit_state(&mut self, unit: UnitRef) -> Result<UnitState> {
         self.query(
             "get_unit_state",
+            json!({ "player": unit.player, "unit": unit.id }),
+        )
+    }
+
+    pub fn get_unit_detail_state(&mut self, unit: UnitRef) -> Result<UnitDetailState> {
+        self.query(
+            "get_unit_detail_state",
             json!({ "player": unit.player, "unit": unit.id }),
         )
     }

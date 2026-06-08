@@ -1140,6 +1140,82 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	CvString makeUnitDetailStateReply(int iId, CvUnit* pUnit)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvPlot* pPlot = pUnit->plot();
+		json_object_set_number(pResult, "player", pUnit->getOwnerINLINE());
+		json_object_set_number(pResult, "unit", pUnit->getID());
+		json_object_set_number(pResult, "unit_type", pUnit->getUnitType());
+		json_object_set_number(pResult, "unit_ai", pUnit->AI_getUnitAIType());
+		json_object_set_number(pResult, "domain", pUnit->getDomainType());
+		json_object_set_number(pResult, "unit_combat", pUnit->getUnitCombatType());
+		json_object_set_number(pResult, "special_unit", pUnit->getSpecialUnitType());
+		json_object_set_number(pResult, "x", pUnit->getX_INLINE());
+		json_object_set_number(pResult, "y", pUnit->getY_INLINE());
+		json_object_set_number(pResult, "area", pUnit->getArea());
+		json_object_set_number(pResult, "group", pUnit->getGroupID());
+		json_object_set_boolean(pResult, "in_group", pUnit->isInGroup() ? 1 : 0);
+		json_object_set_boolean(pResult, "group_head", pUnit->isGroupHead() ? 1 : 0);
+		json_object_set_number(pResult, "base_moves", pUnit->baseMoves());
+		json_object_set_number(pResult, "max_moves", pUnit->maxMoves());
+		json_object_set_number(pResult, "moves_left", pUnit->movesLeft());
+		json_object_set_boolean(pResult, "can_move", pUnit->canMove() ? 1 : 0);
+		json_object_set_boolean(pResult, "has_moved", pUnit->hasMoved() ? 1 : 0);
+		json_object_set_number(pResult, "visibility_range", pUnit->visibilityRange());
+		json_object_set_number(pResult, "air_range", pUnit->airRange());
+		json_object_set_number(pResult, "nuke_range", pUnit->nukeRange());
+		json_object_set_boolean(pResult, "can_build_route", pUnit->canBuildRoute() ? 1 : 0);
+		json_object_set_number(pResult, "build_type", pUnit->getBuildType());
+		json_object_set_number(pResult, "work_rate", pUnit->workRate(false));
+		json_object_set_number(pResult, "max_work_rate", pUnit->workRate(true));
+		json_object_set_boolean(pResult, "can_fight", pUnit->canFight() ? 1 : 0);
+		json_object_set_boolean(pResult, "can_attack", pUnit->canAttack() ? 1 : 0);
+		json_object_set_boolean(pResult, "can_defend", pUnit->canDefend(pPlot) ? 1 : 0);
+		json_object_set_boolean(pResult, "fighting", pUnit->isFighting() ? 1 : 0);
+		json_object_set_boolean(pResult, "attacking", pUnit->isAttacking() ? 1 : 0);
+		json_object_set_boolean(pResult, "defending", pUnit->isDefending() ? 1 : 0);
+		json_object_set_boolean(pResult, "combat", pUnit->isCombat() ? 1 : 0);
+		json_object_set_boolean(pResult, "hurt", pUnit->isHurt() ? 1 : 0);
+		json_object_set_boolean(pResult, "dead", pUnit->isDead() ? 1 : 0);
+		json_object_set_number(pResult, "max_hit_points", pUnit->maxHitPoints());
+		json_object_set_number(pResult, "curr_hit_points", pUnit->currHitPoints());
+		json_object_set_number(pResult, "base_combat", pUnit->baseCombatStr());
+		json_object_set_number(pResult, "curr_combat", pUnit->currCombatStr(pPlot, NULL));
+		json_object_set_number(pResult, "combat_limit", pUnit->combatLimit());
+		json_object_set_number(pResult, "air_combat_limit", pUnit->airCombatLimit());
+		json_object_set_number(pResult, "fortify_modifier", pUnit->fortifyModifier());
+		json_object_set_number(pResult, "experience_needed", pUnit->experienceNeeded());
+		json_object_set_number(pResult, "attack_xp_value", pUnit->attackXPValue());
+		json_object_set_number(pResult, "defense_xp_value", pUnit->defenseXPValue());
+		json_object_set_number(pResult, "max_xp_value", pUnit->maxXPValue());
+		json_object_set_number(pResult, "special_cargo", pUnit->specialCargo());
+		json_object_set_number(pResult, "domain_cargo", pUnit->domainCargo());
+		json_object_set_number(pResult, "cargo", pUnit->getCargo());
+		json_object_set_number(pResult, "cargo_space", pUnit->cargoSpace());
+		json_object_set_number(pResult, "cargo_space_available", pUnit->cargoSpaceAvailable());
+		json_object_set_boolean(pResult, "has_cargo", pUnit->hasCargo() ? 1 : 0);
+		json_object_set_boolean(pResult, "full", pUnit->isFull() ? 1 : 0);
+		json_object_set_boolean(pResult, "cargo_can_move", pUnit->canCargoAllMove() ? 1 : 0);
+		json_object_set_boolean(pResult, "automated", pUnit->isAutomated() ? 1 : 0);
+		json_object_set_boolean(pResult, "waiting", pUnit->isWaiting() ? 1 : 0);
+		json_object_set_boolean(pResult, "fortifyable", pUnit->isFortifyable() ? 1 : 0);
+		json_object_set_boolean(pResult, "made_interception", pUnit->isMadeInterception() ? 1 : 0);
+		json_object_set_boolean(pResult, "promotion_ready", pUnit->isPromotionReady() ? 1 : 0);
+		json_object_set_boolean(pResult, "animal", pUnit->isAnimal() ? 1 : 0);
+		json_object_set_boolean(pResult, "only_defensive", pUnit->isOnlyDefensive() ? 1 : 0);
+		json_object_set_boolean(pResult, "rival_territory", pUnit->isRivalTerritory() ? 1 : 0);
+		json_object_set_boolean(pResult, "military_happiness", pUnit->isMilitaryHappiness() ? 1 : 0);
+		json_object_set_boolean(pResult, "spy", pUnit->isSpy() ? 1 : 0);
+		json_object_set_boolean(pResult, "found", pUnit->isFound() ? 1 : 0);
+		json_object_set_boolean(pResult, "golden_age", pUnit->isGoldenAge() ? 1 : 0);
+		json_object_set_number(pResult, "last_move_turn", pUnit->getLastMoveTurn());
+		json_object_set_number(pResult, "game_turn_created", pUnit->getGameTurnCreated());
+		json_object_set_number(pResult, "experience_percent", pUnit->getExperiencePercent());
+		return serializeAndFree(pValue);
+	}
+
 	CvString makeUnitPromotionStateReply(int iId, CvUnit* pUnit, int iPromotion)
 	{
 		JSON_Object* pResult = NULL;
@@ -1887,6 +1963,18 @@ namespace
 				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
 			}
 			return makeUnitStateReply(iId, pUnit);
+		}
+
+		if (strcmp(szName, "get_unit_detail_state") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			CvUnit* pUnit = NULL;
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			return makeUnitDetailStateReply(iId, pUnit);
 		}
 
 		if (strcmp(szName, "get_unit_promotion_state") == 0)
