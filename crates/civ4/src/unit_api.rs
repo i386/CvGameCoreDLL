@@ -1,6 +1,9 @@
 use crate::client::{BridgeClient, Result};
-use crate::commands::{SpawnUnitRequest, SpawnUnitResult, SpawnedUnit};
-use crate::state::{KilledUnit, PlayerUnitsResult, UnitDetailState, UnitPromotionState, UnitState};
+use crate::commands::{SpawnUnitRequest, SpawnUnitResult, SpawnedUnit, UnitGroupMission};
+use crate::state::{
+    KilledUnit, PlayerUnitsResult, SelectionGroupState, UnitDetailState, UnitPromotionState,
+    UnitState,
+};
 use crate::types::{InfoType, PlayerId, Plot, UnitRef};
 use serde_json::json;
 
@@ -15,6 +18,13 @@ impl BridgeClient {
     pub fn get_unit_detail_state(&mut self, unit: UnitRef) -> Result<UnitDetailState> {
         self.query(
             "get_unit_detail_state",
+            json!({ "player": unit.player, "unit": unit.id }),
+        )
+    }
+
+    pub fn get_unit_group_state(&mut self, unit: UnitRef) -> Result<SelectionGroupState> {
+        self.query(
+            "get_unit_group_state",
             json!({ "player": unit.player, "unit": unit.id }),
         )
     }
@@ -200,6 +210,28 @@ impl BridgeClient {
         P: Into<InfoType>,
     {
         self.set_unit_promotion(unit, promotion, false)
+    }
+
+    pub fn push_unit_group_mission(
+        &mut self,
+        unit: UnitRef,
+        mission: UnitGroupMission,
+    ) -> Result<SelectionGroupState> {
+        self.command("push_unit_group_mission", mission.into_args(unit))
+    }
+
+    pub fn pop_unit_group_mission(&mut self, unit: UnitRef) -> Result<SelectionGroupState> {
+        self.command(
+            "pop_unit_group_mission",
+            json!({ "player": unit.player, "unit": unit.id }),
+        )
+    }
+
+    pub fn clear_unit_group_mission_queue(&mut self, unit: UnitRef) -> Result<SelectionGroupState> {
+        self.command(
+            "clear_unit_group_mission_queue",
+            json!({ "player": unit.player, "unit": unit.id }),
+        )
     }
 
     pub fn kill_unit(&mut self, unit: UnitRef, killer: Option<PlayerId>) -> Result<KilledUnit> {

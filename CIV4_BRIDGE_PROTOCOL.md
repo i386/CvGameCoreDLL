@@ -123,6 +123,7 @@ get_city_building_class_change {"player":0,"city":3,"building_class":"BUILDINGCL
 list_player_cities {"player":0} -> {"player":0,"cities":[city state, ...]}
 get_unit_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"unit_ai":2,"domain":0,"x":10,"y":12,"damage":0,"experience":2,"level":1,"moves":0,"max_moves":2,"base_combat":3,"cargo":0,"fortify_turns":0,"immobile_timer":0,"made_attack":false,"promotions":[1,4]}
 get_unit_detail_state {"player":0,"unit":123} -> {"player":0,"unit":123,"unit_type":0,"unit_ai":2,"domain":0,"unit_combat":1,"special_unit":-1,"x":10,"y":12,"area":5,"group":9,"in_group":true,"group_head":true,"base_moves":2,"max_moves":4,"moves_left":2,"can_move":true,"has_moved":false,"visibility_range":1,"air_range":0,"nuke_range":-1,"can_build_route":false,"build_type":-1,"work_rate":0,"max_work_rate":0,"can_fight":true,"can_attack":true,"can_defend":true,"fighting":false,"attacking":false,"defending":false,"combat":false,"hurt":false,"dead":false,"max_hit_points":100,"curr_hit_points":100,"base_combat":3,"curr_combat":300,"combat_limit":100,"air_combat_limit":100,"fortify_modifier":0,"experience_needed":2,"attack_xp_value":4,"defense_xp_value":2,"max_xp_value":10,"special_cargo":-1,"domain_cargo":-1,"cargo":0,"cargo_space":0,"cargo_space_available":0,"has_cargo":false,"full":false,"cargo_can_move":true,"automated":false,"waiting":false,"fortifyable":true,"made_interception":false,"promotion_ready":false,"animal":false,"only_defensive":false,"rival_territory":false,"military_happiness":true,"spy":false,"found":false,"golden_age":false,"last_move_turn":41,"game_turn_created":1,"experience_percent":0}
+get_unit_group_state {"player":0,"unit":123} -> {"player":0,"group":9,"team":0,"x":10,"y":12,"area":5,"domain":0,"head_player":0,"head_unit":123,"head_unit_type":0,"activity":0,"automate":-1,"automated":false,"mission_timer":0,"units":1,"cargo":0,"base_moves":1,"can_all_move":true,"can_any_move":true,"has_moved":false,"waiting":false,"full":false,"has_cargo":false,"can_fight":true,"can_defend":true,"has_worker":false,"ready_to_select":true,"ready_to_move":true,"ready_to_auto":false,"mission_queue_length":1,"missions":[{"mission":1,"data1":11,"data2":12}]}
 get_unit_promotion_state {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1"} -> {"player":0,"unit":123,"promotion":1,"has":true}
 list_player_units {"player":0} -> {"player":0,"units":[unit state, ...]}
 get_mod_state -> {"json":"{\"schema_version\":1}"}
@@ -217,6 +218,9 @@ set_unit_base_combat {"player":0,"unit":123,"value":4} -> unit state
 set_unit_immobile_timer {"player":0,"unit":123,"value":2} -> unit state
 change_unit_immobile_timer {"player":0,"unit":123,"change":-1} -> unit state
 set_unit_promotion {"player":0,"unit":123,"promotion":"PROMOTION_COMBAT1","has":1} -> unit state
+push_unit_group_mission {"player":0,"unit":123,"mission":"MISSION_MOVE_TO","data1":11,"data2":12,"append":0,"manual":0} -> selection group state
+pop_unit_group_mission {"player":0,"unit":123} -> selection group state
+clear_unit_group_mission_queue {"player":0,"unit":123} -> selection group state
 kill_unit {"player":0,"unit":123,"killer":1} -> {"player":0,"unit":123,"killed":true}
 spawn_unit {"player":0,"unit_type":"UNIT_WARRIOR","x":10,"y":12} -> {"player":0,"unit":123,"x":10,"y":12}
 set_mod_state {"json":"{\"schema_version\":1}"} -> {"bytes":20}
@@ -242,7 +246,8 @@ change_team_stolen_visibility_timer {"team":0,"other_team":1,"change":-1} -> tea
 `unit_type`, `building_type`, `building`, `building_class`, `project_type`, `process_type`,
 `terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`, `civic`, `religion`,
 `corporation`, `victory`, `era`, `leader`, game `option`, multiplayer `option`, and force
-`control` may be either numeric Civ4 info IDs or XML type names. `unit_ai` for
+`control` may be either numeric Civ4 info IDs or XML type names. `mission` for
+`push_unit_group_mission` and `unit_ai` for
 `spawn_unit` may also be numeric or an XML type name.
 Info metadata queries accept `kind` values: `unit`, `unit_ai`, `building`, `building_class`,
 `project`, `process`, `terrain`, `feature`, `bonus`, `improvement`, `route`, `promotion`, `tech`,
@@ -282,6 +287,9 @@ and `update_plot_group`.
 Civ4 enum name. `data1` is interpreted as a unit, building, project, or process according to the
 order. Optional flags `save`, `pop`, `append`, and `force` are integers where `0` is false and
 non-zero is true.
+`push_unit_group_mission` accepts `mission` as a numeric Civ4 mission ID or XML type name.
+`data1` and `data2` are mission-specific integer payloads, such as destination `x` and `y` for
+`MISSION_MOVE_TO`. Optional flags `flags`, `append`, and `manual` default to `0`, `0`, and `0`.
 
 `set_mod_state` stores an opaque UTF-8 JSON string owned by the external Rust client:
 
@@ -454,6 +462,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `set_unit_xy`, `set_unit_moves`, `change_unit_moves`, `finish_unit_moves`, `set_unit_level`, `change_unit_level`
 - `set_unit_fortify_turns`, `change_unit_fortify_turns`, `set_unit_made_attack`, `set_unit_base_combat`
 - `set_unit_immobile_timer`, `change_unit_immobile_timer`, `set_unit_promotion`, `grant_unit_promotion`, `remove_unit_promotion`, `kill_unit`
+- `get_unit_group_state`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `UnitGroupMission`, `SelectionGroupState`, and `SelectionGroupMissionState`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
 - `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads and city production rule callback requests, plus `CityProductionRule`

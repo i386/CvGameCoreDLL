@@ -61,6 +61,76 @@ pub(crate) struct SpawnUnitResult {
     pub y: i32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnitGroupMission {
+    pub mission: InfoType,
+    pub data1: i32,
+    pub data2: i32,
+    pub flags: i32,
+    pub append: bool,
+    pub manual: bool,
+}
+
+impl UnitGroupMission {
+    pub fn new<M: Into<InfoType>>(mission: M) -> Self {
+        Self {
+            mission: mission.into(),
+            data1: -1,
+            data2: -1,
+            flags: 0,
+            append: false,
+            manual: false,
+        }
+    }
+
+    pub fn move_to(plot: Plot) -> Self {
+        Self::new("MISSION_MOVE_TO").with_data(plot.x, plot.y)
+    }
+
+    pub fn build(build: i32) -> Self {
+        Self::new("MISSION_BUILD").with_data1(build)
+    }
+
+    pub fn with_data(mut self, data1: i32, data2: i32) -> Self {
+        self.data1 = data1;
+        self.data2 = data2;
+        self
+    }
+
+    pub fn with_data1(mut self, data1: i32) -> Self {
+        self.data1 = data1;
+        self
+    }
+
+    pub fn flags(mut self, flags: i32) -> Self {
+        self.flags = flags;
+        self
+    }
+
+    pub fn append(mut self, append: bool) -> Self {
+        self.append = append;
+        self
+    }
+
+    pub fn manual(mut self, manual: bool) -> Self {
+        self.manual = manual;
+        self
+    }
+
+    pub(crate) fn into_args(self, unit: UnitRef) -> Value {
+        json!({
+            "player": unit.player,
+            "unit": unit.id,
+            "mission": self.mission,
+            "data1": self.data1,
+            "data2": self.data2,
+            "flags": self.flags,
+            "append": if self.append { 1 } else { 0 },
+            "manual": if self.manual { 1 } else { 0 },
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CityOrderType {
     Train,
@@ -208,6 +278,27 @@ mod tests {
                 "pop": 0,
                 "append": 1,
                 "force": 1
+            })
+        );
+    }
+
+    #[test]
+    fn unit_group_mission_serializes_to_bridge_args() {
+        let args = UnitGroupMission::move_to(Plot::new(11, 12))
+            .append(true)
+            .into_args(UnitRef::new(0, 42));
+
+        assert_eq!(
+            args,
+            json!({
+                "player": 0,
+                "unit": 42,
+                "mission": "MISSION_MOVE_TO",
+                "data1": 11,
+                "data2": 12,
+                "flags": 0,
+                "append": 1,
+                "manual": 0
             })
         );
     }

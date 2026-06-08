@@ -1287,6 +1287,65 @@ namespace
 		return serializeAndFree(pValue);
 	}
 
+	void setSelectionGroupState(JSON_Object* pResult, CvSelectionGroup* pGroup)
+	{
+		JSON_Value* pMissionsValue = json_value_init_array();
+		JSON_Array* pMissions = json_value_get_array(pMissionsValue);
+		CvUnit* pHeadUnit = pGroup->getHeadUnit();
+		int iMissionCount = pGroup->getLengthMissionQueue();
+
+		json_object_set_number(pResult, "player", pGroup->getOwnerINLINE());
+		json_object_set_number(pResult, "group", pGroup->getID());
+		json_object_set_number(pResult, "team", pGroup->getTeam());
+		json_object_set_number(pResult, "x", pGroup->getX());
+		json_object_set_number(pResult, "y", pGroup->getY());
+		json_object_set_number(pResult, "area", pGroup->getArea());
+		json_object_set_number(pResult, "domain", pGroup->getDomainType());
+		json_object_set_number(pResult, "head_player", pHeadUnit != NULL ? pHeadUnit->getOwnerINLINE() : -1);
+		json_object_set_number(pResult, "head_unit", pHeadUnit != NULL ? pHeadUnit->getID() : -1);
+		json_object_set_number(pResult, "head_unit_type", pHeadUnit != NULL ? pHeadUnit->getUnitType() : -1);
+		json_object_set_number(pResult, "activity", pGroup->getActivityType());
+		json_object_set_number(pResult, "automate", pGroup->getAutomateType());
+		json_object_set_boolean(pResult, "automated", pGroup->isAutomated() ? 1 : 0);
+		json_object_set_number(pResult, "mission_timer", pGroup->getMissionTimer());
+		json_object_set_number(pResult, "units", pGroup->getNumUnits());
+		json_object_set_number(pResult, "cargo", pGroup->getCargo());
+		json_object_set_number(pResult, "base_moves", pGroup->baseMoves());
+		json_object_set_boolean(pResult, "can_all_move", pGroup->canAllMove() ? 1 : 0);
+		json_object_set_boolean(pResult, "can_any_move", pGroup->canAnyMove() ? 1 : 0);
+		json_object_set_boolean(pResult, "has_moved", pGroup->hasMoved() ? 1 : 0);
+		json_object_set_boolean(pResult, "waiting", pGroup->isWaiting() ? 1 : 0);
+		json_object_set_boolean(pResult, "full", pGroup->isFull() ? 1 : 0);
+		json_object_set_boolean(pResult, "has_cargo", pGroup->hasCargo() ? 1 : 0);
+		json_object_set_boolean(pResult, "can_fight", pGroup->canFight() ? 1 : 0);
+		json_object_set_boolean(pResult, "can_defend", pGroup->canDefend() ? 1 : 0);
+		json_object_set_boolean(pResult, "has_worker", pGroup->hasWorker() ? 1 : 0);
+		json_object_set_boolean(pResult, "ready_to_select", pGroup->readyToSelect() ? 1 : 0);
+		json_object_set_boolean(pResult, "ready_to_move", pGroup->readyToMove() ? 1 : 0);
+		json_object_set_boolean(pResult, "ready_to_auto", pGroup->readyToAuto() ? 1 : 0);
+		json_object_set_number(pResult, "mission_queue_length", iMissionCount);
+
+		for (int iMission = 0; iMission < iMissionCount; ++iMission)
+		{
+			JSON_Value* pMissionValue = json_value_init_object();
+			JSON_Object* pMission = json_value_get_object(pMissionValue);
+			json_object_set_number(pMission, "mission", pGroup->getMissionType(iMission));
+			json_object_set_number(pMission, "data1", pGroup->getMissionData1(iMission));
+			json_object_set_number(pMission, "data2", pGroup->getMissionData2(iMission));
+			json_array_append_value(pMissions, pMissionValue);
+		}
+
+		json_object_set_value(pResult, "missions", pMissionsValue);
+	}
+
+	CvString makeSelectionGroupStateReply(int iId, CvSelectionGroup* pGroup)
+	{
+		JSON_Object* pResult = NULL;
+		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		setSelectionGroupState(pResult, pGroup);
+		return serializeAndFree(pValue);
+	}
+
 	CvString makePlotStateReply(int iId, CvPlot* pPlot)
 	{
 		JSON_Object* pResult = NULL;
@@ -2055,6 +2114,24 @@ namespace
 				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
 			}
 			return makeUnitDetailStateReply(iId, pUnit);
+		}
+
+		if (strcmp(szName, "get_unit_group_state") == 0)
+		{
+			int iPlayer = -1;
+			int iUnit = -1;
+			CvUnit* pUnit = NULL;
+			CvSelectionGroup* pGroup = NULL;
+			if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+			{
+				return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+			}
+			pGroup = pUnit->getGroup();
+			if (pGroup == NULL)
+			{
+				return makeErrorReply(iId, "bad_group", "unit has no selection group");
+			}
+			return makeSelectionGroupStateReply(iId, pGroup);
 		}
 
 		if (strcmp(szName, "get_unit_promotion_state") == 0)
@@ -3626,6 +3703,88 @@ namespace
 		return makeUnitStateReply(iId, pUnit);
 	}
 
+	CvString handlePushUnitGroupMission(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		int iMission = -1;
+		int iData1 = -1;
+		int iData2 = -1;
+		int iFlags = 0;
+		int iAppend = 0;
+		int iManual = 0;
+		CvUnit* pUnit = NULL;
+		CvSelectionGroup* pGroup = NULL;
+		JSON_Value* pMissionValue = json_object_get_value(pArgs, "mission");
+
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		iMission = getInfoTypeFromValue(pMissionValue);
+		if (pMissionValue == NULL || iMission < 0 || iMission >= GC.getNumMissionInfos())
+		{
+			return makeErrorReply(iId, "bad_mission", "mission is missing or out of range");
+		}
+		pGroup = pUnit->getGroup();
+		if (pGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "unit has no selection group");
+		}
+
+		getInt(pArgs, "data1", iData1);
+		getInt(pArgs, "data2", iData2);
+		getInt(pArgs, "flags", iFlags);
+		getInt(pArgs, "append", iAppend);
+		getInt(pArgs, "manual", iManual);
+
+		pGroup->pushMission((MissionTypes)iMission, iData1, iData2, iFlags, iAppend != 0, iManual != 0);
+		markGameDataDirty();
+		return makeSelectionGroupStateReply(iId, pGroup);
+	}
+
+	CvString handlePopUnitGroupMission(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		CvUnit* pUnit = NULL;
+		CvSelectionGroup* pGroup = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		pGroup = pUnit->getGroup();
+		if (pGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "unit has no selection group");
+		}
+
+		pGroup->popMission();
+		markGameDataDirty();
+		return makeSelectionGroupStateReply(iId, pGroup);
+	}
+
+	CvString handleClearUnitGroupMissionQueue(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iUnit = -1;
+		CvUnit* pUnit = NULL;
+		CvSelectionGroup* pGroup = NULL;
+		if (!getUnitArgs(pArgs, iPlayer, iUnit, pUnit))
+		{
+			return makeErrorReply(iId, "bad_unit", "unit is missing or not found");
+		}
+		pGroup = pUnit->getGroup();
+		if (pGroup == NULL)
+		{
+			return makeErrorReply(iId, "bad_group", "unit has no selection group");
+		}
+
+		pGroup->clearMissionQueue();
+		markGameDataDirty();
+		return makeSelectionGroupStateReply(iId, pGroup);
+	}
+
 	CvString handleKillUnit(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -4735,6 +4894,18 @@ namespace
 		if (strcmp(szName, "set_unit_promotion") == 0)
 		{
 			return handleSetUnitPromotion(iId, pArgs);
+		}
+		if (strcmp(szName, "push_unit_group_mission") == 0)
+		{
+			return handlePushUnitGroupMission(iId, pArgs);
+		}
+		if (strcmp(szName, "pop_unit_group_mission") == 0)
+		{
+			return handlePopUnitGroupMission(iId, pArgs);
+		}
+		if (strcmp(szName, "clear_unit_group_mission_queue") == 0)
+		{
+			return handleClearUnitGroupMissionQueue(iId, pArgs);
 		}
 		if (strcmp(szName, "kill_unit") == 0)
 		{
