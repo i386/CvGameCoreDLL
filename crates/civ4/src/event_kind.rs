@@ -40,6 +40,7 @@ pub enum BridgeEventKind {
     CityProductionRule(CityProductionRule),
     SelectionGroupPushMission,
     UnitMove,
+    UnitCannotMoveInto,
     UnitSetXY,
     UnitCreated,
     UnitBuilt,
@@ -114,6 +115,7 @@ impl BridgeEventKind {
             Self::CityProductionRule(rule) => rule.name(),
             Self::SelectionGroupPushMission => "selection_group_push_mission",
             Self::UnitMove => "unit_move",
+            Self::UnitCannotMoveInto => "unit_cannot_move_into",
             Self::UnitSetXY => "unit_set_xy",
             Self::UnitCreated => "unit_created",
             Self::UnitBuilt => "unit_built",
@@ -187,6 +189,7 @@ impl BridgeEventKind {
             "city_hurry" => Self::CityHurry,
             "selection_group_push_mission" => Self::SelectionGroupPushMission,
             "unit_move" => Self::UnitMove,
+            "unit_cannot_move_into" => Self::UnitCannotMoveInto,
             "unit_set_xy" => Self::UnitSetXY,
             "unit_created" => Self::UnitCreated,
             "unit_built" => Self::UnitBuilt,
@@ -258,6 +261,10 @@ mod tests {
         assert_eq!(
             BridgeEventKind::from_name("get_building_cost_mod"),
             Some(BridgeEventKind::BuildingCostMod)
+        );
+        assert_eq!(
+            BridgeEventKind::from_name("unit_cannot_move_into"),
+            Some(BridgeEventKind::UnitCannotMoveInto)
         );
         assert_eq!(BridgeEventKind::from_name("future_event"), None);
     }

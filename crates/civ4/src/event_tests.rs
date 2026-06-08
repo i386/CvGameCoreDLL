@@ -219,6 +219,37 @@ fn decodes_building_cost_mod_callback_payload() {
 }
 
 #[test]
+fn decodes_unit_cannot_move_into_callback_payload() {
+    let event = BridgeEvent::from_name_args(
+        "unit_cannot_move_into".to_string(),
+        json!({
+            "player": 1,
+            "unit": 9,
+            "unit_type": 4,
+            "x": 20,
+            "y": 21,
+            "attack": true,
+            "declare_war": false,
+            "ignore_load": 0
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        event,
+        BridgeEvent::UnitCannotMoveInto {
+            unit: UnitRef::new(1, 9),
+            unit_type: 4,
+            plot: Plot::new(20, 21),
+            attack: true,
+            declare_war: false,
+            ignore_load: false,
+        }
+    );
+    assert_eq!(event.name(), "unit_cannot_move_into");
+}
+
+#[test]
 fn preserves_unknown_event_payload() {
     let event =
         BridgeEvent::from_name_args("future_event".to_string(), json!({ "payload": 1 })).unwrap();

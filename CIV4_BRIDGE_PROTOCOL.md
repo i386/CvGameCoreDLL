@@ -320,12 +320,14 @@ cannot_create {"player":0,"city":3,"x":10,"y":12,"project":1,"continue_current":
 can_maintain {"player":0,"city":3,"x":10,"y":12,"process":2,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
 cannot_maintain {"player":0,"city":3,"x":10,"y":12,"process":2,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false}
 get_building_cost_mod {"player":0,"city":3,"x":10,"y":12,"building":12}
+unit_cannot_move_into {"player":0,"unit":7,"unit_type":1,"x":10,"y":12,"attack":false,"declare_war":false,"ignore_load":false}
 ```
 
 Reply with `{"value":true}` to make the corresponding hook return true. Reply with
 `{"value":false}` to make it return false. For example, `can_train` true allows the unit before
-normal Civ4 checks, while `cannot_train` true vetoes it after normal Civ4 checks. Reply with
-`{"value":125}` to `get_building_cost_mod` to apply a 125% building production cost.
+normal Civ4 checks, while `cannot_train` and `unit_cannot_move_into` true veto after normal Civ4
+checks. Reply with `{"value":125}` to `get_building_cost_mod` to apply a 125% building production
+cost.
 
 Callback mirror payloads cover most of `CvEventReporter`. Object references are serialized as
 stable game IDs and coordinates:
@@ -464,6 +466,6 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_unit_group_state`, `can_unit_group_start_mission`, `can_unit_group_do_command`, `can_unit_join_group`, `push_unit_group_mission`, `pop_unit_group_mission`, `clear_unit_group_mission_queue`, `do_unit_group_command`, `join_unit_group`, `split_unit_group`, `UnitGroupMission`, `UnitGroupCommand`, `UnitGroupJoin`, `UnitCommandName`, `UnitCommandType`, `SelectionGroupState`, `SelectionGroupMissionState`, `SelectionGroupMissionCheck`, `SelectionGroupCommandCheck`, `UnitCommandResult`, and `UnitGroupJoinCheck`
 - `spawn_unit`, `KilledUnit`, and `UnitPromotionState`
 - `get_mod_state`, `set_mod_state`, `load_mod_state<T>`, `save_mod_state<T>`
-- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads, city production rule callback requests, and `get_building_cost_mod`, plus `BridgeEventKind`, `CityProductionRule`, and `CityProductionItem`
+- `BridgeEvent` typed variants for mirrored `CvEventReporter` payloads, city production rule callback requests, `get_building_cost_mod`, and `unit_cannot_move_into`, plus `BridgeEventKind`, `CityProductionRule`, and `CityProductionItem`
 - `next_bridge_event`, `next_callback_event`, `next_callback_message`, `next_callback_request`, `write_input_callback_reply`, `write_rule_callback_reply`, and `write_int_callback_reply`
 - `CallbackDispatcher`, `on_event`, `on_bridge_event`, `CallbackControl`, `CallbackDispatch`, `InputCallbackReply`, `RuleCallbackReply`, and `IntCallbackReply`

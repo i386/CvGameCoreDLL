@@ -479,6 +479,34 @@ impl UnitPlotPayload {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct UnitMoveIntoPayload {
+    pub(crate) player: i32,
+    pub(crate) unit: i32,
+    pub(crate) unit_type: i32,
+    pub(crate) x: i32,
+    pub(crate) y: i32,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) attack: bool,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) declare_war: bool,
+    #[serde(deserialize_with = "deserialize_int_bool")]
+    pub(crate) ignore_load: bool,
+}
+
+impl UnitMoveIntoPayload {
+    pub(crate) fn unit(&self) -> UnitRef {
+        UnitRef {
+            player: self.player,
+            id: self.unit,
+        }
+    }
+
+    pub(crate) fn plot(&self) -> Plot {
+        Plot::new(self.x, self.y)
+    }
+}
+
+#[derive(Deserialize)]
 pub(crate) struct UnitBuiltPayload {
     pub(crate) player: i32,
     pub(crate) city: i32,

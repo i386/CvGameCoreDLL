@@ -202,6 +202,14 @@ pub enum BridgeEvent {
         from: Plot,
         to: Plot,
     },
+    UnitCannotMoveInto {
+        unit: UnitRef,
+        unit_type: i32,
+        plot: Plot,
+        attack: bool,
+        declare_war: bool,
+        ignore_load: bool,
+    },
     UnitSetXY {
         unit: UnitRef,
         unit_type: i32,
@@ -409,6 +417,7 @@ impl BridgeEvent {
             Self::CityProductionRule { rule, .. } => rule.name(),
             Self::SelectionGroupPushMission { .. } => "selection_group_push_mission",
             Self::UnitMove { .. } => "unit_move",
+            Self::UnitCannotMoveInto { .. } => "unit_cannot_move_into",
             Self::UnitSetXY { .. } => "unit_set_xy",
             Self::UnitCreated { .. } => "unit_created",
             Self::UnitBuilt { .. } => "unit_built",
@@ -709,6 +718,17 @@ impl BridgeEvent {
                     unit: payload.unit(),
                     from: Plot::new(payload.from_x, payload.from_y),
                     to: Plot::new(payload.x, payload.y),
+                }
+            }
+            "unit_cannot_move_into" => {
+                let payload: UnitMoveIntoPayload = decode(args)?;
+                Self::UnitCannotMoveInto {
+                    unit: payload.unit(),
+                    unit_type: payload.unit_type,
+                    plot: payload.plot(),
+                    attack: payload.attack,
+                    declare_war: payload.declare_war,
+                    ignore_load: payload.ignore_load,
                 }
             }
             "unit_set_xy" => {

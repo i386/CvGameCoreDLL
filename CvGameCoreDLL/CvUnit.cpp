@@ -26,6 +26,31 @@
 #include "FProfiler.h"
 #include "CvPopupInfo.h"
 #include "CvArtFileMgr.h"
+#include "CvGameBridge.h"
+
+namespace
+{
+	const char* bridgeBoolString(bool bValue)
+	{
+		return bValue ? "true" : "false";
+	}
+
+	CvString makeBridgeUnitMoveIntoArgs(const CvUnit* pUnit, const CvPlot* pPlot, bool bAttack, bool bDeclareWar, bool bIgnoreLoad)
+	{
+		CvString szArgs;
+		szArgs.Format(
+			"{\"player\":%d,\"unit\":%d,\"unit_type\":%d,\"x\":%d,\"y\":%d,\"attack\":%s,\"declare_war\":%s,\"ignore_load\":%s}",
+			pUnit->getOwnerINLINE(),
+			pUnit->getID(),
+			pUnit->getUnitType(),
+			pPlot->getX(),
+			pPlot->getY(),
+			bridgeBoolString(bAttack),
+			bridgeBoolString(bDeclareWar),
+			bridgeBoolString(bIgnoreLoad));
+		return szArgs;
+	}
+}
 
 // Public Functions...
 
@@ -2545,18 +2570,30 @@ bool CvUnit::canMoveInto(const CvPlot* pPlot, bool bAttack, bool bDeclareWar, bo
 
 	if (GC.getUSE_UNIT_CANNOT_MOVE_INTO_CALLBACK())
 	{
-		// Python Override
-		CyArgsList argsList;
-		argsList.add(getOwnerINLINE());	// Player ID
-		argsList.add(getID());	// Unit ID
-		argsList.add(pPlot->getX());	// Plot X
-		argsList.add(pPlot->getY());	// Plot Y
-		long lResult=0;
-		gDLL->getPythonIFace()->callFunction(PYGameModule, "unitCannotMoveInto", argsList.makeFunctionArgs(), &lResult);
-
-		if (lResult != 0)
+		bool bBridgeResult = false;
+		CvString szBridgeArgs = makeBridgeUnitMoveIntoArgs(this, pPlot, bAttack, bDeclareWar, bIgnoreLoad);
+		if (CvGameBridge::requestCallbackBool("unit_cannot_move_into", szBridgeArgs.GetCString(), bBridgeResult))
 		{
-			return false;
+			if (bBridgeResult)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			// Python Override
+			CyArgsList argsList;
+			argsList.add(getOwnerINLINE());	// Player ID
+			argsList.add(getID());	// Unit ID
+			argsList.add(pPlot->getX());	// Plot X
+			argsList.add(pPlot->getY());	// Plot Y
+			long lResult=0;
+			gDLL->getPythonIFace()->callFunction(PYGameModule, "unitCannotMoveInto", argsList.makeFunctionArgs(), &lResult);
+
+			if (lResult != 0)
+			{
+				return false;
+			}
 		}
 	}
 
