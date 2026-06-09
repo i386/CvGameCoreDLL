@@ -1072,6 +1072,7 @@ namespace
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		CvArea* pArea = pCity->area();
 		PlayerTypes eOwner = pCity->getOwnerINLINE();
+		CvCity* pCapitalCity = GET_PLAYER(eOwner).getCapitalCity();
 		JSON_Value* pYieldValue = json_value_init_array();
 		JSON_Array* pYields = json_value_get_array(pYieldValue);
 		JSON_Value* pCommerceValue = json_value_init_array();
@@ -1098,6 +1099,8 @@ namespace
 		json_object_set_number(pResult, "area_tiles", pArea != NULL ? pArea->getNumTiles() : 0);
 		json_object_set_number(pResult, "area_cities", pArea != NULL ? pArea->getNumCities() : 0);
 		json_object_set_number(pResult, "owner_area_cities", pArea != NULL ? pArea->getCitiesPerPlayer(eOwner) : 0);
+		json_object_set_boolean(pResult, "capital", (pCapitalCity == pCity) ? 1 : 0);
+		json_object_set_boolean(pResult, "capital_area", (pCapitalCity != NULL && pCapitalCity->area() == pArea) ? 1 : 0);
 		json_object_set_boolean(pResult, "production", pCity->isProduction() ? 1 : 0);
 		json_object_set_boolean(pResult, "food_production", pCity->isFoodProduction() ? 1 : 0);
 		json_object_set_boolean(pResult, "disorder", pCity->isDisorder() ? 1 : 0);

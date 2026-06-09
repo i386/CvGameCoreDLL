@@ -252,6 +252,10 @@ pub struct CityDetailState {
     pub area_cities: i32,
     #[serde(default)]
     pub owner_area_cities: i32,
+    #[serde(default)]
+    pub capital: bool,
+    #[serde(default)]
+    pub capital_area: bool,
     pub production: bool,
     pub food_production: bool,
     pub disorder: bool,
@@ -713,6 +717,8 @@ mod tests {
             "area_tiles": 18,
             "area_cities": 2,
             "owner_area_cities": 1,
+            "capital": false,
+            "capital_area": true,
             "production": true,
             "food_production": false,
             "disorder": false,
@@ -751,6 +757,8 @@ mod tests {
         assert_eq!(city_detail.area, 4);
         assert_eq!(city_detail.area_tiles, 18);
         assert_eq!(city_detail.owner_area_cities, 1);
+        assert!(!city_detail.capital);
+        assert!(city_detail.capital_area);
         assert!(city_detail.coastal);
         assert_eq!(city_detail.yield_rate[0], 11);
         assert_eq!(city_detail.commerce_rate_times100[1], 1400);
