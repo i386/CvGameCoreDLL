@@ -13,6 +13,11 @@ pub struct MapState {
 pub struct PlotState {
     pub plot: Plot,
     pub owner: Option<PlayerId>,
+    pub area: i32,
+    pub area_water: bool,
+    pub area_tiles: i32,
+    pub area_cities: i32,
+    pub owner_area_cities: i32,
     pub terrain: i32,
     pub feature: i32,
     pub bonus: i32,
@@ -29,6 +34,16 @@ pub(crate) struct PlotStateResult {
     pub x: i32,
     pub y: i32,
     pub owner: i32,
+    #[serde(default = "default_negative_one")]
+    pub area: i32,
+    #[serde(default)]
+    pub area_water: bool,
+    #[serde(default)]
+    pub area_tiles: i32,
+    #[serde(default)]
+    pub area_cities: i32,
+    #[serde(default)]
+    pub owner_area_cities: i32,
     pub terrain: i32,
     pub feature: i32,
     pub bonus: i32,
@@ -46,6 +61,11 @@ impl From<PlotStateResult> for PlotState {
         Self {
             plot: Plot::new(value.x, value.y),
             owner: (value.owner >= 0).then_some(PlayerId(value.owner)),
+            area: value.area,
+            area_water: value.area_water,
+            area_tiles: value.area_tiles,
+            area_cities: value.area_cities,
+            owner_area_cities: value.owner_area_cities,
             terrain: value.terrain,
             feature: value.feature,
             bonus: value.bonus,
@@ -58,6 +78,10 @@ impl From<PlotStateResult> for PlotState {
                 .then_some(CityRef::new(value.city_player, value.city)),
         }
     }
+}
+
+fn default_negative_one() -> i32 {
+    -1
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -131,6 +155,11 @@ mod tests {
             x: 1,
             y: 2,
             owner: -1,
+            area: -1,
+            area_water: false,
+            area_tiles: 0,
+            area_cities: 0,
+            owner_area_cities: 0,
             terrain: 3,
             feature: -1,
             bonus: -1,

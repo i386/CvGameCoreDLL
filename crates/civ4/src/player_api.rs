@@ -4,7 +4,7 @@ use crate::state::{
     PlayerOptions, PlayerState, PlayersResult,
 };
 use crate::types::{CommerceType, InfoType, PlayerId};
-use serde_json::json;
+use serde_json::{json, Map, Value};
 
 impl BridgeClient {
     pub fn get_player_gold<P: Into<PlayerId>>(&mut self, player: P) -> Result<i32> {
@@ -25,6 +25,41 @@ impl BridgeClient {
     ) -> Result<PlayerIdentityState> {
         let player = player.into();
         self.query("get_player_identity", json!({ "player": player.0 }))
+    }
+
+    pub fn set_player_identity<P: Into<PlayerId>>(
+        &mut self,
+        player: P,
+        identity: PlayerIdentityUpdate,
+    ) -> Result<PlayerIdentityState> {
+        let player = player.into();
+        let mut args = Map::new();
+        args.insert("player".to_owned(), json!(player.0));
+        if let Some(civilization) = identity.civilization {
+            args.insert("civilization".to_owned(), json!(civilization));
+        }
+        if let Some(leader) = identity.leader {
+            args.insert("leader".to_owned(), json!(leader));
+        }
+        if let Some(color) = identity.color {
+            args.insert("color".to_owned(), json!(color));
+        }
+        if let Some(leader_name) = identity.leader_name {
+            args.insert("leader_name".to_owned(), json!(leader_name));
+        }
+        if let Some(description) = identity.civilization_description {
+            args.insert("civilization_description".to_owned(), json!(description));
+        }
+        if let Some(short_description) = identity.civilization_short_description {
+            args.insert(
+                "civilization_short_description".to_owned(),
+                json!(short_description),
+            );
+        }
+        if let Some(adjective) = identity.civilization_adjective {
+            args.insert("civilization_adjective".to_owned(), json!(adjective));
+        }
+        self.command("set_player_identity", Value::Object(args))
     }
 
     pub fn list_players(&mut self) -> Result<Vec<PlayerState>> {
@@ -388,5 +423,42 @@ impl BridgeClient {
             "set_player_research",
             json!({ "player": player.0, "tech": tech.into() }),
         )
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct PlayerIdentityUpdate {
+    pub civilization: Option<InfoType>,
+    pub leader: Option<InfoType>,
+    pub color: Option<i32>,
+    pub leader_name: Option<String>,
+    pub civilization_description: Option<String>,
+    pub civilization_short_description: Option<String>,
+    pub civilization_adjective: Option<String>,
+}
+
+impl PlayerIdentityUpdate {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_leader_name(mut self, name: impl Into<String>) -> Self {
+        self.leader_name = Some(name.into());
+        self
+    }
+
+    pub fn with_civilization_description(mut self, description: impl Into<String>) -> Self {
+        self.civilization_description = Some(description.into());
+        self
+    }
+
+    pub fn with_civilization_short_description(mut self, description: impl Into<String>) -> Self {
+        self.civilization_short_description = Some(description.into());
+        self
+    }
+
+    pub fn with_civilization_adjective(mut self, adjective: impl Into<String>) -> Self {
+        self.civilization_adjective = Some(adjective.into());
+        self
     }
 }

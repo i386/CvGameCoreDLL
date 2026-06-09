@@ -9,6 +9,10 @@ use crate::types::{CityRef, PlayerId, Plot, TeamId};
 pub use crate::unit_state::{KilledUnit, UnitDetailState, UnitPromotionState, UnitState};
 use serde::Deserialize;
 
+fn default_negative_one() -> i32 {
+    -1
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct GameState {
     pub turn: i32,
@@ -238,11 +242,23 @@ pub struct CityDetailState {
     pub city: i32,
     pub x: i32,
     pub y: i32,
+    #[serde(default = "default_negative_one")]
+    pub area: i32,
+    #[serde(default)]
+    pub area_water: bool,
+    #[serde(default)]
+    pub area_tiles: i32,
+    #[serde(default)]
+    pub area_cities: i32,
+    #[serde(default)]
+    pub owner_area_cities: i32,
     pub production: bool,
     pub food_production: bool,
     pub disorder: bool,
     pub occupation: bool,
     pub we_love_the_king_day: bool,
+    #[serde(default)]
+    pub coastal: bool,
     pub food: i32,
     pub food_kept: i32,
     pub growth_threshold: i32,
@@ -692,11 +708,17 @@ mod tests {
             "city": 7,
             "x": 10,
             "y": 11,
+            "area": 4,
+            "area_water": false,
+            "area_tiles": 18,
+            "area_cities": 2,
+            "owner_area_cities": 1,
             "production": true,
             "food_production": false,
             "disorder": false,
             "occupation": false,
             "we_love_the_king_day": true,
+            "coastal": true,
             "food": 12,
             "food_kept": 4,
             "growth_threshold": 26,
@@ -726,6 +748,10 @@ mod tests {
         .unwrap();
         assert_eq!(city_detail.city_ref(), CityRef::new(0, 7));
         assert_eq!(city_detail.plot(), Plot::new(10, 11));
+        assert_eq!(city_detail.area, 4);
+        assert_eq!(city_detail.area_tiles, 18);
+        assert_eq!(city_detail.owner_area_cities, 1);
+        assert!(city_detail.coastal);
         assert_eq!(city_detail.yield_rate[0], 11);
         assert_eq!(city_detail.commerce_rate_times100[1], 1400);
 

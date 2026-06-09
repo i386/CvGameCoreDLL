@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 #[cfg(test)]
 mod api_coverage_tests;
 pub mod callbacks;
@@ -41,6 +43,7 @@ pub use commands::{
 pub use event_kind::BridgeEventKind;
 pub use events::{BridgeCallbackMessage, BridgeCallbackRequest, BridgeEvent, BridgeEventMessage};
 pub use metadata::{InfoCount, InfoTypeEntry, InfoTypeState, InfoTypesResult};
+pub use player_api::PlayerIdentityUpdate;
 pub use plot_api::{
     PlotCultureChangeOptions, PlotCultureOptions, PlotFeatureOptions, PlotOwnerOptions,
     PlotRevealedOptions, PlotRouteOptions, PlotTerrainOptions,

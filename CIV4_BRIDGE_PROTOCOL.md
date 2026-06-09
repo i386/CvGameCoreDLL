@@ -73,11 +73,11 @@ list_teams -> {"teams":[team state, ...]}
 get_team_tech_state {"team":0,"tech":"TECH_BRONZE_WORKING"} -> {"team":0,"tech":7,"has":true,"progress":0}
 get_team_relation_state {"team":0,"other_team":1} -> {"team":0,"other_team":1,"has_met":true,"at_war":false,"can_declare_war":true,"can_change_war_peace":true,"permanent_war_peace":false,"open_borders":true,"defensive_pact":false,"force_peace":false,"vassal":false,"master":false,"war_weariness":0,"stolen_visibility_timer":0,"war_plan":-1}
 get_map_state -> {"width":84,"height":52,"plots":4368,"land_plots":1472}
-get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
+get_plot_state {"x":10,"y":12} -> {"x":10,"y":12,"owner":0,"area":4,"area_water":false,"area_tiles":18,"area_cities":2,"owner_area_cities":1,"terrain":1,"feature":-1,"bonus":-1,"improvement":2,"route":1,"water":false,"peak":false,"units":1,"city_player":0,"city":3}
 get_plot_culture_state {"x":10,"y":12,"player":0} -> {"x":10,"y":12,"player":0,"culture":42,"total_culture":50,"culture_percent":84}
 get_plot_visibility_state {"x":10,"y":12,"team":0} -> {"x":10,"y":12,"team":0,"debug":false,"visible":true,"revealed":true,"revealed_owner":0,"revealed_team":0,"revealed_improvement":2,"revealed_route":1}
 get_city_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"population":5,"culture":42,"production":10,"production_needed":35,"production_unit":0,"production_unit_ai":2,"production_building":-1,"production_project":-1,"production_process":-1,"order_queue_length":1,"occupation_timer":0,"hurry_anger_timer":0}
-get_city_detail_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"production":true,"food_production":false,"disorder":false,"occupation":false,"we_love_the_king_day":false,"food":12,"food_kept":4,"growth_threshold":26,"food_consumption":8,"food_difference":3,"happy_level":7,"unhappy_level":5,"angry_population":0,"good_health":6,"bad_health":4,"health_rate":0,"unhealthy_population":0,"maintenance":3,"distance_maintenance":1,"num_cities_maintenance":2,"colony_maintenance":0,"corporation_maintenance":0,"production_left":12,"current_production_difference":5,"defense_damage":0,"total_defense":40,"defense_modifier":40,"yield_rate":[11,8,12],"commerce_rate":[6,14,2,0],"commerce_rate_times100":[600,1400,200,0]}
+get_city_detail_state {"player":0,"city":3} -> {"player":0,"city":3,"x":10,"y":12,"area":4,"area_water":false,"area_tiles":18,"area_cities":2,"owner_area_cities":1,"production":true,"food_production":false,"disorder":false,"occupation":false,"we_love_the_king_day":false,"coastal":true,"food":12,"food_kept":4,"growth_threshold":26,"food_consumption":8,"food_difference":3,"happy_level":7,"unhappy_level":5,"angry_population":0,"good_health":6,"bad_health":4,"health_rate":0,"unhealthy_population":0,"maintenance":3,"distance_maintenance":1,"num_cities_maintenance":2,"colony_maintenance":0,"corporation_maintenance":0,"production_left":12,"current_production_difference":5,"defense_damage":0,"total_defense":40,"defense_modifier":40,"yield_rate":[11,8,12],"commerce_rate":[6,14,2,0],"commerce_rate_times100":[600,1400,200,0]}
 get_city_production_options {"player":0,"city":3,"continue_current":0,"test_visible":0,"ignore_cost":0,"ignore_upgrades":0} -> {"player":0,"city":3,"continue_current":false,"test_visible":false,"ignore_cost":false,"ignore_upgrades":false,"units":[0,1],"buildings":[12],"projects":[],"processes":[2]}
 get_city_building_state {"player":0,"city":3,"building":"BUILDING_GRANARY"} -> {"player":0,"city":3,"building":12,"real":1,"free":0,"active":true}
 get_city_religion_state {"player":0,"city":3,"religion":"RELIGION_BUDDHISM"} -> {"player":0,"city":3,"religion":0,"has":true}
@@ -127,6 +127,7 @@ set_player_playable {"player":0,"playable":true} -> player state
 set_player_current_era {"player":0,"era":"ERA_CLASSICAL"} -> player state
 set_player_personality {"player":0,"leader":"LEADER_GANDHI"} -> player state
 set_player_parent {"player":0,"parent":-1} -> player state
+set_player_identity {"player":0,"leader_name":"Speaker of Aster Bay","civilization_description":"Free Aster Bay League","civilization_short_description":"Aster Bay","civilization_adjective":"Aster"} -> player identity state
 set_player_advanced_start_points {"player":0,"value":100} -> player economy state
 change_player_advanced_start_points {"player":0,"change":-10} -> player economy state
 change_player_golden_age_turns {"player":0,"change":8} -> player economy state
@@ -142,6 +143,7 @@ set_player_gold_per_turn_by_player {"player":0,"other_player":1,"value":-3} -> p
 change_player_gold_per_turn_by_player {"player":0,"other_player":1,"change":1} -> player gold-per-turn state
 set_city_population {"player":0,"city":3,"value":6} -> city state
 change_city_population {"player":0,"city":3,"change":1} -> city state
+transfer_city {"player":0,"city":3,"new_player":18,"conquest":1} -> city state
 set_city_culture {"player":0,"city":3,"culture_player":0,"value":100} -> city state
 set_city_production {"player":0,"city":3,"value":20} -> city state
 change_city_production {"player":0,"city":3,"change":5} -> city state
@@ -229,6 +231,13 @@ Info metadata queries accept `kind` values: `unit`, `unit_ai`, `building`, `buil
 `commerce` accepts `gold`, `research`, `culture`, `espionage`, the matching Civ4 enum names, or
 numeric `CommerceTypes` values. Boolean command arguments may be sent as JSON booleans or `0`/`1`.
 If `culture_player` is omitted from `set_city_culture`, the DLL uses the city owner.
+`transfer_city` uses Civ4's `acquireCity`; the returned city state contains the new owner and
+the recreated city id.
+`set_player_identity` mutates the `CvInitCore` slot metadata used by player identity text. It
+accepts any subset of `civilization`, `leader`, `color`, `leader_name`,
+`civilization_description`, `civilization_short_description`, and
+`civilization_adjective`; numeric ids or XML type names are accepted for `civilization` and
+`leader`.
 If `civic_option` is omitted from `set_player_civic`, the DLL derives it from the civic.
 Use religion `-1` with `set_player_state_religion` to clear a player's state religion.
 Use parent `-1` with `set_player_parent` to clear the parent player.
@@ -462,7 +471,7 @@ The Rust `civ4` crate exposes typed helpers for the current operation set:
 - `get_force_control_state`, `set_force_control`, `ForceControlState`, `GameState`, and `GameStatus`
 - `get_player_gold`, `set_player_gold`, `change_player_gold`
 - `get_player_state`, `get_player_identity`, `PlayerIdentityState`, `get_player_options`, `get_player_economy_state`, `get_player_gold_per_turn_state`, `list_players`, `list_alive_players`
-- `set_player_alive`, `set_player_playable`, `set_player_current_era`, `set_player_personality`, `set_player_parent`
+- `set_player_alive`, `set_player_playable`, `set_player_current_era`, `set_player_personality`, `set_player_parent`, `set_player_identity`
 - `set_player_advanced_start_points`, `change_player_advanced_start_points`, `change_player_golden_age_turns`, `change_player_num_unit_golden_ages`
 - `change_player_anarchy_turns`, `change_player_strike_turns`, `set_player_combat_experience`, `change_player_combat_experience`
 - `set_player_commerce_percent`, `change_player_commerce_percent`, `change_player_commerce_rate_modifier`, `CommerceType`

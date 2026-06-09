@@ -1069,6 +1069,8 @@ namespace
 	{
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
+		CvArea* pArea = pCity->area();
+		PlayerTypes eOwner = pCity->getOwnerINLINE();
 		JSON_Value* pYieldValue = json_value_init_array();
 		JSON_Array* pYields = json_value_get_array(pYieldValue);
 		JSON_Value* pCommerceValue = json_value_init_array();
@@ -1090,11 +1092,17 @@ namespace
 		json_object_set_number(pResult, "city", pCity->getID());
 		json_object_set_number(pResult, "x", pCity->getX_INLINE());
 		json_object_set_number(pResult, "y", pCity->getY_INLINE());
+		json_object_set_number(pResult, "area", pArea != NULL ? pArea->getID() : -1);
+		json_object_set_boolean(pResult, "area_water", (pArea != NULL && pArea->isWater()) ? 1 : 0);
+		json_object_set_number(pResult, "area_tiles", pArea != NULL ? pArea->getNumTiles() : 0);
+		json_object_set_number(pResult, "area_cities", pArea != NULL ? pArea->getNumCities() : 0);
+		json_object_set_number(pResult, "owner_area_cities", pArea != NULL ? pArea->getCitiesPerPlayer(eOwner) : 0);
 		json_object_set_boolean(pResult, "production", pCity->isProduction() ? 1 : 0);
 		json_object_set_boolean(pResult, "food_production", pCity->isFoodProduction() ? 1 : 0);
 		json_object_set_boolean(pResult, "disorder", pCity->isDisorder() ? 1 : 0);
 		json_object_set_boolean(pResult, "occupation", pCity->isOccupation() ? 1 : 0);
 		json_object_set_boolean(pResult, "we_love_the_king_day", pCity->isWeLoveTheKingDay() ? 1 : 0);
+		json_object_set_boolean(pResult, "coastal", pCity->isCoastal(GC.getMIN_WATER_SIZE_FOR_OCEAN()) ? 1 : 0);
 		json_object_set_number(pResult, "food", pCity->getFood());
 		json_object_set_number(pResult, "food_kept", pCity->getFoodKept());
 		json_object_set_number(pResult, "growth_threshold", pCity->growthThreshold());
@@ -1515,9 +1523,15 @@ namespace
 		JSON_Object* pResult = NULL;
 		JSON_Value* pValue = makeResultReplyValue(iId, &pResult);
 		CvCity* pCity = pPlot->getPlotCity();
+		CvArea* pArea = pPlot->area();
 		json_object_set_number(pResult, "x", pPlot->getX_INLINE());
 		json_object_set_number(pResult, "y", pPlot->getY_INLINE());
 		json_object_set_number(pResult, "owner", pPlot->getOwnerINLINE());
+		json_object_set_number(pResult, "area", pPlot->getArea());
+		json_object_set_boolean(pResult, "area_water", (pArea != NULL && pArea->isWater()) ? 1 : 0);
+		json_object_set_number(pResult, "area_tiles", pArea != NULL ? pArea->getNumTiles() : 0);
+		json_object_set_number(pResult, "area_cities", pArea != NULL ? pArea->getNumCities() : 0);
+		json_object_set_number(pResult, "owner_area_cities", (pArea != NULL && pPlot->getOwnerINLINE() != NO_PLAYER) ? pArea->getCitiesPerPlayer(pPlot->getOwnerINLINE()) : 0);
 		json_object_set_number(pResult, "terrain", pPlot->getTerrainType());
 		json_object_set_number(pResult, "feature", pPlot->getFeatureType());
 		json_object_set_number(pResult, "bonus", pPlot->getBonusType(NO_TEAM));
@@ -2631,6 +2645,72 @@ namespace
 		return makePlayerStateReply(iId, iPlayer);
 	}
 
+	CvString handleSetPlayerIdentity(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCivilization = -1;
+		int iLeader = -1;
+		int iColor = -1;
+		const char* szLeaderName = json_object_get_string(pArgs, "leader_name");
+		const char* szCivilizationDescription = json_object_get_string(pArgs, "civilization_description");
+		const char* szCivilizationShortDescription = json_object_get_string(pArgs, "civilization_short_description");
+		const char* szCivilizationAdjective = json_object_get_string(pArgs, "civilization_adjective");
+		if (!getPlayerArg(pArgs, iPlayer))
+		{
+			return makeErrorReply(iId, "bad_player", "player is missing or out of range");
+		}
+
+		iCivilization = getInfoTypeFromValue(json_object_get_value(pArgs, "civilization"));
+		if (iCivilization >= 0)
+		{
+			if (iCivilization >= GC.getNumCivilizationInfos())
+			{
+				return makeErrorReply(iId, "bad_civilization", "civilization is out of range");
+			}
+			GC.getInitCore().setCiv((PlayerTypes)iPlayer, (CivilizationTypes)iCivilization);
+		}
+
+		iLeader = getInfoTypeFromValue(json_object_get_value(pArgs, "leader"));
+		if (iLeader >= 0)
+		{
+			if (iLeader >= GC.getNumLeaderHeadInfos())
+			{
+				return makeErrorReply(iId, "bad_leader", "leader is out of range");
+			}
+			GC.getInitCore().setLeader((PlayerTypes)iPlayer, (LeaderHeadTypes)iLeader);
+			GET_PLAYER((PlayerTypes)iPlayer).setPersonalityType((LeaderHeadTypes)iLeader);
+		}
+
+		if (getInt(pArgs, "color", iColor))
+		{
+			if (iColor < 0 || iColor >= GC.getNumPlayerColorInfos())
+			{
+				return makeErrorReply(iId, "bad_color", "color is out of range");
+			}
+			GC.getInitCore().setColor((PlayerTypes)iPlayer, (PlayerColorTypes)iColor);
+		}
+
+		if (szLeaderName != NULL && strlen(szLeaderName) > 0)
+		{
+			GC.getInitCore().setLeaderName((PlayerTypes)iPlayer, utf8ToWide(szLeaderName));
+		}
+		if (szCivilizationDescription != NULL && strlen(szCivilizationDescription) > 0)
+		{
+			GC.getInitCore().setCivDescription((PlayerTypes)iPlayer, utf8ToWide(szCivilizationDescription));
+		}
+		if (szCivilizationShortDescription != NULL && strlen(szCivilizationShortDescription) > 0)
+		{
+			GC.getInitCore().setCivShortDesc((PlayerTypes)iPlayer, utf8ToWide(szCivilizationShortDescription));
+		}
+		if (szCivilizationAdjective != NULL && strlen(szCivilizationAdjective) > 0)
+		{
+			GC.getInitCore().setCivAdjective((PlayerTypes)iPlayer, utf8ToWide(szCivilizationAdjective));
+		}
+
+		markGameDataDirty();
+		return makePlayerIdentityReply(iId, iPlayer);
+	}
+
 	CvString handleSetPlayerAdvancedStartPoints(int iId, JSON_Object* pArgs)
 	{
 		int iPlayer = -1;
@@ -2962,6 +3042,45 @@ namespace
 		pCity->changePopulation(iChange);
 		markGameDataDirty();
 		return makeCityStateReply(iId, pCity);
+	}
+
+	CvString handleTransferCity(int iId, JSON_Object* pArgs)
+	{
+		int iPlayer = -1;
+		int iCity = -1;
+		int iNewPlayer = -1;
+		int iConquest = 1;
+		int iTrade = 0;
+		CvCity* pCity = NULL;
+		if (!getCityArgs(pArgs, iPlayer, iCity, pCity))
+		{
+			return makeErrorReply(iId, "bad_city", "city is missing or not found");
+		}
+		if (!getInt(pArgs, "new_player", iNewPlayer) || !validPlayer(iNewPlayer))
+		{
+			return makeErrorReply(iId, "bad_new_player", "new_player is missing or out of range");
+		}
+		if (iNewPlayer == iPlayer)
+		{
+			return makeErrorReply(iId, "same_player", "new_player already owns city");
+		}
+		if (!GET_PLAYER((PlayerTypes)iNewPlayer).isAlive() && !GET_PLAYER((PlayerTypes)iNewPlayer).isBarbarian())
+		{
+			return makeErrorReply(iId, "inactive_player", "new_player is not alive");
+		}
+		getInt(pArgs, "conquest", iConquest);
+		getInt(pArgs, "trade", iTrade);
+
+		CvPlot* pPlot = pCity->plot();
+		GET_PLAYER((PlayerTypes)iNewPlayer).acquireCity(pCity, iConquest != 0, iTrade != 0, true);
+		CvCity* pNewCity = (pPlot != NULL) ? pPlot->getPlotCity() : NULL;
+		if (pNewCity == NULL || pNewCity->getOwnerINLINE() != iNewPlayer)
+		{
+			return makeErrorReply(iId, "transfer_failed", "city transfer did not produce a new owner city");
+		}
+
+		markGameDataDirty();
+		return makeCityStateReply(iId, pNewCity);
 	}
 
 	CvString handleSetCityName(int iId, JSON_Object* pArgs)
@@ -5151,6 +5270,10 @@ namespace
 		{
 			return handleSetPlayerParent(iId, pArgs);
 		}
+		if (strcmp(szName, "set_player_identity") == 0)
+		{
+			return handleSetPlayerIdentity(iId, pArgs);
+		}
 		if (strcmp(szName, "set_player_advanced_start_points") == 0)
 		{
 			return handleSetPlayerAdvancedStartPoints(iId, pArgs);
@@ -5210,6 +5333,10 @@ namespace
 		if (strcmp(szName, "change_city_population") == 0)
 		{
 			return handleChangeCityPopulation(iId, pArgs);
+		}
+		if (strcmp(szName, "transfer_city") == 0)
+		{
+			return handleTransferCity(iId, pArgs);
 		}
 		if (strcmp(szName, "set_city_name") == 0)
 		{

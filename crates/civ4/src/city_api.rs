@@ -115,6 +115,26 @@ impl BridgeClient {
         )
     }
 
+    pub fn transfer_city<P: Into<PlayerId>>(
+        &mut self,
+        city: CityRef,
+        new_player: P,
+        conquest: bool,
+        trade: bool,
+    ) -> Result<CityState> {
+        let new_player = new_player.into();
+        self.command(
+            "transfer_city",
+            json!({
+                "player": city.player,
+                "city": city.id,
+                "new_player": new_player.0,
+                "conquest": if conquest { 1 } else { 0 },
+                "trade": if trade { 1 } else { 0 }
+            }),
+        )
+    }
+
     pub fn set_city_name(&mut self, city: CityRef, name: &str) -> Result<CityIdentityState> {
         self.set_city_name_with_found_message(city, name, false)
     }

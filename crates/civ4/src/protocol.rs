@@ -129,6 +129,7 @@ pub const BRIDGED_COMMAND_NAMES: &[&str] = &[
     "set_player_current_era",
     "set_player_gold",
     "set_player_gold_per_turn_by_player",
+    "set_player_identity",
     "set_player_parent",
     "set_player_personality",
     "set_player_playable",
@@ -161,6 +162,7 @@ pub const BRIDGED_COMMAND_NAMES: &[&str] = &[
     "set_unit_promotion",
     "set_unit_xy",
     "spawn_unit",
+    "transfer_city",
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -485,8 +487,8 @@ mod tests {
     #[test]
     fn bridged_query_and_command_catalogs_are_stable() {
         assert_eq!(BRIDGED_QUERY_NAMES.len(), 43);
-        assert_eq!(BRIDGED_COMMAND_NAMES.len(), 111);
-        assert_eq!(BRIDGED_QUERY_NAMES.len() + BRIDGED_COMMAND_NAMES.len(), 154);
+        assert_eq!(BRIDGED_COMMAND_NAMES.len(), 113);
+        assert_eq!(BRIDGED_QUERY_NAMES.len() + BRIDGED_COMMAND_NAMES.len(), 156);
 
         assert_sorted_unique(BRIDGED_QUERY_NAMES);
         assert_sorted_unique(BRIDGED_COMMAND_NAMES);
