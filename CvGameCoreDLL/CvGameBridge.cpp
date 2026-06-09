@@ -3,6 +3,7 @@
 
 #include "CvDLLInterfaceIFaceBase.h"
 #include "CvDLLEngineIFaceBase.h"
+#include "CvInitCore.h"
 #include "ThirdParty/parson/parson.h"
 
 namespace
